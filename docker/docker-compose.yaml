@@ -1,0 +1,60 @@
+services:
+  spring-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ${PROJECT_NAME}-server
+    ports:
+      - ${SERVER_PORT}:${SERVER_PORT}
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ../.env
+    networks:
+      - ${PROJECT_NAME}-network
+  postgres:
+    image: postgres:13.11-bullseye
+    container_name: ${PROJECT_NAME}-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRESQL_DB}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD}
+      POSTGRES_USER: ${POSTGRESQL_USER}
+    ports:
+      - ${POSTGRESQL_PORT}:${POSTGRESQL_PORT}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../../var/logs/postgresql:/var/log/postgresql
+    networks:
+      - ${PROJECT_NAME}-network
+
+  redis:
+    image: redis:7.0.12-alpine
+    container_name: ${PROJECT_NAME}-redis
+    restart: always
+    command: redis-server --save 20 1 --loglevel warning --requirepass "${REDIS_PASSWORD}"
+    volumes:
+      - redis-data:/data
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    networks:
+      - ${PROJECT_NAME}-network
+
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   container_name: template-mailhog
+  #   restart: always
+  #   env_file: .env
+  #   ports:
+  #     - '1025:1025'
+  #   networks:
+  #     - template-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  isu-project-network:
+    driver: bridge
