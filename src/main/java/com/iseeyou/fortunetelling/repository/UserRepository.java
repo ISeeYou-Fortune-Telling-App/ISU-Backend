@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.repository;
 
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;

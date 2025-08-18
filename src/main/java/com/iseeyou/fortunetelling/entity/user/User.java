@@ -1,9 +1,8 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.user;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.util.Constants;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +16,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User extends AbstractBaseEntity{
+@AttributeOverrides({
+        @AttributeOverride(name = "id", column = @Column(name = "user_id", nullable = false)),
+})
+public class User extends AbstractBaseEntity {
     @Column(name = "role", nullable = false)
     private Constants.RoleEnum role;
 
@@ -50,4 +52,10 @@ public class User extends AbstractBaseEntity{
 
     @Column(name = "status", nullable = false)
     private Constants.StatusProfileEnum status;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private CustomerProfile customerProfile;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private SeerProfile seerProfile;
 }

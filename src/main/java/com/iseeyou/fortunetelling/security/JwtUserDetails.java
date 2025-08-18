@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.security;
 
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

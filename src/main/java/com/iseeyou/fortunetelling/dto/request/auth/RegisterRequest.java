@@ -16,6 +16,18 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @SuperBuilder
 public class RegisterRequest {
+
+    @NotBlank(message = "{not_blank}")
+    @Size(max = 50, message = "{max_length}")
+    @Schema(
+            name = "fullName",
+            description = "Full name of the user",
+            type = "String",
+            requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "Nguyễn Văn A"
+    )
+    private String fullName;
+
     @NotBlank(message = "{not_blank}")
     @Email(message = "{invalid_email}")
     @Size(max = 100, message = "{max_length}")
@@ -33,6 +45,16 @@ public class RegisterRequest {
             example = "0901234567"
     )
     private String phoneNumber;
+
+    @Schema(
+            name = "birthDate",
+            description = "Birth date of the user",
+            type = "string",
+            format = "date-time",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
+            example = "2000-01-30T00:00:00"
+    )
+    private LocalDateTime birthDate;
 
     @Size(max = 10, message = "{max_length}")
     @Schema(
@@ -57,26 +79,5 @@ public class RegisterRequest {
             example = "P@sswd123."
     )
     private String passwordConfirm;
-
-    @NotBlank(message = "{not_blank}")
-    @Size(max = 50, message = "{max_length}")
-    @Schema(
-            name = "fullName",
-            description = "Full name of the user",
-            type = "String",
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            example = "Nguyễn Văn A"
-    )
-    private String fullName;
-
-    @Schema(
-            name = "birthDate",
-            description = "Birth date of the user",
-            type = "string",
-            format = "date-time",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            example = "2000-01-30T00:00:00"
-    )
-    private LocalDateTime birthDate;
 
 }

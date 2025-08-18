@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.service.auth;
 
 import com.iseeyou.fortunetelling.dto.response.auth.TokenResponse;
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 
 import java.util.UUID;
 

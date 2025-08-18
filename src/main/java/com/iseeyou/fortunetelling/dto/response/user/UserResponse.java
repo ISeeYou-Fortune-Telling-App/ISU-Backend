@@ -9,7 +9,7 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class UserResponse {
+public class UserResponse<T> {
     private String id;
     private String role;
     private String email;
@@ -23,4 +23,5 @@ public class UserResponse {
     private String status;
     private String createdAt;
     private String updatedAt;
+    private T profile;
 }

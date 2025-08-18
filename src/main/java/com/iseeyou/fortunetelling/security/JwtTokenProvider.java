@@ -5,7 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.service.auth.JwtTokenService;
 import com.iseeyou.fortunetelling.service.user.UserService;

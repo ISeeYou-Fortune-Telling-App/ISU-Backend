@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.security;
 
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -2,7 +2,7 @@ package com.iseeyou.fortunetelling.service.user;
 
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

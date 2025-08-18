@@ -2,12 +2,14 @@ package com.iseeyou.fortunetelling.service.user.impl;
 
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
-import com.iseeyou.fortunetelling.entity.User;
+import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.user.UserService;
+import com.iseeyou.fortunetelling.util.CalculateZodiac;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -151,6 +153,21 @@ public class UserServiceImpl implements UserService {
         user.setPhone(request.getPhoneNumber());
         user.setRole(Constants.RoleEnum.CUSTOMER);
         user.setStatus(Constants.StatusProfileEnum.VERIFIED);
+
+        // Calculate Zodiac sign based on birth date
+        CustomerProfile customerProfile = new CustomerProfile();
+
+        int day = request.getBirthDate().getDayOfMonth();
+        int month = request.getBirthDate().getMonthValue();
+        int year = request.getBirthDate().getYear();
+
+        customerProfile.setZodiacSign(CalculateZodiac.getZodiacSign(month, day));
+        customerProfile.setChineseZodiac(CalculateZodiac.getChineseZodiac(year));
+        customerProfile.setFiveElements(CalculateZodiac.getFiveElements(year));
+
+        customerProfile.setUser(user);
+        user.setCustomerProfile(customerProfile);
+
         userRepository.save(user);
 
         return user;
