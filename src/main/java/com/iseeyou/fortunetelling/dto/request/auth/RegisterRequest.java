@@ -75,7 +75,7 @@ public class RegisterRequest {
             type = "string",
             format = "date-time",
             requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            example = "30-01-2000T00:00:00"
+            example = "2000-01-30T00:00:00"
     )
     private LocalDateTime birthDate;
 

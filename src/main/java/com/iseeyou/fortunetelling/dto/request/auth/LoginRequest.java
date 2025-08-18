@@ -18,7 +18,7 @@ public class LoginRequest {
             description = "E-mail of the user",
             type = "String",
             requiredMode = Schema.RequiredMode.REQUIRED,
-            example = "customer1@email.com"
+            example = "mail@email.com"
     )
     private String email;
 

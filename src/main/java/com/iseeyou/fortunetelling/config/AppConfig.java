@@ -1,8 +1,5 @@
 package com.iseeyou.fortunetelling.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
@@ -18,8 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.TimeZone;
 
@@ -70,21 +65,5 @@ public class AppConfig {
                 .setSkipNullEnabled(true);
 
         return modelMapper;
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        JavaTimeModule javaTimeModule = new JavaTimeModule();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy'T'HH:mm:ss");
-
-        javaTimeModule.addDeserializer(LocalDateTime.class,
-                new com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer(formatter));
-        javaTimeModule.addSerializer(LocalDateTime.class,
-                new com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer(formatter));
-
-        mapper.registerModule(javaTimeModule);
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        return mapper;
     }
 }

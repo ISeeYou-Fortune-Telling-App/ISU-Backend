@@ -5,8 +5,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,8 +19,8 @@ public class UserResponse {
     private String avatarUrl;
     private String coverUrl;
     private String profileDescription;
-    private LocalDateTime birthDate;
+    private String birthDate;
     private String status;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String createdAt;
+    private String updatedAt;
 }
