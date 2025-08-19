@@ -32,7 +32,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -80,6 +79,18 @@ public class UserServiceImpl implements UserService {
     public User findById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+    }
+
+    @Override
+    @Transactional
+    public User updateStatus(UUID id, String status) {
+        User user = findById(id);
+        try {
+            user.setStatus(Constants.StatusProfileEnum.valueOf(status.toUpperCase()));
+            return userRepository.save(user);
+        } catch (IllegalArgumentException e) {
+            throw new BadCredentialsException(messageSourceService.get("invalid_status"));
+        }
     }
 
     /**

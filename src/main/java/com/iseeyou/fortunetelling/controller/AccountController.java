@@ -1,6 +1,8 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.response.PageResponse;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.mapper.UserMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,11 +19,15 @@ import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.user.UserResponse;
 import com.iseeyou.fortunetelling.service.user.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -59,7 +65,7 @@ public class AccountController extends AbstractBaseController {
             }
     )
     public ResponseEntity<SingleResponse<UserResponse>> me() {
-        UserResponse userResponse = userMapper.toResponse(userService.getUser());
+        UserResponse userResponse = userMapper.mapTo(userService.getUser(), UserResponse.class);
         return responseFactory.successSingle(userResponse, "Successful operation");
     }
 
@@ -98,7 +104,7 @@ public class AccountController extends AbstractBaseController {
             @Parameter(description = "Request body to update current user", required = true)
             @RequestBody @Valid final UpdateUserRequest request
     ) throws BindException {
-        UserResponse updatedUser = userMapper.toResponse(userService.updateMe(request));
+        UserResponse updatedUser = userMapper.mapTo(userService.updateMe(request), UserResponse.class);
         return responseFactory.successSingle(updatedUser, "User updated successfully");
     }
 
@@ -194,5 +200,130 @@ public class AccountController extends AbstractBaseController {
     ) throws Exception {
         String coverUrl = userService.uploadImage(cover, "covers");
         return responseFactory.successSingle(coverUrl, "Cover uploaded successfully");
+    }
+
+    @GetMapping
+    @Operation(
+            summary = "Get all users with pagination",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "15") int limit,
+            @RequestParam(defaultValue = "desc") String sortType,
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<User> userPage = userService.findAll(pageable);
+        Page<UserResponse> response = userMapper.mapToPage(userPage, UserResponse.class);
+        return responseFactory.successPage(response, "Users retrieved successfully");
+    }
+
+    @GetMapping("/{id}")
+    @Operation(
+            summary = "Get user by ID",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<UserResponse<?>>> getUserById(
+            @Parameter(description = "User ID", required = true)
+            @PathVariable UUID id
+    ) {
+        User user = userService.findById(id);
+        UserResponse<?> userResponse = userMapper.mapTo(user, UserResponse.class);
+        return responseFactory.successSingle(userResponse, "User retrieved successfully");
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(
+            summary = "Update user status",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "User status updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<UserResponse<?>>> updateUserStatus(
+            @Parameter(description = "User ID", required = true)
+            @PathVariable String id,
+            @Parameter(description = "New status", required = true)
+            @RequestParam String status
+    ) {
+        User updatedUser = userService.updateStatus(UUID.fromString(id), status);
+        UserResponse<?> userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
+        return responseFactory.successSingle(userResponse, "User status updated successfully");
     }
 }

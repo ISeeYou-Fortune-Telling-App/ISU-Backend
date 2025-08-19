@@ -3,17 +3,17 @@ package com.iseeyou.fortunetelling.mapper;
 import org.modelmapper.AbstractConverter;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
-public abstract class BaseMapper<E, D> {
+public abstract class BaseMapper<E> {
 
     protected final ModelMapper modelMapper;
 
@@ -49,25 +49,24 @@ public abstract class BaseMapper<E, D> {
                 return source.format(DateTimeFormatter.ISO_DATE_TIME);
             }
         });
-
-        // EnumSet -> List<String>
-        modelMapper.addConverter(new AbstractConverter<EnumSet<?>, List<String>>() {
-            @Override
-            protected List<String> convert(EnumSet<?> source) {
-                if (source == null) return null;
-                return source.stream()
-                        .map(Enum::name)
-                        .collect(Collectors.toList());
-            }
-        });
     }
 
     protected abstract void configureCustomMappings();
 
-    public D toResponse(E entity) {
-        if (entity == null) return null;
-        return modelMapper.map(entity, getResponseType());
+    public <T> T mapTo(Object source, Class<T> targetType) {
+        if (source == null) return null;
+        return modelMapper.map(source, targetType);
     }
 
-    protected abstract Class<D> getResponseType();
+    public <T> List<T> mapToList(List<?> sourceList, Class<T> targetType) {
+        if (sourceList == null || sourceList.isEmpty()) return List.of();
+        return sourceList.stream()
+                .map(source -> mapTo(source, targetType))
+                .collect(Collectors.toList());
+    }
+
+    public <T> Page<T> mapToPage(Page<?> sourcePage, Class<T> targetType) {
+        if (sourcePage == null) return Page.empty();
+        return sourcePage.map(source -> mapTo(source, targetType));
+    }
 }

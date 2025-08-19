@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class UserMapper extends BaseMapper<User, UserResponse> {
+public class UserMapper extends BaseMapper<User> {
 
     @Autowired
     public UserMapper(ModelMapper modelMapper) {
@@ -31,10 +31,5 @@ public class UserMapper extends BaseMapper<User, UserResponse> {
                         return null;
                     }).map(src -> src, UserResponse::setProfile);
                 });
-    }
-
-    @Override
-    protected Class<UserResponse> getResponseType() {
-        return UserResponse.class;
     }
 }

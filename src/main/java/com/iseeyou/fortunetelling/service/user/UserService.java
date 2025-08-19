@@ -24,6 +24,8 @@ public interface UserService {
 
     User findById(UUID id);
 
+    User updateStatus(UUID id, String status);
+
     User findByEmail(String email);
 
     UserDetails loadUserByEmail(String email);

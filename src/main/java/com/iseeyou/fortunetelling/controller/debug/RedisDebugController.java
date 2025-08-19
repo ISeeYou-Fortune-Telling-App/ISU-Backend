@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.controller;
+package com.iseeyou.fortunetelling.controller.debug;
 
 import com.iseeyou.fortunetelling.repository.JwtTokenRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
