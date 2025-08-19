@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -30,6 +31,9 @@ public interface UserService {
     User register(RegisterRequest request) throws BindException;
 
     User updateMe(UpdateUserRequest request) throws BindException;
+
+    String uploadImage(MultipartFile file, String folderName) throws Exception;
+    void uploadCertificates(MultipartFile[] files) throws Exception;
 
     void delete(String id);
 

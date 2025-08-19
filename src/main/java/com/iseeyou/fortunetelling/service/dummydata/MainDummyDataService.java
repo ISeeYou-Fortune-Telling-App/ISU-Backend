@@ -16,7 +16,12 @@ public class MainDummyDataService implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("Generating dummy data...");
-        accounts.createDummyData();
+        try {
+            accounts.createDummyData();
+        } catch (Exception e) {
+            log.info("Dummy data already exists, skipping creation.");
+            return;
+        }
         log.info("Dummy data generation completed.");
     }
 }

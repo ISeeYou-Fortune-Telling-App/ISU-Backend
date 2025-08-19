@@ -8,6 +8,7 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
+import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.CalculateZodiac;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -28,7 +29,10 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -41,6 +45,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     private final MessageSourceService messageSourceService;
+
+    private final CloudinaryService cloudinaryService;
 
     public Authentication getAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();
@@ -183,6 +189,44 @@ public class UserServiceImpl implements UserService {
         user.setFullName(request.getFullName());
         return userRepository.save(user);
     }
+
+    @Override
+    public String uploadImage(MultipartFile file, String folderName) throws Exception {
+        User existingUser = getUser();
+
+        // Check if the file is empty
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File must not be empty");
+        }
+
+        if (existingUser.getAvatarUrl() == null) {
+            String imageUrl = cloudinaryService.uploadFile(file, folderName);
+            existingUser.setAvatarUrl(imageUrl);
+            userRepository.save(existingUser);
+
+            return imageUrl;
+        } else {
+            // Delete the old image from Cloudinary
+            try {
+                cloudinaryService.deleteFile(existingUser.getAvatarUrl());
+            } catch (IOException e) {
+                log.error("Failed to delete old user avatar: {}", e.getMessage());
+            }
+
+            String imageUrl = cloudinaryService.uploadFile(file, folderName);
+            existingUser.setAvatarUrl(imageUrl);
+            userRepository.save(existingUser);
+
+            return imageUrl;
+        }
+    }
+
+
+    @Override
+    @Transactional
+    public void uploadCertificates(MultipartFile[] files) throws Exception {
+    }
+
 
     @Transactional
     @Override

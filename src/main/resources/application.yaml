@@ -79,3 +79,8 @@ logging:
         type: ${LOGGING_LEVEL_HIBERNATE}
       springframework:
         web: ${LOGGING_LEVEL_SPRING}
+
+cloudinary:
+  cloud-name: ${CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}

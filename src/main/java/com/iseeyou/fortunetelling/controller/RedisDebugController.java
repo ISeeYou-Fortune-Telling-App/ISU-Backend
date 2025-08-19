@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.repository.JwtTokenRepository;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/debug")
+@Tag(name = "Debug", description = "Debug API, for internal use only")
 public class RedisDebugController {
     private final RedisTemplate<String, Object> redisTemplate;
     private final JwtTokenRepository jwtTokenRepository;

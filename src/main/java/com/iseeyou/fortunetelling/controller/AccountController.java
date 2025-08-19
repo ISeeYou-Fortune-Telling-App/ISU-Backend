@@ -21,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -99,5 +100,99 @@ public class AccountController extends AbstractBaseController {
     ) throws BindException {
         UserResponse updatedUser = userMapper.toResponse(userService.updateMe(request));
         return responseFactory.successSingle(updatedUser, "User updated successfully");
+    }
+
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Upload avatar for current user",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Avatar file to upload",
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(type = "string", format = "binary")
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Avatar uploaded successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<String>> uploadMeAvatar(
+            @Parameter(description = "Avatar file to upload", required = true)
+            @RequestParam("avatar") final MultipartFile avatar
+    ) throws Exception {
+        String avatarUrl = userService.uploadImage(avatar, "avatars");
+        return responseFactory.successSingle(avatarUrl, "Avatar uploaded successfully");
+    }
+
+    @PostMapping(value = "/me/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Upload cover for current user",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Cover file to upload",
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(type = "string", format = "binary")
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Cover uploaded successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<String>> uploadMeCover(
+            @Parameter(description = "Cover file to upload", required = true)
+            @RequestParam("cover") final MultipartFile cover
+    ) throws Exception {
+        String coverUrl = userService.uploadImage(cover, "covers");
+        return responseFactory.successSingle(coverUrl, "Cover uploaded successfully");
     }
 }
