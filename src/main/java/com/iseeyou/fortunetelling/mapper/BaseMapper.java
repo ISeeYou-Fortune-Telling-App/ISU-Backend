@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
-public abstract class BaseMapper<E> {
+public abstract class BaseMapper {
 
     protected final ModelMapper modelMapper;
 

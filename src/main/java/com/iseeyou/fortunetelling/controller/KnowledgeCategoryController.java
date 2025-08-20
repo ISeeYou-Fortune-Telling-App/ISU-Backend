@@ -8,7 +8,7 @@ import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgecategory.KnowledgeCategoryResponse;
 import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
-import com.iseeyou.fortunetelling.mapper.KnowledgeCategoryMapper;
+import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,7 +37,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @Slf4j
 public class KnowledgeCategoryController extends AbstractBaseController {
     private final KnowledgeCategoryService knowledgeCategoryService;
-    private final KnowledgeCategoryMapper knowledgeCategoryMapper;
+    private final SimpleMapper simpleMapper;
 
     @GetMapping
     @Operation(
@@ -74,7 +74,7 @@ public class KnowledgeCategoryController extends AbstractBaseController {
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<KnowledgeCategory> categories = knowledgeCategoryService.findAll(pageable);
-        Page<KnowledgeCategoryResponse> response = knowledgeCategoryMapper.mapToPage(categories, KnowledgeCategoryResponse.class);
+        Page<KnowledgeCategoryResponse> response = simpleMapper.mapToPage(categories, KnowledgeCategoryResponse.class);
         return responseFactory.successPage(response, "Knowledge categories retrieved successfully");
     }
 
@@ -114,7 +114,7 @@ public class KnowledgeCategoryController extends AbstractBaseController {
             @PathVariable UUID id
     ) {
         KnowledgeCategory category = knowledgeCategoryService.findById(id);
-        KnowledgeCategoryResponse response = knowledgeCategoryMapper.mapTo(category, KnowledgeCategoryResponse.class);
+        KnowledgeCategoryResponse response = simpleMapper.mapTo(category, KnowledgeCategoryResponse.class);
         return responseFactory.successSingle(response, "Knowledge category retrieved successfully");
     }
 
@@ -163,9 +163,9 @@ public class KnowledgeCategoryController extends AbstractBaseController {
             @Parameter(description = "Updated knowledge category data", required = true)
             @RequestBody @Valid KnowledgeCategoryUpdateRequest request
     ) {
-        KnowledgeCategory categoryToUpdate = knowledgeCategoryMapper.mapTo(request, KnowledgeCategory.class);
+        KnowledgeCategory categoryToUpdate = simpleMapper.mapTo(request, KnowledgeCategory.class);
         KnowledgeCategory updatedCategory = knowledgeCategoryService.update(id, categoryToUpdate);
-        KnowledgeCategoryResponse response = knowledgeCategoryMapper.mapTo(updatedCategory, KnowledgeCategoryResponse.class);
+        KnowledgeCategoryResponse response = simpleMapper.mapTo(updatedCategory, KnowledgeCategoryResponse.class);
         return responseFactory.successSingle(response, "Knowledge category updated successfully");
     }
 
@@ -205,7 +205,7 @@ public class KnowledgeCategoryController extends AbstractBaseController {
             @RequestParam String name
     ) {
         KnowledgeCategory category = knowledgeCategoryService.findByName(name);
-        KnowledgeCategoryResponse response = knowledgeCategoryMapper.mapTo(category, KnowledgeCategoryResponse.class);
+        KnowledgeCategoryResponse response = simpleMapper.mapTo(category, KnowledgeCategoryResponse.class);
         return responseFactory.successSingle(response, "Knowledge category retrieved successfully");
     }
 
@@ -244,9 +244,9 @@ public class KnowledgeCategoryController extends AbstractBaseController {
             @Parameter(description = "Knowledge category data to create", required = true)
             @RequestBody @Valid KnowledgeCategoryCreateRequest request
     ) {
-        KnowledgeCategory categoryToCreate = knowledgeCategoryMapper.mapTo(request, KnowledgeCategory.class);
+        KnowledgeCategory categoryToCreate = simpleMapper.mapTo(request, KnowledgeCategory.class);
         KnowledgeCategory createdCategory = knowledgeCategoryService.create(categoryToCreate);
-        KnowledgeCategoryResponse response = knowledgeCategoryMapper.mapTo(createdCategory, KnowledgeCategoryResponse.class);
+        KnowledgeCategoryResponse response = simpleMapper.mapTo(createdCategory, KnowledgeCategoryResponse.class);
         return responseFactory.successSingle(response, "Knowledge category created successfully");
     }
 
