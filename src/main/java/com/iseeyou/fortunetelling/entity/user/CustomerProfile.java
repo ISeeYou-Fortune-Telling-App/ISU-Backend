@@ -2,15 +2,13 @@ package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Table(name="customer_profile")
-@Data
 @Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CustomerProfile extends AbstractBaseEntity {

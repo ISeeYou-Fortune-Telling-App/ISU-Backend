@@ -1,19 +1,19 @@
 package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.Certificate;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Entity
 @Table(name="user")
-@Data
 @Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @AttributeOverrides({
@@ -58,4 +58,7 @@ public class User extends AbstractBaseEntity {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private SeerProfile seerProfile;
+
+    @OneToMany(mappedBy = "seer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<Certificate> certificates;
 }

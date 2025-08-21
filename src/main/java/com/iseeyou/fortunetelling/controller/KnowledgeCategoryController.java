@@ -33,7 +33,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/knowledge-categories")
-@Tag(name = "003. Knowledge Categories", description = "Knowledge Categories API")
+@Tag(name = "004. Knowledge Categories", description = "Knowledge Categories API")
 @Slf4j
 public class KnowledgeCategoryController extends AbstractBaseController {
     private final KnowledgeCategoryService knowledgeCategoryService;

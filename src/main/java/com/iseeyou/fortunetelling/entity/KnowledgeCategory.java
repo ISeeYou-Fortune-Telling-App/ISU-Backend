@@ -1,14 +1,14 @@
 package com.iseeyou.fortunetelling.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.util.Set;
 
 @Entity
 @Table(name="knowledge_category")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,4 +21,7 @@ public class KnowledgeCategory extends AbstractBaseEntity{
 
     @Column(name = "description", length = 1000)
     private String description;
+
+    @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<CertificateCategory> certificateCategories;
 }

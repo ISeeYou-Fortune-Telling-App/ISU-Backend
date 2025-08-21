@@ -23,6 +23,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     @Override
     @Transactional
     public String uploadFile(MultipartFile file, String folder) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be null or empty");
+        }
         return cloudinary.uploader().upload(file.getBytes(),
                 ObjectUtils.asMap("folder", folder)).get("secure_url").toString();
     }

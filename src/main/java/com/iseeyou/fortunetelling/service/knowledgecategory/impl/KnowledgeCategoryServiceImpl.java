@@ -11,12 +11,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class KnowledgeCategoryImpl implements KnowledgeCategoryService {
+public class KnowledgeCategoryServiceImpl implements KnowledgeCategoryService {
 
     private final KnowledgeCategoryRepository knowledgeCategoryRepository;
 
@@ -31,6 +32,15 @@ public class KnowledgeCategoryImpl implements KnowledgeCategoryService {
     public KnowledgeCategory findById(UUID id) {
         return knowledgeCategoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("KnowledgeCategory not found with id: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<KnowledgeCategory> findAllByIds(Iterable<UUID> ids) {
+        if (ids == null) {
+            return List.of();
+        }
+        return knowledgeCategoryRepository.findAllById(ids);
     }
 
     @Override
@@ -60,6 +70,16 @@ public class KnowledgeCategoryImpl implements KnowledgeCategoryService {
             return knowledgeCategoryRepository.save(existingCategory);
         } catch (Exception e) {
             throw new IllegalArgumentException("The name '" + knowledgeCategory.getName() + "' is already in use.");
+        }
+    }
+
+    @Override
+    @Transactional
+    public KnowledgeCategory save(KnowledgeCategory knowledgeCategory) {
+        if (knowledgeCategory.getId() == null) {
+            return create(knowledgeCategory);
+        } else {
+            return update(knowledgeCategory.getId(), knowledgeCategory);
         }
     }
 

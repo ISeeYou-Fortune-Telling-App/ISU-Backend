@@ -12,10 +12,6 @@ public final class Constants {
 
     public static final String TOKEN_TYPE = "Bearer";
 
-    public static final String DATE_FORMAT = "dd-MM-yyyy";
-
-    public static final String DATE_TIME_FORMAT = "dd-MM-yyy'T'HH:mm:ss";
-
     @Getter
     @AllArgsConstructor
     public enum RoleEnum {
@@ -69,5 +65,22 @@ public final class Constants {
             System.out.println("Cannot find user or channel id from the path!. Ex:"+ e.getMessage());
         }
         return null;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum CertificateStatusEnum {
+        PENDING("PENDING"),
+        APPROVED("APPROVED"),
+        REJECTED("REJECTED");
+
+        private final String value;
+
+        public static CertificateStatusEnum get(final String name) {
+            return Stream.of(CertificateStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid certificate status name: %s", name)));
+        }
     }
 }
