@@ -1,13 +1,18 @@
 package com.iseeyou.fortunetelling.service.user.impl;
 
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
+import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
+import com.iseeyou.fortunetelling.entity.Certificate;
 import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
+import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
+import com.iseeyou.fortunetelling.service.certificate.CertificateService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.CalculateZodiac;
@@ -15,6 +20,7 @@ import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -35,16 +41,26 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-
     private final PasswordEncoder passwordEncoder;
-
     private final MessageSourceService messageSourceService;
-
     private final CloudinaryService cloudinaryService;
+    private final CertificateService certificateService;
+
+    public UserServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            MessageSourceService messageSourceService,
+            CloudinaryService cloudinaryService,
+            @Lazy CertificateService certificateService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.messageSourceService = messageSourceService;
+        this.cloudinaryService = cloudinaryService;
+        this.certificateService = certificateService;
+    }
 
     public Authentication getAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();
@@ -185,6 +201,68 @@ public class UserServiceImpl implements UserService {
         user.setCustomerProfile(customerProfile);
 
         userRepository.save(user);
+
+        return user;
+    }
+
+    @Override
+    @Transactional
+    public User seerRegister(SeerRegisterRequest request) throws BindException {
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            BindingResult bindingResult = new BeanPropertyBindingResult(request, "request");
+            bindingResult.addError(new FieldError(bindingResult.getObjectName(), "email",
+                    "Email already exists"));
+            throw new BindException(bindingResult);
+        }
+
+        // Create and set up user with basic info
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName());
+        user.setBirthDate(request.getBirthDate());
+        user.setGender(request.getGender());
+        user.setPhone(request.getPhoneNumber());
+        user.setRole(Constants.RoleEnum.SEER);
+        user.setStatus(Constants.StatusProfileEnum.UNVERIFIED);
+        user.setProfileDescription(request.getProfileDescription());
+
+        SeerProfile seerProfile = new SeerProfile();
+        seerProfile.setUser(user);
+        seerProfile.setAvgRating(0.0);
+        seerProfile.setTotalRates(0);
+        user.setSeerProfile(seerProfile);
+
+        userRepository.save(user);
+
+        // Process certificates if provided
+        if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {
+            for (CertificateCreateRequest certRequest : request.getCertificates()) {
+                try {
+                    // Create certificate entity from request
+                    Certificate certificate = new Certificate();
+                    certificate.setCertificateName(certRequest.getCertificateName());
+                    certificate.setCertificateDescription(certRequest.getCertificateDescription());
+                    certificate.setIssuedBy(certRequest.getIssuedBy());
+                    certificate.setIssuedAt(certRequest.getIssuedAt());
+                    certificate.setExpirationDate(certRequest.getExpirationDate());
+                    certificate.setSeer(user);
+                    certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
+
+                    // Upload certificate file if provided
+                    if (certRequest.getCertificateFile() != null && !certRequest.getCertificateFile().isEmpty()) {
+                        String imageUrl = cloudinaryService.uploadFile(certRequest.getCertificateFile(), "certificates");
+                        certificate.setCertificateUrl(imageUrl);
+                    }
+
+                    // Create certificate with associated categories
+                    certificateService.create(certificate, certRequest.getCategoryIds());
+                } catch (IOException e) {
+                    log.error("Failed to upload certificate file: {}", e.getMessage());
+                }
+            }
+        }
 
         return user;
     }

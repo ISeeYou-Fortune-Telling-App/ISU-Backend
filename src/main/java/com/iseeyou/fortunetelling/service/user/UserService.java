@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.user;
 
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
+import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
@@ -31,6 +32,8 @@ public interface UserService {
     UserDetails loadUserByEmail(String email);
 
     User register(RegisterRequest request) throws BindException;
+
+    User seerRegister(SeerRegisterRequest request) throws BindException;
 
     User updateMe(UpdateUserRequest request) throws BindException;
 

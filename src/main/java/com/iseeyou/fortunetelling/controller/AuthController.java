@@ -1,6 +1,8 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.ResponseFactory;
+import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
+import com.iseeyou.fortunetelling.dto.response.user.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,14 +20,16 @@ import com.iseeyou.fortunetelling.dto.response.auth.TokenResponse;
 import com.iseeyou.fortunetelling.dto.response.error.DetailedErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
-import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.auth.AuthService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -38,7 +42,6 @@ public class AuthController {
 
     private final UserService userService;
 
-    private final MessageSourceService messageSourceService;
     private final ResponseFactory responseFactory;
 
 
@@ -109,6 +112,38 @@ public class AuthController {
         userService.register(request);
         return responseFactory.successSingle(null, "Register successful");
     }
+
+    @PostMapping(path = "/seer/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Register a new seer user",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Seer registered successfully",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class))),
+                    @ApiResponse(responseCode = "400", description = "Bad request",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)) ),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)) )
+            }
+    )
+    public ResponseEntity<SingleResponse<SuccessResponse>> seerRegister(
+            @Parameter(description = "Seer register data (multipart/form-data)", required = true)
+            @Valid @ModelAttribute SeerRegisterRequest request,
+            BindingResult bindingResult
+    ) throws BindException, IOException {
+
+        if (bindingResult.hasErrors()) {
+            throw new BindException(bindingResult);
+        }
+
+        userService.seerRegister(request);
+
+        return responseFactory.successSingle(null, "Seer registered successfully");
+    }
+
 
     @GetMapping("/refresh")
     @Operation(
