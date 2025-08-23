@@ -83,4 +83,19 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid certificate status name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum KnowledgeItemStatusEnum {
+        DRAFT("DRAFT"),
+        PUBLISHED("PUBLISHED"),
+        HIDDEN("HIDDEN");
+        private final String value;
+        public static KnowledgeItemStatusEnum get(final String name) {
+            return Stream.of(KnowledgeItemStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid certificate status name: %s", name)));
+        }
+    }
 }

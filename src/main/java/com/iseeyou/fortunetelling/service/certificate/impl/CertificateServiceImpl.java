@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.certificate.impl;
 import com.iseeyou.fortunetelling.entity.Certificate;
 import com.iseeyou.fortunetelling.entity.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.KnowledgeItem;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.CertificateCategoryRepository;
 import com.iseeyou.fortunetelling.repository.CertificateRepository;

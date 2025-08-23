@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -24,4 +25,7 @@ public class KnowledgeCategory extends AbstractBaseEntity{
 
     @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<CertificateCategory> certificateCategories;
+
+    @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ItemCategory> itemCategories = new HashSet<>();
 }
