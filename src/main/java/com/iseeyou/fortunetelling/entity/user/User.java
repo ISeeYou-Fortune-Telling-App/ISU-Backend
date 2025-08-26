@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.entity.user;
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.Certificate;
 import com.iseeyou.fortunetelling.entity.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.ServicePackage;
 import com.iseeyou.fortunetelling.entity.ServiceReview;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -76,4 +77,11 @@ public class User extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ServiceReview> serviceReviews = new ArrayList<>();
+
+    // Report relationships: Reports made by this user and reports about this user
+    @OneToMany(mappedBy = "reporter", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Report> reportsMade = new ArrayList<>();
+
+    @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Report> reportsReceived = new ArrayList<>();
 }
