@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.knowledgeitem;
 
-import com.iseeyou.fortunetelling.dto.response.BaseDataResponse;
+import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +13,7 @@ import java.util.List;
 @Setter
 @SuperBuilder
 @NoArgsConstructor
-public class KnowledgeItemResponse extends BaseDataResponse {
+public class KnowledgeItemResponse extends AbstractBaseDataResponse {
     private String title;
     private String content;
     private List<String> categories;

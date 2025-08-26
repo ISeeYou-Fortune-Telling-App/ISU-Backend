@@ -12,7 +12,7 @@ import java.util.UUID;
 @Setter
 @SuperBuilder
 @NoArgsConstructor
-public abstract class BaseDataResponse {
+public abstract class AbstractBaseDataResponse {
     private UUID id;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

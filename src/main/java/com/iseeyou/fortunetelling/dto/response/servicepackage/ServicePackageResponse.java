@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
-import com.iseeyou.fortunetelling.dto.response.BaseDataResponse;
+import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +13,7 @@ import java.util.Set;
 @Setter
 @SuperBuilder
 @NoArgsConstructor
-public class ServicePackageResponse extends BaseDataResponse {
+public class ServicePackageResponse extends AbstractBaseDataResponse {
     private String packageTitle;
     private String packageContent;
     private Integer durationMinutes;

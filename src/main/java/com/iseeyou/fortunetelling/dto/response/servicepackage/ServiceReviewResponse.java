@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
-import com.iseeyou.fortunetelling.dto.response.BaseDataResponse;
+import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +12,7 @@ import java.util.UUID;
 @Setter
 @SuperBuilder
 @NoArgsConstructor
-public class ServiceReviewResponse extends BaseDataResponse {
+public class ServiceReviewResponse extends AbstractBaseDataResponse {
     private String content;
     private UUID userId;
     private String userName;

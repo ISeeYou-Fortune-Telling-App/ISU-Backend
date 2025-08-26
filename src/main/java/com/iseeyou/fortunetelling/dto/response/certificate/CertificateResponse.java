@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.certificate;
 
-import com.iseeyou.fortunetelling.dto.response.BaseDataResponse;
+import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class CertificateResponse extends BaseDataResponse {
+public class CertificateResponse extends AbstractBaseDataResponse {
     private String seerName;
     private String certificateName;
     private String certificateDescription;
