@@ -1,10 +1,9 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.auth;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.redis.core.RedisHash;

@@ -1,6 +1,6 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.knowledge;
 
-import com.iseeyou.fortunetelling.entity.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -1,5 +1,7 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.certificate;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import jakarta.persistence.*;
 import lombok.*;
 

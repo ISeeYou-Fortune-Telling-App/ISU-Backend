@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.auth;
 
-import com.iseeyou.fortunetelling.entity.JwtToken;
+import com.iseeyou.fortunetelling.entity.auth.JwtToken;
 
 import java.util.UUID;
 

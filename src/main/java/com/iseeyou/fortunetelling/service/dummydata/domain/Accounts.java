@@ -4,7 +4,7 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import java.time.LocalDateTime;
-import com.iseeyou.fortunetelling.repository.UserRepository;
+import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

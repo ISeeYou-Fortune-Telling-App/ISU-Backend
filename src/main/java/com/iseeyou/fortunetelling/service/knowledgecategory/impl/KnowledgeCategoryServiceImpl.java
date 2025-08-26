@@ -1,8 +1,8 @@
 package com.iseeyou.fortunetelling.service.knowledgecategory.impl;
 
-import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
-import com.iseeyou.fortunetelling.repository.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

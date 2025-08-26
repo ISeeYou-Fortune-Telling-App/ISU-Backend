@@ -1,11 +1,11 @@
 package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
-import com.iseeyou.fortunetelling.entity.Certificate;
-import com.iseeyou.fortunetelling.entity.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import com.iseeyou.fortunetelling.entity.report.Report;
-import com.iseeyou.fortunetelling.entity.ServicePackage;
-import com.iseeyou.fortunetelling.entity.ServiceReview;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;

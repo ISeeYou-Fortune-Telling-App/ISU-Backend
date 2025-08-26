@@ -1,8 +1,17 @@
 package com.iseeyou.fortunetelling.service.dummydata.domain;
 
-import com.iseeyou.fortunetelling.entity.*;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.entity.user.User;
-import com.iseeyou.fortunetelling.repository.*;
+import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.PackageCategoryRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
+import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

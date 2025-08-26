@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.report;
 
 import com.iseeyou.fortunetelling.entity.report.ReportType;
 import com.iseeyou.fortunetelling.util.Constants;

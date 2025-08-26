@@ -1,12 +1,16 @@
 package com.iseeyou.fortunetelling.service.servicepackage.impl;
 
-import com.iseeyou.fortunetelling.entity.*;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
-import com.iseeyou.fortunetelling.repository.PackageCategoryRepository;
-import com.iseeyou.fortunetelling.repository.PackageInteractionRepository;
-import com.iseeyou.fortunetelling.repository.ServicePackageRepository;
-import com.iseeyou.fortunetelling.repository.ServiceReviewRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.PackageCategoryRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;

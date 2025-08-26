@@ -1,5 +1,7 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.servicepackage;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,7 +15,7 @@ import lombok.*;
 @AttributeOverrides({
         @AttributeOverride(name = "id", column = @Column(name = "package_category_id", nullable = false)),
 })
-public class PackageCategory extends AbstractBaseEntity{
+public class PackageCategory extends AbstractBaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_id", nullable = false)

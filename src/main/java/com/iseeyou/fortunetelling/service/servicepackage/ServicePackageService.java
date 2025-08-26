@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.service.servicepackage;
 
-import com.iseeyou.fortunetelling.entity.ServicePackage;
-import com.iseeyou.fortunetelling.entity.ServiceReview;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

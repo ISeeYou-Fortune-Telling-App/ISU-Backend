@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.controller.debug;
 
-import com.iseeyou.fortunetelling.repository.JwtTokenRepository;
+import com.iseeyou.fortunetelling.repository.auth.JwtTokenRepository;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;

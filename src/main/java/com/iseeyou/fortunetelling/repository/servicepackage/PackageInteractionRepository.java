@@ -1,6 +1,6 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.servicepackage;
 
-import com.iseeyou.fortunetelling.entity.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;

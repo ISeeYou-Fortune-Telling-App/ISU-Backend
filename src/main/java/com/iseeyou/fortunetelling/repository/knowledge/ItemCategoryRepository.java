@@ -1,6 +1,6 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.knowledge;
 
-import com.iseeyou.fortunetelling.entity.ItemCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.ItemCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;

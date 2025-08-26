@@ -4,7 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.iseeyou.fortunetelling.dto.response.auth.TokenResponse;
-import com.iseeyou.fortunetelling.entity.JwtToken;
+import com.iseeyou.fortunetelling.entity.auth.JwtToken;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.exception.RefreshTokenExpiredException;

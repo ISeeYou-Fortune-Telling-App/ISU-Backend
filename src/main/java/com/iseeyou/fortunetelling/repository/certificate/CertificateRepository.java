@@ -1,7 +1,7 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.certificate;
 
-import com.iseeyou.fortunetelling.entity.Certificate;
-import com.iseeyou.fortunetelling.entity.CertificateCategory;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;

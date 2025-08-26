@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.mapper;
 
 import com.iseeyou.fortunetelling.dto.response.certificate.CertificateResponse;
-import com.iseeyou.fortunetelling.entity.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

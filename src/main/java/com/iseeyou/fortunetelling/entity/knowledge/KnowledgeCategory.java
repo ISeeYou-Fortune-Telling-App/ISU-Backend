@@ -1,5 +1,8 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.knowledge;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,7 +19,7 @@ import java.util.Set;
 @AttributeOverrides({
         @AttributeOverride(name = "id", column = @Column(name = "category_id", nullable = false)),
 })
-public class KnowledgeCategory extends AbstractBaseEntity{
+public class KnowledgeCategory extends AbstractBaseEntity {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 

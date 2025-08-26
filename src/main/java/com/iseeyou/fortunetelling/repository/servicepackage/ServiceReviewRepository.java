@@ -1,6 +1,6 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.servicepackage;
 
-import com.iseeyou.fortunetelling.entity.ServiceReview;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;

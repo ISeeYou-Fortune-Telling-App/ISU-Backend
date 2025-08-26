@@ -1,5 +1,6 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.servicepackage;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;

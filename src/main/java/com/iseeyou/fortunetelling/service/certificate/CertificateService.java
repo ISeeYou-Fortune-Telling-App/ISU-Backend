@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.certificate;
 
-import com.iseeyou.fortunetelling.entity.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

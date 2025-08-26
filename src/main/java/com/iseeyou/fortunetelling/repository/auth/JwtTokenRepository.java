@@ -1,6 +1,6 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.auth;
 
-import com.iseeyou.fortunetelling.entity.JwtToken;
+import com.iseeyou.fortunetelling.entity.auth.JwtToken;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
