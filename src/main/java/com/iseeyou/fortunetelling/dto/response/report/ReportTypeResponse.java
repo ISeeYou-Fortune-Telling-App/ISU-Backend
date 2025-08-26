@@ -11,6 +11,6 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 public class ReportTypeResponse extends AbstractBaseDataResponse {
-    private String typeName;
-    private String typeDescription;
+    private String name;
+    private String description;
 }

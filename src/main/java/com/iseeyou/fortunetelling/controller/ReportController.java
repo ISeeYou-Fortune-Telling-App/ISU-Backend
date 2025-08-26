@@ -510,7 +510,7 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "asc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "typeName") String sortBy
+            @RequestParam(defaultValue = "name") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<ReportType> reportTypes = reportService.findAllReportTypes(pageable);
