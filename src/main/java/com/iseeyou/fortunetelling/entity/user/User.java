@@ -2,11 +2,17 @@ package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.Certificate;
+import com.iseeyou.fortunetelling.entity.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.ServicePackage;
+import com.iseeyou.fortunetelling.entity.ServiceReview;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -61,4 +67,13 @@ public class User extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "seer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<Certificate> certificates;
+
+    @OneToMany(mappedBy = "seer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<ServicePackage> servicePackages;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<PackageInteraction> packageInteractions = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ServiceReview> serviceReviews = new ArrayList<>();
 }

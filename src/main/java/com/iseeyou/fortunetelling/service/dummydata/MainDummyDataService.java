@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.service.dummydata;
 
 import com.iseeyou.fortunetelling.service.dummydata.domain.Accounts;
 import com.iseeyou.fortunetelling.service.dummydata.domain.Knowledge;
+import com.iseeyou.fortunetelling.service.dummydata.domain.ServicePackages;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -14,6 +15,7 @@ public class MainDummyDataService implements CommandLineRunner {
 
     private final Accounts accounts;
     private final Knowledge knowledge;
+    private final ServicePackages servicePackages;
 
     @Override
     public void run(String... args) {
@@ -29,5 +31,9 @@ public class MainDummyDataService implements CommandLineRunner {
         log.info("Creating knowledge categories...");
         knowledge.createDummyData();
         log.info("Knowledge categories created successfully.");
+
+        log.info("Creating service packages...");
+        servicePackages.createDummyData();
+        log.info("Service packages created successfully.");
     }
 }

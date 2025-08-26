@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.knowledgecategory;
 
+import com.iseeyou.fortunetelling.dto.response.BaseDataResponse;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -9,10 +10,7 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @SuperBuilder
 @NoArgsConstructor
-public class KnowledgeCategoryResponse {
-    private String id;
+public class KnowledgeCategoryResponse extends BaseDataResponse {
     private String name;
     private String description;
-    private String createdAt;
-    private String updatedAt;
 }

@@ -86,6 +86,24 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum PackageStatusEnum {
+        AVAILABLE("AVAILABLE"),
+        CLOSED("CLOSED"),
+        HAVE_REPORT("HAVE_REPORT"),
+        HIDDEN("HIDDEN");
+
+        private final String value;
+
+        public static PackageStatusEnum get(final String name) {
+            return Stream.of(PackageStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid Package status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum KnowledgeItemStatusEnum {
         DRAFT("DRAFT"),
         PUBLISHED("PUBLISHED"),

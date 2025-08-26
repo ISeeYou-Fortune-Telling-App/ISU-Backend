@@ -28,4 +28,7 @@ public class KnowledgeCategory extends AbstractBaseEntity{
 
     @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ItemCategory> itemCategories = new HashSet<>();
+
+    @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PackageCategory> packageCategories = new HashSet<>();
 }

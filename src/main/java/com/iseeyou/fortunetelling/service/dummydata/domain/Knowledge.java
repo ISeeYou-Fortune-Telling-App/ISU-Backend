@@ -24,12 +24,12 @@ public class Knowledge {
 
     public void createDummyData() {
         // Tạo các knowledge categories
-        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null));
-        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null));
-        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null));
-        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null));
-        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null));
-        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null));
+        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null, null));
+        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null, null));
+        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null, null));
+        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null, null));
+        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null, null));
+        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null, null));
 
         log.info("Dummy knowledge categories created successfully.");
 

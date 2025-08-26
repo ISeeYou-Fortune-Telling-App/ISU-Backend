@@ -14,6 +14,8 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByPhone(String phone);
+
     boolean existsByEmail(String email);
 
     List<User> findAllByRole(Constants.RoleEnum role);
