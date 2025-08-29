@@ -9,9 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.lang.NonNull;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -25,29 +26,31 @@ import java.util.Objects;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
-
     private final UserService userService;
-
-    private final AuthenticationManager authenticationManager;
 
     @Override
     protected final void doFilterInternal(@NonNull final HttpServletRequest request,
                                           @NonNull final HttpServletResponse response,
                                           @NonNull final FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = jwtTokenProvider.extractJwtFromRequest(request);
+        try {
+            String token = jwtTokenProvider.extractJwtFromRequest(request);
 
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token, request)) {
-            String id = jwtTokenProvider.getUserIdFromToken(token);
-            UserDetails user = userService.loadUserById(id);
+            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token, request)) {
+                String id = jwtTokenProvider.getUserIdFromToken(token);
+                UserDetails user = userService.loadUserById(id);
 
-            if (Objects.nonNull(user)) {
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                authenticationManager.authenticate(auth);
+                if (Objects.nonNull(user)) {
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
+        } catch (Exception ex) {
+            log.error("Could not set user authentication in security context", ex);
         }
+
         filterChain.doFilter(request, response);
-        log.info(request.getRemoteAddr());
     }
 }

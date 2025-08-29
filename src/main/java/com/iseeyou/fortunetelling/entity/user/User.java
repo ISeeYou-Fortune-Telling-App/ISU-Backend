@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import com.iseeyou.fortunetelling.entity.report.Report;
@@ -11,9 +12,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -76,12 +75,16 @@ public class User extends AbstractBaseEntity {
     private Set<PackageInteraction> packageInteractions = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<ServiceReview> serviceReviews = new ArrayList<>();
+    private Set<ServiceReview> serviceReviews = new HashSet<>();
+
+    // Booking relationship: Bookings made by this user as a customer
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<Booking> customerBookings = new HashSet<>();
 
     // Report relationships: Reports made by this user and reports about this user
     @OneToMany(mappedBy = "reporter", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Report> reportsMade = new ArrayList<>();
+    private Set<Report> reportsMade = new HashSet<>();
 
     @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Report> reportsReceived = new ArrayList<>();
+    private Set<Report> reportsReceived = new HashSet<>();
 }

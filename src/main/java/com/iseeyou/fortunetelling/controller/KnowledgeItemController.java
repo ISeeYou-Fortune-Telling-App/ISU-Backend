@@ -36,7 +36,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/knowledge-items")
-@Tag(name = "005. Knowledge Item", description = "Knowledge Item API")
+@Tag(name = "006. Knowledge Item", description = "Knowledge Item API")
 @Slf4j
 public class KnowledgeItemController extends AbstractBaseController {
     private final KnowledgeItemService knowledgeItemService;

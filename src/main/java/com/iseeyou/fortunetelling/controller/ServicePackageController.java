@@ -37,7 +37,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/service-packages")
-@Tag(name = "007. Service Package", description = "Service Package API")
+@Tag(name = "008. Service Package", description = "Service Package API")
 @Slf4j
 public class ServicePackageController extends AbstractBaseController {
 

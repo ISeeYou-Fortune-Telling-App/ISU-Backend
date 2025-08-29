@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.entity.servicepackage;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
@@ -63,5 +64,9 @@ public class ServicePackage extends AbstractBaseEntity {
     private Set<PackageInteraction> packageInteractions = new HashSet<>();
 
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ServiceReview> serviceReviews = new ArrayList<>();
+    private Set<ServiceReview> serviceReviews = new HashSet<>();
+
+    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<Booking> bookings = new HashSet<>();
 }

@@ -15,11 +15,9 @@ import java.util.UUID;
 @Repository
 public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecificationExecutor<Report> {
 
-    @Override
     @EntityGraph(attributePaths = {"reporter", "reportedUser", "reportType", "reportEvidences"})
     Page<Report> findAll(Pageable pageable);
 
-    @Override
     @EntityGraph(attributePaths = {"reporter", "reportedUser", "reportType", "reportEvidences"})
     Optional<Report> findById(UUID id);
 

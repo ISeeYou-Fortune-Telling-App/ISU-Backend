@@ -195,4 +195,58 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid target report type name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum BookingStatusEnum {
+        PENDING("PENDING"),
+        CONFIRMED("CONFIRMED"),
+        COMPLETED("COMPLETED"),
+        FAILED("FAILED"),
+        CANCELED("CANCELED");
+
+        private final String value;
+
+        public static BookingStatusEnum get(final String name) {
+            return Stream.of(BookingStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid booking status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PaymentMethodEnum {
+        MOMO("MOMO"),
+        VNPAY("VNPAY"),
+        PAYPAL("PAYPAL");
+
+        private final String value;
+
+        public static PaymentMethodEnum get(final String name) {
+            return Stream.of(PaymentMethodEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PaymentStatusEnum {
+        PENDING("PENDING"),
+        COMPLETED("COMPLETED"),
+        FAILED("FAILED"),
+        REFUNDED("REFUNDED");
+
+        private final String value;
+
+        public static PaymentStatusEnum get(final String name) {
+            return Stream.of(PaymentStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment status name: %s", name)));
+        }
+    }
 }

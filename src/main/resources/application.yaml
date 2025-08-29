@@ -84,3 +84,9 @@ cloudinary:
   cloud-name: ${CLOUD_NAME}
   api-key: ${CLOUDINARY_API_KEY}
   api-secret: ${CLOUDINARY_API_SECRET}
+
+
+paypal:
+  client-id: ${CLIENT_ID}
+  client-secret: ${SECRET_KEY}
+  mode: ${PAYPAL_MODE}

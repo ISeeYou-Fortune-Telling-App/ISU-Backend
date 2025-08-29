@@ -1,18 +1,19 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
-import com.iseeyou.fortunetelling.dto.request.report.ReportCreateRequest;
-import com.iseeyou.fortunetelling.dto.request.report.ReportUpdateRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
-import com.iseeyou.fortunetelling.dto.response.report.ReportResponse;
-import com.iseeyou.fortunetelling.dto.response.report.ReportTypeResponse;
-import com.iseeyou.fortunetelling.entity.report.Report;
-import com.iseeyou.fortunetelling.entity.report.ReportType;
-import com.iseeyou.fortunetelling.mapper.ReportMapper;
-import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
-import com.iseeyou.fortunetelling.service.report.ReportService;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
+import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
+import com.iseeyou.fortunetelling.entity.booking.BookingReview;
+import com.iseeyou.fortunetelling.mapper.BookingMapper;
+import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,29 +30,24 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/reports")
-@Tag(name = "007. Report", description = "Report API")
+@RequestMapping("/bookings")
+@Tag(name = "003. Booking", description = "Booking API")
 @Slf4j
-public class ReportController extends AbstractBaseController {
+public class BookingController extends AbstractBaseController {
+    private final BookingService bookingService;
+    private final BookingMapper bookingMapper;
 
-    private final ReportService reportService;
-    private final ReportMapper reportMapper;
-    private final CloudinaryService cloudinaryService;
-
-    @GetMapping
+    @GetMapping("/my-bookings")
     @Operation(
-            summary = "Get all reports with pagination",
+            summary = "Get my bookings with pagination, leave the status empty to get all bookings",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -72,7 +68,7 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<ReportResponse>> getAllReports(
+    public ResponseEntity<PageResponse<BookingResponse>> getMyBookings(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -80,17 +76,26 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Filter by booking status")
+            @RequestParam(required = false) Constants.BookingStatusEnum status
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReports(pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports retrieved successfully");
+        Page<Booking> bookings;
+
+        if (status != null) {
+            bookings = bookingService.getBookingsByMeAndStatus(status, pageable);
+        } else {
+            bookings = bookingService.getBookingsByMe(pageable);
+        }
+
+        Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
+        return responseFactory.successPage(response, "Bookings retrieved successfully");
     }
 
     @GetMapping("/{id}")
     @Operation(
-            summary = "Get report by ID",
+            summary = "Get booking by ID",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -98,12 +103,12 @@ public class ReportController extends AbstractBaseController {
                             description = "Successful operation",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ReportResponse.class)
+                                    schema = @Schema(implementation = SingleResponse.class)
                             )
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Report not found",
+                            description = "Booking not found",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = ErrorResponse.class)
@@ -119,23 +124,23 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<ReportResponse>> getReportById(
-            @Parameter(description = "Report ID", required = true)
+    public ResponseEntity<SingleResponse<BookingResponse>> getBookingById(
+            @Parameter(description = "Booking ID", required = true)
             @PathVariable UUID id
     ) {
-        Report report = reportService.findReportById(id);
-        ReportResponse response = reportMapper.mapTo(report, ReportResponse.class);
-        return responseFactory.successSingle(response, "Report retrieved successfully");
+        Booking booking = bookingService.findById(id);
+        BookingResponse response = bookingMapper.mapTo(booking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking retrieved successfully");
     }
 
-    @PostMapping
+    @PostMapping("/{servicePackageId}")
     @Operation(
-            summary = "Create a new report",
+            summary = "Create a new booking for a service package",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Report created successfully",
+                            description = "Booking created successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = SingleResponse.class)
@@ -159,39 +164,34 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<ReportResponse>> createReport(
-            @Parameter(description = "Report data to create", required = true)
-            @ModelAttribute @Valid ReportCreateRequest request
-    ) throws IOException {
-        Report reportToCreate = reportMapper.mapTo(request, Report.class);
+    public ResponseEntity<SingleResponse<BookingResponse>> createBooking(
+            @Parameter(description = "Service package ID", required = true)
+            @PathVariable UUID servicePackageId,
+            @Parameter(description = "Booking data to create", required = true)
+            @RequestBody @Valid BookingCreateRequest request
+    ) {
+        Booking bookingToCreate = bookingMapper.mapTo(request, Booking.class);
 
-        // Handle evidence image uploads
-        Set<String> evidenceUrls = new HashSet<>();
-        if (request.getImageFiles() != null) {
-            for (MultipartFile imageFile : request.getImageFiles()) {
-                if (!imageFile.isEmpty()) {
-                    String imageUrl = cloudinaryService.uploadFile(imageFile, "report-evidence");
-                    evidenceUrls.add(imageUrl);
-                }
-            }
-        }
+        Booking createdBooking = bookingService.createBooking(
+                bookingToCreate,
+                servicePackageId,
+                request.getPaymentMethod(),
+                request.getSuccessUrl(),
+                request.getCancelUrl()
+        );
 
-        // Create set with single report type ID for service method
-        Set<UUID> reportTypeIds = Set.of(request.getReportTypeId());
-
-        Report createdReport = reportService.createReport(reportToCreate, reportTypeIds, evidenceUrls);
-        ReportResponse response = reportMapper.mapTo(createdReport, ReportResponse.class);
-        return responseFactory.successSingle(response, "Report created successfully");
+        BookingResponse response = bookingMapper.mapTo(createdBooking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking created successfully");
     }
 
     @PatchMapping("/{id}")
     @Operation(
-            summary = "Update report status",
+            summary = "Update booking",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Report updated successfully",
+                            description = "Booking updated successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = SingleResponse.class)
@@ -207,7 +207,7 @@ public class ReportController extends AbstractBaseController {
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Report not found",
+                            description = "Booking not found",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = ErrorResponse.class)
@@ -223,26 +223,28 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<ReportResponse>> updateReport(
-            @Parameter(description = "Report ID", required = true)
+    public ResponseEntity<SingleResponse<BookingResponse>> updateBooking(
+            @Parameter(description = "Booking ID", required = true)
             @PathVariable UUID id,
-            @Parameter(description = "Updated report data", required = true)
-            @RequestBody @Valid ReportUpdateRequest request
+            @Parameter(description = "Booking data to update", required = true)
+            @RequestBody @Valid BookingUpdateRequest request
     ) {
-        Report reportToUpdate = reportMapper.mapTo(request, Report.class);
-        Report updatedReport = reportService.updateReport(id, reportToUpdate);
-        ReportResponse response = reportMapper.mapTo(updatedReport, ReportResponse.class);
-        return responseFactory.successSingle(response, "Report updated successfully");
+        Booking bookingToUpdate = bookingMapper.mapTo(request, Booking.class);
+        bookingToUpdate.setId(id);
+
+        Booking updatedBooking = bookingService.updateBooking(bookingToUpdate);
+        BookingResponse response = bookingMapper.mapTo(updatedBooking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking updated successfully");
     }
 
     @DeleteMapping("/{id}")
     @Operation(
-            summary = "Delete report",
+            summary = "Delete booking",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Report deleted successfully",
+                            description = "Booking deleted successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = SingleResponse.class)
@@ -250,7 +252,7 @@ public class ReportController extends AbstractBaseController {
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Report not found",
+                            description = "Booking not found",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = ErrorResponse.class)
@@ -266,25 +268,41 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<Object>> deleteReport(
-            @Parameter(description = "Report ID", required = true)
+    public ResponseEntity<SingleResponse<String>> deleteBooking(
+            @Parameter(description = "Booking ID", required = true)
             @PathVariable UUID id
     ) {
-        reportService.deleteReport(id);
-        return responseFactory.successSingle(null, "Report deleted successfully");
+        bookingService.deleteBooking(id);
+        return responseFactory.successSingle("Booking deleted successfully", "Booking deleted successfully");
     }
 
-    @GetMapping("/reporter/{reporterId}")
+    @PostMapping("/{id}/refund")
     @Operation(
-            summary = "Get reports by reporter ID",
+            summary = "Refund booking",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Successful operation",
+                            description = "Booking refunded successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Booking not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Booking cannot be refunded",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
                             )
                     ),
                     @ApiResponse(
@@ -297,9 +315,49 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<ReportResponse>> getReportsByReporterId(
-            @Parameter(description = "Reporter ID", required = true)
-            @PathVariable UUID reporterId,
+    public ResponseEntity<SingleResponse<BookingResponse>> refundBooking(
+            @Parameter(description = "Booking ID", required = true)
+            @PathVariable UUID id
+    ) {
+        Booking refundedBooking = bookingService.refundBooking(id);
+        BookingResponse response = bookingMapper.mapTo(refundedBooking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking refunded successfully");
+    }
+
+    @GetMapping("/{id}/reviews")
+    @Operation(
+            summary = "Get reviews for a booking",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Booking not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<BookingRatingResponse>> getBookingReviews(
+            @Parameter(description = "Booking ID", required = true)
+            @PathVariable UUID id,
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -310,14 +368,14 @@ public class ReportController extends AbstractBaseController {
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReportsByReporterId(reporterId, pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports by reporter retrieved successfully");
+        Page<BookingReview> reviews = bookingService.findAllReviewByBookingId(id, pageable);
+        Page<BookingRatingResponse> response = bookingMapper.mapToPage(reviews, BookingRatingResponse.class);
+        return responseFactory.successPage(response, "Booking reviews retrieved successfully");
     }
 
-    @GetMapping("/reported-user/{reportedUserId}")
+    @GetMapping("/payments")
     @Operation(
-            summary = "Get reports by reported user ID",
+            summary = "Get booking payments with filters",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -338,9 +396,7 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<ReportResponse>> getReportsByReportedUserId(
-            @Parameter(description = "Reported User ID", required = true)
-            @PathVariable UUID reportedUserId,
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> getBookingPayments(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -348,17 +404,32 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Filter by payment method")
+            @RequestParam(required = false) Constants.PaymentMethodEnum paymentMethod,
+            @Parameter(description = "Filter by payment status")
+            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReportsByReportedUserId(reportedUserId, pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports by reported user retrieved successfully");
+        Page<BookingPayment> payments;
+
+        if (paymentMethod != null) {
+            payments = bookingService.findAllByPaymentMethod(paymentMethod, pageable);
+        } else if (paymentStatus != null) {
+            payments = bookingService.findAllByStatus(paymentStatus, pageable);
+        } else {
+            // If no filters, you might need to add a findAllPayments method to the service
+            // For now, let's use findAllByStatus with null or implement a default behavior
+            throw new UnsupportedOperationException("Please provide either paymentMethod or paymentStatus filter");
+        }
+
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(payments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "Booking payments retrieved successfully");
     }
 
-    @GetMapping("/target/{targetId}")
+    @GetMapping("/payments/{paymentId}")
     @Operation(
-            summary = "Get reports by target ID",
+            summary = "Get booking payment by ID",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -366,7 +437,15 @@ public class ReportController extends AbstractBaseController {
                             description = "Successful operation",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Payment not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
                             )
                     ),
                     @ApiResponse(
@@ -379,142 +458,48 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<ReportResponse>> getReportsByTargetId(
-            @Parameter(description = "Target ID", required = true)
-            @PathVariable UUID targetId,
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+    public ResponseEntity<SingleResponse<BookingPaymentResponse>> getBookingPaymentById(
+            @Parameter(description = "Payment ID", required = true)
+            @PathVariable UUID paymentId
     ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReportsByReportedTargetId(targetId, pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports by target retrieved successfully");
+        BookingPayment payment = bookingService.findPaymentById(paymentId);
+        BookingPaymentResponse response = bookingMapper.mapTo(payment, BookingPaymentResponse.class);
+        return responseFactory.successSingle(response, "Booking payment retrieved successfully");
     }
 
-    @GetMapping("/target-type/{targetType}")
-    @Operation(
-            summary = "Get reports by target type",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<PageResponse<ReportResponse>> getReportsByTargetType(
-            @Parameter(description = "Target Type", required = true)
-            @PathVariable Constants.TargetReportTypeEnum targetType,
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+    @GetMapping("/payment/success")
+    @Operation(summary = "Only for redirect URL from payment gateways")
+    public ResponseEntity<SingleResponse<BookingPaymentResponse>> paymentSuccess(
+            @RequestParam(value = "paymentId", required = false) String paymentId,
+            @RequestParam(value = "PayerID", required = false) String payerId,
+            @RequestParam(required = false) String vnp_BankCode,
+            @RequestParam(required = false) String vnp_CardType,
+            @RequestParam(required = false) String vnp_TransactionNo,
+            @RequestParam(required = false) String vnp_ResponseCode,
+            @RequestParam(required = false) String vnp_TxnRef
     ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReportsByTargetType(targetType, pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports by target type retrieved successfully");
+        BookingPayment bookingPayment = null;
+        if (paymentId != null && payerId != null) {
+            bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.PAYPAL, Map.of(
+                    "paymentId", paymentId,
+                    "PayerID", payerId
+            ));
+        } else {
+            bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.VNPAY, Map.of(
+                    "vnp_BankCode", vnp_BankCode,
+                    "vnp_CardType", vnp_CardType,
+                    "vnp_TransactionNo", vnp_TransactionNo,
+                    "vnp_ResponseCode", vnp_ResponseCode,
+                    "vnp_TxnRef", vnp_TxnRef
+            ));
+        }
+        BookingPaymentResponse response = bookingMapper.mapTo(bookingPayment, BookingPaymentResponse.class);
+        return responseFactory.successSingle(response, "Payment executed successfully");
     }
-
-    @GetMapping("/status/{status}")
-    @Operation(
-            summary = "Get reports by status",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<PageResponse<ReportResponse>> getReportsByStatus(
-            @Parameter(description = "Report Status", required = true)
-            @PathVariable Constants.ReportStatusEnum status,
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
-    ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReportsByStatus(status, pageable);
-        Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
-        return responseFactory.successPage(response, "Reports by status retrieved successfully");
-    }
-
-    @GetMapping("/types")
-    @Operation(
-            summary = "Get all report types",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<PageResponse<ReportTypeResponse>> getAllReportTypes(
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "asc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "name") String sortBy
-    ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ReportType> reportTypes = reportService.findAllReportTypes(pageable);
-        Page<ReportTypeResponse> response = reportMapper.mapToPage(reportTypes, ReportTypeResponse.class);
-        return responseFactory.successPage(response, "Report types retrieved successfully");
+    
+    @GetMapping("/payment/cancel")
+    @Operation(summary = "Only for redirect URL from payment gateways")
+    public ResponseEntity<SingleResponse<String>> paymentCancel() {
+        return responseFactory.successSingle("Payment cancelled", "Payment cancelled");
     }
 }

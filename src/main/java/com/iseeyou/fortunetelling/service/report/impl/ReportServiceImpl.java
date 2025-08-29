@@ -7,7 +7,6 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.report.ReportEvidenceRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportTypeRepository;
-import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.report.ReportService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -30,7 +29,6 @@ public class ReportServiceImpl implements ReportService {
     private final ReportEvidenceRepository reportEvidenceRepository;
     private final ReportTypeRepository reportTypeRepository;
     private final UserService userService;
-    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional(readOnly = true)

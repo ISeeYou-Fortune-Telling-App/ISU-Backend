@@ -35,7 +35,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/certificates")
-@Tag(name = "003. Certificate", description = "Certificate API")
+@Tag(name = "004. Certificate", description = "Certificate API")
 @Slf4j
 public class CertificateController extends AbstractBaseController {
     private final CertificateService certificateService;

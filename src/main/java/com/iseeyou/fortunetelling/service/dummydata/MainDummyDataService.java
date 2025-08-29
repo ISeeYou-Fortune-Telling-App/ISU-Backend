@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.dummydata;
 
 import com.iseeyou.fortunetelling.service.dummydata.domain.Accounts;
+import com.iseeyou.fortunetelling.service.dummydata.domain.Bookings;
 import com.iseeyou.fortunetelling.service.dummydata.domain.Knowledge;
 import com.iseeyou.fortunetelling.service.dummydata.domain.Reports;
 import com.iseeyou.fortunetelling.service.dummydata.domain.ServicePackages;
@@ -18,6 +19,7 @@ public class MainDummyDataService implements CommandLineRunner {
     private final Knowledge knowledge;
     private final ServicePackages servicePackages;
     private final Reports reports;
+    private final Bookings bookings;
 
     @Override
     public void run(String... args) {
@@ -41,5 +43,9 @@ public class MainDummyDataService implements CommandLineRunner {
         log.info("Creating reports, report types and evidences...");
         reports.createDummyData();
         log.info("Reports created successfully.");
+
+        log.info("Creating bookings, payments and reviews...");
+        bookings.createDummyData();
+        log.info("Bookings created successfully.");
     }
 }
