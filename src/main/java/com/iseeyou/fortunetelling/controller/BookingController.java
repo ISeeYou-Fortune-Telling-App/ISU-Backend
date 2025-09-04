@@ -175,9 +175,7 @@ public class BookingController extends AbstractBaseController {
         Booking createdBooking = bookingService.createBooking(
                 bookingToCreate,
                 servicePackageId,
-                request.getPaymentMethod(),
-                request.getSuccessUrl(),
-                request.getCancelUrl()
+                request.getPaymentMethod()
         );
 
         BookingResponse response = bookingMapper.mapTo(createdBooking, BookingResponse.class);

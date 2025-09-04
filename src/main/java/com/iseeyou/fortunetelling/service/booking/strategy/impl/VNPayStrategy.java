@@ -24,7 +24,7 @@ public class VNPayStrategy implements PaymentStrategy {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BookingPayment pay(Booking booking, String successUrl, String cancelUrl) {
+    public BookingPayment pay(Booking booking) {
         Double amount = booking.getServicePackage().getPrice();
         try {
             String vnpayUrl = vnPayGateway.createPaymentUrl(booking.getId().toString(), amount.longValue() * 1000L, "1.1.1.1");

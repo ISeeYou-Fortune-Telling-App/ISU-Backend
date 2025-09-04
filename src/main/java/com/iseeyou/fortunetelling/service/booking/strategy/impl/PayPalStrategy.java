@@ -31,7 +31,7 @@ public class PayPalStrategy implements PaymentStrategy {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public BookingPayment pay(Booking booking, String successUrl, String cancelUrl) throws PayPalRESTException {
+    public BookingPayment pay(Booking booking) throws PayPalRESTException {
         double amountInVND = booking.getServicePackage().getPrice();
         double amountInUSD = amountInVND * VND_TO_USD;
         try {

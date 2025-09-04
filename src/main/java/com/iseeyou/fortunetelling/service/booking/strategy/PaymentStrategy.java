@@ -7,6 +7,6 @@ import com.paypal.base.rest.PayPalRESTException;
 import java.util.Map;
 
 public interface PaymentStrategy {
-    BookingPayment pay(Booking booking, String successUrl, String cancelUrl) throws PayPalRESTException;
+    BookingPayment pay(Booking booking) throws PayPalRESTException;
     BookingPayment executePayment(Map<String, Object> paymentParams);
 }

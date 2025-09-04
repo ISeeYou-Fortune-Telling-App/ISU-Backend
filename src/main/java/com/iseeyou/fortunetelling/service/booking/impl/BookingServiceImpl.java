@@ -102,7 +102,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod, String successUrl, String cancelUrl) {
+    public Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod) {
         booking.setStatus(Constants.BookingStatusEnum.PENDING);
         booking.setServicePackage(servicePackageService.findById(packageId));
         User customer = userService.getUser();
@@ -111,7 +111,7 @@ public class BookingServiceImpl implements BookingService {
         Booking newBooking = bookingRepository.save(booking);
 
         try {
-            BookingPayment bookingPayment = createBookingPayment(newBooking, paymentMethod, successUrl, cancelUrl);
+            BookingPayment bookingPayment = createBookingPayment(newBooking, paymentMethod);
             newBooking.getBookingPayments().add(bookingPayment);
         } catch (PayPalRESTException e) {
             log.error("Error creating PayPal payment: {}", e.getMessage());
@@ -134,12 +134,12 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Transactional
-    protected BookingPayment createBookingPayment(Booking booking, Constants.PaymentMethodEnum paymentMethod, String successUrl, String cancelUrl) throws PayPalRESTException {
+    protected BookingPayment createBookingPayment(Booking booking, Constants.PaymentMethodEnum paymentMethod) throws PayPalRESTException {
         PaymentStrategy paymentStrategy = paymentStrategies.get(paymentMethod);
         if (paymentStrategy == null) {
             throw new IllegalArgumentException("Unsupported payment method: " + paymentMethod);
         }
-        return paymentStrategy.pay(booking, successUrl, cancelUrl);
+        return paymentStrategy.pay(booking);
     }
 
     @Override

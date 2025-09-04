@@ -19,7 +19,7 @@ public interface BookingService {
     Page<BookingPayment> findAllByStatus(Constants.PaymentStatusEnum statusEnum, Pageable pageable);
     Page<BookingPayment> findAllBookingPayments(Pageable pageable);
     BookingPayment findPaymentById(UUID id);
-    Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod, String successUrl, String cancelUrl);
+    Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod);
     BookingPayment executePayment(Constants.PaymentMethodEnum paymentMethod, Map<String, Object> paymentParams);
     Booking updateBooking(Booking booking);
     void deleteBooking(UUID id);
