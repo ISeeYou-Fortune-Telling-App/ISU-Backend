@@ -16,6 +16,4 @@ public class BookingCreateRequest {
     private LocalDateTime scheduledTime;
     private String additionalNote;
     private Constants.PaymentMethodEnum paymentMethod;
-    private String successUrl;
-    private String cancelUrl;
 }

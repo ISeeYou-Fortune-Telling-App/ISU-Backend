@@ -63,7 +63,7 @@ public class VNPayGateway {
         String vnp_CreateDate = formatter.format(cld.getTime());
         vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
 
-        cld.add(Calendar.DATE, 15); // Set expiration time to 15 minutes from now
+        cld.add(Calendar.MINUTE, 10);
         String vnp_ExpireDate = formatter.format(cld.getTime());
         vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
         List fieldNames = new ArrayList(vnp_Params.keySet());

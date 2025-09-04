@@ -28,4 +28,7 @@ public interface BookingPaymentRepository extends JpaRepository<BookingPayment, 
 
     @EntityGraph(attributePaths = {"booking", "booking.customer", "booking.servicePackage.seer", "booking.servicePackage"})
     BookingPayment findByExtraInfo(String extraInfo);
+
+    @EntityGraph(attributePaths = {"booking", "booking.customer", "booking.servicePackage.seer", "booking.servicePackage"})
+    BookingPayment findByBooking_Id(UUID bookingId);
 }
