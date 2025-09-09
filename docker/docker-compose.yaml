@@ -12,7 +12,7 @@ services:
     env_file:
       - ../.env
     networks:
-      - ${PROJECT_NAME}-network
+      - isu-project-network
   postgres:
     image: postgres:13.11-bullseye
     container_name: ${PROJECT_NAME}-postgres
@@ -27,7 +27,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ../../var/logs/postgresql:/var/log/postgresql
     networks:
-      - ${PROJECT_NAME}-network
+      - isu-project-network
 
   redis:
     image: redis:7.0.12-alpine
@@ -39,7 +39,7 @@ services:
     ports:
       - ${REDIS_PORT}:${REDIS_PORT}
     networks:
-      - ${PROJECT_NAME}-network
+      - isu-project-network
 
   # mailhog:
   #   image: mailhog/mailhog:latest
