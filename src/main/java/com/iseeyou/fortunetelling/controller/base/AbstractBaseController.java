@@ -16,9 +16,8 @@ public abstract class AbstractBaseController {
         String sortField = (sortBy != null && !sortBy.isEmpty()) ? sortBy : "id";
         Sort sort = Sort.by(direction, sortField);
 
-        int pageNumber = page - 1;
         int offset = (page - 1) * limit;
-        pageNumber = offset / limit;
+        int pageNumber = offset / limit;
         return PageRequest.of(pageNumber, limit, sort);
     }
 
