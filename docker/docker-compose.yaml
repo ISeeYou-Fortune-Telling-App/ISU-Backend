@@ -56,5 +56,5 @@ volumes:
   redis-data:
 
 networks:
-  isu-project-network:
+  iseeyou-fortunetelling-network:
     driver: bridge
