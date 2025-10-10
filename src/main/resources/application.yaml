@@ -1,12 +1,12 @@
 server:
-  port: ${SERVER_PORT}
+  port: 8080
   servlet:
-    context-path: ${SERVER_SERVLET_CONTEXT_PATH}
+    context-path: /
     encoding:
       enabled: true
       charset: UTF-8
   forward-headers-strategy: framework
-  address: ${SERVER_ADDRESS}
+  address: 0.0.0.0
 
 app:
   secret: ${APP_SECRET}
@@ -62,13 +62,13 @@ spring:
 
 springdoc:
   api-docs:
-    enabled: ${API_DOCS_ENABLED}
+    enabled: true
     path: /api-docs
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED}
+    enabled: true
     operationsSorter: alpha
     tagsSorter: alpha
-    path: ${SWAGGER_PATH}
+    path: /swagger-ui.html
   show-actuator: true
 
 logging:

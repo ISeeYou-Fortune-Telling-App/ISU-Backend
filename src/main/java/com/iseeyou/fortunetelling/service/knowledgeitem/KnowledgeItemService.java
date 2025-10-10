@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.service.knowledgeitem;
 
 import com.iseeyou.fortunetelling.entity.KnowledgeItem;
 import com.iseeyou.fortunetelling.util.Constants;
+import io.netty.util.Constant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -19,4 +20,5 @@ public interface KnowledgeItemService {
     void delete(UUID id) throws IOException;
     void view(UUID id);
     // TODO: Full text search by name
+    Page<KnowledgeItem> search(String title, UUID categoryId, Constants.KnowledgeItemStatusEnum status, Pageable pageable);
 }

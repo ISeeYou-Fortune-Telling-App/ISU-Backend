@@ -385,4 +385,49 @@ public class KnowledgeItemController extends AbstractBaseController {
         Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
         return responseFactory.successPage(response, "Knowledge items retrieved successfully");
     }
+
+    @GetMapping("/search")
+    @Operation(
+            summary = "Search knowledge items with filters",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<KnowledgeItemResponse>> searchKnowledgeItems(
+            @Parameter(description = "Search keyword by title")
+            @RequestParam(required = false) String title,
+            @Parameter(description = "Category ID filter")
+            @RequestParam(required = false) UUID categoryId,
+            @Parameter(description = "Status filter")
+            @RequestParam(required = false) Constants.KnowledgeItemStatusEnum status,
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, viewCount, title)")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, categoryId, status, pageable);
+        Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
+        return responseFactory.successPage(response, "Knowledge items searched successfully");
+    }
 }

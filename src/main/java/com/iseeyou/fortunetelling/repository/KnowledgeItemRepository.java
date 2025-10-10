@@ -25,4 +25,17 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
     @EntityGraph(attributePaths = {"itemCategories.knowledgeCategory"})
     @Query("SELECT DISTINCT ki FROM KnowledgeItem ki JOIN ki.itemCategories ic WHERE ic.knowledgeCategory.id = :categoryId")
     Page<KnowledgeItem> findAllByKnowledgeCategory_Id(@Param("categoryId") UUID categoryId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"itemCategories.knowledgeCategory"})
+    @Query("SELECT DISTINCT knowledgeItem FROM KnowledgeItem knowledgeItem " +
+            "LEFT JOIN knowledgeItem.itemCategories itemCategories " +
+            "WHERE (:title IS NULL OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+            "AND (:categoryId IS NULL OR itemCategories.knowledgeCategory.id = :categoryId) " +
+            "AND (:status IS NULL OR knowledgeItem.status = :status)")
+    Page<KnowledgeItem> search(
+            @Param("title") String title,
+            @Param("categoryId") UUID categoryId,
+            @Param("status") Constants.KnowledgeItemStatusEnum status,
+            Pageable pageable
+    );
 }

@@ -326,4 +326,51 @@ public class AccountController extends AbstractBaseController {
         UserResponse<?> userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
         return responseFactory.successSingle(userResponse, "User status updated successfully");
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete user account (Admin only)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Account blocked successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<String>> deleteAccount(
+            @Parameter(description = "User ID", required = true)
+            @PathVariable UUID id
+    ) {
+        userService.delete(String.valueOf(id));
+        return responseFactory.successSingle(null, "Account blocked successfully");
+    }
 }

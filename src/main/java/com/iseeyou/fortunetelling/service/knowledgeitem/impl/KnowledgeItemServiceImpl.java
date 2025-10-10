@@ -161,4 +161,10 @@ public class KnowledgeItemServiceImpl implements KnowledgeItemService {
         knowledgeItem.setViewCount(knowledgeItem.getViewCount() + 1);
         knowledgeItemRepository.save(knowledgeItem);
     }
+
+    @Override
+    @Transactional
+    public Page<KnowledgeItem> search(String title, UUID categoryId, Constants.KnowledgeItemStatusEnum status, Pageable pageable) {
+        return knowledgeItemRepository.search(title, categoryId, status, pageable);
+    }
 }
