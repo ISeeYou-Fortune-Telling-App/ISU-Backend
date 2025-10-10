@@ -1,10 +1,12 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
+import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.entity.ServicePackage;
 import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
@@ -85,7 +87,7 @@ public class ServicePackageController extends AbstractBaseController {
         return responseFactory.successPage(response, "Service packages retrieved successfully");
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/detail")
     @Operation(
             summary = "Get service package by ID",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
@@ -118,10 +120,82 @@ public class ServicePackageController extends AbstractBaseController {
     )
     public ResponseEntity<SingleResponse<ServicePackageResponse>> getServicePackageById(
             @Parameter(description = "Service Package ID", required = true)
-            @PathVariable String id
+            @RequestParam String id
     ) {
         ServicePackage servicePackage = servicePackageService.findById(id);
         ServicePackageResponse response = simpleMapper.mapTo(servicePackage, ServicePackageResponse.class);
         return responseFactory.successSingle(response, "Service package retrieved successfully");
+    }
+
+    @GetMapping("/detail-with-seer")
+    @Operation(
+            summary = "Get service package detail with seer information",
+            description = "Get detailed service package information including seer profile and rating",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ServicePackageDetailResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<ServicePackageDetailResponse>> getServicePackageDetail(
+            @Parameter(description = "Service Package ID", required = true)
+            @RequestParam String id
+    ) {
+        ServicePackageDetailResponse response = servicePackageService.findDetailById(id);
+        return responseFactory.successSingle(response, "Service package detail retrieved successfully");
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+        summary = "Create new service package",
+        description = "Create a new service package with full info, image upload, price, duration. Status is HIDDEN (pending approval)",
+        security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<ServicePackage>> createServicePackage(
+            @RequestParam("seerId") String seerId,
+            @ModelAttribute ServicePackageUpsertRequest request
+    ) {
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(seerId, request);
+        return responseFactory.successSingle(servicePackage, "Service package created successfully");
+    }
+
+    @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+        summary = "Update service package",
+        description = "Update an existing service package. Status remains HIDDEN if not approved.",
+        security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<ServicePackage>> updateServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @RequestParam String id,
+            @ModelAttribute ServicePackageUpsertRequest request
+    ) {
+        request.setPackageId(id);
+        // Lấy seerId từ service package hiện tại thay vì từ request param
+        ServicePackage existingPackage = servicePackageService.findById(id);
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeerId(), request);
+        return responseFactory.successSingle(servicePackage, "Service package updated successfully");
     }
 }
