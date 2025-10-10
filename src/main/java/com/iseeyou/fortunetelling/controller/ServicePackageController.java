@@ -89,46 +89,6 @@ public class ServicePackageController extends AbstractBaseController {
 
     @GetMapping("/detail")
     @Operation(
-            summary = "Get service package by ID",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ServicePackageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "Service package not found",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<SingleResponse<ServicePackageResponse>> getServicePackageById(
-            @Parameter(description = "Service Package ID", required = true)
-            @RequestParam String id
-    ) {
-        ServicePackage servicePackage = servicePackageService.findById(id);
-        ServicePackageResponse response = simpleMapper.mapTo(servicePackage, ServicePackageResponse.class);
-        return responseFactory.successSingle(response, "Service package retrieved successfully");
-    }
-
-    @GetMapping("/detail-with-seer")
-    @Operation(
             summary = "Get service package detail with seer information",
             description = "Get detailed service package information including seer profile and rating",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
