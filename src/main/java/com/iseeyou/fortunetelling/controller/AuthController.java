@@ -1,8 +1,13 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.ResponseFactory;
+import com.iseeyou.fortunetelling.dto.request.auth.EmailVerificationRequest;
+import com.iseeyou.fortunetelling.dto.request.auth.ForgotPasswordRequest;
+import com.iseeyou.fortunetelling.dto.request.auth.ResendOtpRequest;
+import com.iseeyou.fortunetelling.dto.request.auth.ResetPasswordRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.response.user.UserResponse;
+import com.iseeyou.fortunetelling.service.email.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -43,6 +48,8 @@ public class AuthController {
     private final UserService userService;
 
     private final ResponseFactory responseFactory;
+
+    private final EmailVerificationService emailVerificationService;
 
 
     @PostMapping("/login")
@@ -224,5 +231,203 @@ public class AuthController {
         authService.logout(user);
 
         return responseFactory.successSingle(null, "Logout successful");
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(
+            summary = "Verify email with OTP",
+            description = "Verify email address using OTP code sent to user's email",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Email verified successfully",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = SuccessResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid or expired OTP",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "422",
+                            description = "Validation failed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = DetailedErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<SuccessResponse>> verifyEmail(
+            @Parameter(description = "Email verification request with email and OTP", required = true)
+            @RequestBody @Valid EmailVerificationRequest request
+    ) {
+        boolean isValid = emailVerificationService.verifyOtp(request.getEmail(), request.getOtpCode());
+
+        if (!isValid) {
+            throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn");
+        }
+
+        // Kích hoạt tài khoản user
+        userService.activateUserByEmail(request.getEmail());
+
+        return responseFactory.successSingle(null, "Email verified successfully");
+    }
+
+    @PostMapping("/resend-otp")
+    @Operation(
+            summary = "Resend OTP to email",
+            description = "Resend OTP verification code to user's email address",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "OTP sent successfully",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = SuccessResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "422",
+                            description = "Validation failed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = DetailedErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<SuccessResponse>> resendOtp(
+            @Parameter(description = "Request with email to resend OTP", required = true)
+            @RequestBody @Valid ResendOtpRequest request
+    ) {
+        emailVerificationService.sendVerificationEmail(request.getEmail());
+        return responseFactory.successSingle(null, "OTP sent successfully to your email");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(
+            summary = "Send OTP for password reset",
+            description = "Send OTP to email for password reset. Email must belong to an existing user.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "OTP sent successfully",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = SuccessResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "422",
+                            description = "Validation failed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = DetailedErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<SuccessResponse>> forgotPassword(
+            @Parameter(description = "Email to send password reset OTP", required = true)
+            @RequestBody @Valid ForgotPasswordRequest request
+    ) {
+        // Kiểm tra email có tồn tại không
+        userService.findByEmail(request.getEmail());
+
+        // Gửi OTP reset password
+        emailVerificationService.sendPasswordResetEmail(request.getEmail());
+
+        return responseFactory.successSingle(null, "OTP for password reset sent successfully to your email");
+    }
+
+    @PostMapping("/forgot-password/verify")
+    @Operation(
+            summary = "Reset password with OTP",
+            description = "Reset user password using OTP verification. Requires email, OTP, new password and confirm password.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Password reset successfully",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = SuccessResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid OTP, passwords don't match, or other validation errors",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "422",
+                            description = "Validation failed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = DetailedErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<SuccessResponse>> resetPassword(
+            @Parameter(description = "Password reset request with email, OTP and new password", required = true)
+            @RequestBody @Valid ResetPasswordRequest request
+    ) {
+        // Validate password confirmation
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
+        }
+
+        // Verify OTP
+        boolean isValidOtp = emailVerificationService.verifyOtp(request.getEmail(), request.getOtpCode());
+        if (!isValidOtp) {
+            throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn");
+        }
+
+        // Reset password
+        userService.resetPassword(request.getEmail(), request.getPassword());
+
+        return responseFactory.successSingle(null, "Password reset successfully");
     }
 }

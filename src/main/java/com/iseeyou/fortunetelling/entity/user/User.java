@@ -53,6 +53,10 @@ public class User extends AbstractBaseEntity {
     @Column(name = "status", nullable = false)
     private Constants.StatusProfileEnum status;
 
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = false;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private CustomerProfile customerProfile;
 

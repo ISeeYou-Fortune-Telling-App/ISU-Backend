@@ -45,5 +45,9 @@ public interface UserService {
 
     void activeteUser(String id);
 
+    void activateUserByEmail(String email);
+
+    void resetPassword(String email, String newPassword);
+
     User updateUserRole(UUID id, UpdateUserRoleRequest request) throws BindException;
 }
