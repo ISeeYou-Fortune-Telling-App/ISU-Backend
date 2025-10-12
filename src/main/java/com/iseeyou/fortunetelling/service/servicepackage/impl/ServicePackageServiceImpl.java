@@ -11,6 +11,7 @@ import com.iseeyou.fortunetelling.repository.ServicePackageRepository;
 import com.iseeyou.fortunetelling.repository.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.config.CloudinaryConfig;
+import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,11 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Transactional(readOnly = true)
     public Page<ServicePackage> findAvailableWithFilters(Double minPrice, Double maxPrice, Pageable pageable) {
         return servicePackageRepository.findAvailablePackagesWithPriceFilter(minPrice, maxPrice, pageable);
+    }
+
+    @Override
+    public Page<ServicePackage> findAvailableByCategoryWithFilters(Constants.ServiceCategoryEnum category, Double minPrice, Double maxPrice, Pageable pageable) {
+        return servicePackageRepository.findAvailablePackagesWithCategoryFilters(category, minPrice, maxPrice, pageable);
     }
 
     @Override
@@ -121,4 +127,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .seer(seerInfo)
                 .build();
     }
+
+
 }
