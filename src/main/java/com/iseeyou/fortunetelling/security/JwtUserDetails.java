@@ -37,6 +37,11 @@ public final class JwtUserDetails implements UserDetails {
     }
 
     @Override
+    public String getUsername() {
+        return this.username;
+    }
+
+    @Override
     public boolean isAccountNonExpired() {
         return true;
     }

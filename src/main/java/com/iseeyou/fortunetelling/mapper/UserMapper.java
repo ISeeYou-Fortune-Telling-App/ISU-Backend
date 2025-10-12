@@ -29,7 +29,7 @@ public class UserMapper extends BaseMapper {
                             return modelMapper.map(user.getSeerProfile(), SeerProfileResponse.class);
                         }
                         return null;
-                    }).map(src -> src, UserResponse::setProfile);
+                    }).map(src -> src, (dest, value) -> dest.setProfile(value));
                 });
     }
 }

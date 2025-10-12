@@ -14,6 +14,7 @@ import com.iseeyou.fortunetelling.repository.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
+import com.iseeyou.fortunetelling.service.email.EmailVerificationService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.CalculateZodiac;
@@ -49,18 +50,21 @@ public class UserServiceImpl implements UserService {
     private final MessageSourceService messageSourceService;
     private final CloudinaryService cloudinaryService;
     private final CertificateService certificateService;
+    private final EmailVerificationService emailVerificationService;
 
     public UserServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             MessageSourceService messageSourceService,
             CloudinaryService cloudinaryService,
-            @Lazy CertificateService certificateService) {
+            @Lazy CertificateService certificateService,
+            EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
         this.cloudinaryService = cloudinaryService;
         this.certificateService = certificateService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public Authentication getAuthentication() {
@@ -186,6 +190,7 @@ public class UserServiceImpl implements UserService {
         user.setPhone(request.getPhoneNumber());
         user.setRole(Constants.RoleEnum.CUSTOMER);
         user.setStatus(Constants.StatusProfileEnum.VERIFIED);
+        user.setIsActive(false); // Tài khoản chưa được xác thực email
 
         // Calculate Zodiac sign based on birth date
         CustomerProfile customerProfile = new CustomerProfile();
@@ -202,6 +207,10 @@ public class UserServiceImpl implements UserService {
         user.setCustomerProfile(customerProfile);
 
         userRepository.save(user);
+
+        // Gửi OTP xác thực email
+        emailVerificationService.sendVerificationEmail(request.getEmail());
+        log.info("User registered and verification email sent to: {}", request.getEmail());
 
         return user;
     }
@@ -228,6 +237,7 @@ public class UserServiceImpl implements UserService {
         user.setRole(Constants.RoleEnum.SEER);
         user.setStatus(Constants.StatusProfileEnum.UNVERIFIED);
         user.setProfileDescription(request.getProfileDescription());
+        user.setIsActive(false); // Tài khoản chưa được xác thực email
 
         SeerProfile seerProfile = new SeerProfile();
         seerProfile.setUser(user);
@@ -264,6 +274,10 @@ public class UserServiceImpl implements UserService {
                 }
             }
         }
+
+        // Gửi OTP xác thực email
+        emailVerificationService.sendVerificationEmail(request.getEmail());
+        log.info("Seer registered and verification email sent to: {}", request.getEmail());
 
         return user;
     }
@@ -337,6 +351,24 @@ public class UserServiceImpl implements UserService {
         }
 
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void activateUserByEmail(String email) {
+        User user = findByEmail(email);
+        user.setIsActive(true);
+        userRepository.save(user);
+        log.info("User activated by email verification: {}", email);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String email, String newPassword) {
+        User user = findByEmail(email);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password reset successfully for email: {}", email);
     }
 
     @Override

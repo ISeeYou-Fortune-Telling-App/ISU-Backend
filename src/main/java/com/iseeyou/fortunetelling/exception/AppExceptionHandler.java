@@ -105,6 +105,15 @@ public class AppExceptionHandler {
         return build(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public final ResponseEntity<ErrorResponse> handleEmailNotVerifiedException(final EmailNotVerifiedException e) {
+        log.warn("Email not verified: {}", e.getMessage());
+        return ResponseEntity.status(201).body(ErrorResponse.builder()
+                .message(e.getMessage())
+                .statusCode(201)
+                .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public final ResponseEntity<ErrorResponse> handleAllExceptions(final Exception e) {
         log.error("Exception: {}", ExceptionUtils.getStackTrace(e));

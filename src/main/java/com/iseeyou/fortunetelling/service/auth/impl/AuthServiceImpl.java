@@ -1,5 +1,7 @@
 package com.iseeyou.fortunetelling.service.auth.impl;
 
+import com.iseeyou.fortunetelling.exception.EmailNotVerifiedException;
+import com.iseeyou.fortunetelling.service.email.EmailVerificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +43,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final MessageSourceService messageSourceService;
 
+    private final EmailVerificationService emailVerificationService;
+
     /**
      * Authenticate user.
      *
@@ -63,6 +67,14 @@ public class AuthServiceImpl implements AuthService {
         } catch (NotFoundException e) {
             log.error("User not found with email: {}", email);
             throw new AuthenticationCredentialsNotFoundException(badCredentialsMessage);
+        }
+
+        // Kiểm tra email đã được xác thực chưa
+        if (!user.getIsActive()) {
+            log.warn("User attempted to login with unverified email: {}", email);
+            // Gửi OTP xác thực
+            emailVerificationService.sendVerificationEmail(email);
+            throw new EmailNotVerifiedException("Email chưa được xác thực. Vui lòng kiểm tra email để lấy mã OTP xác thực.");
         }
 
         UsernamePasswordAuthenticationToken authenticationToken =
