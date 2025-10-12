@@ -36,6 +36,7 @@ public class Accounts {
                 .profileDescription("Quản trị viên hệ thống xem tướng số")
                 .birthDate(LocalDateTime.of(1985, 3, 15, 0, 0))
                 .status(Constants.StatusProfileEnum.ACTIVE)
+                .isActive(true)
                 .build();
         userRepository.save(admin);
 
@@ -52,6 +53,7 @@ public class Accounts {
                 .profileDescription("Thầy cúng có 20 năm kinh nghiệm xem tướng, bói bài")
                 .birthDate(LocalDateTime.of(1975, 8, 20, 0, 0))
                 .status(Constants.StatusProfileEnum.VERIFIED)
+                .isActive(true)
                 .build();
         // Tạo SeerProfile cho tài khoản SEER
         SeerProfile seerProfile = SeerProfile.builder()
@@ -80,6 +82,7 @@ public class Accounts {
                 .profileDescription("Thầy tử vi mới đăng ký, đang chờ xác thực")
                 .birthDate(LocalDateTime.of(1990, 12, 5, 0, 0))
                 .status(Constants.StatusProfileEnum.UNVERIFIED)
+                .isActive(true)
                 .build();
 
         // Tạo SeerProfile cho tài khoản UNVERIFIED_SEER
@@ -122,6 +125,7 @@ public class Accounts {
                 .profileDescription("Khách hàng thường xuyên sử dụng dịch vụ xem tướng")
                 .birthDate(LocalDateTime.of(1988, 11, 25, 0, 0))
                 .status(Constants.StatusProfileEnum.ACTIVE)
+                .isActive(true)
                 .build();
         // Tạo CustomerProfile cho tài khoản CUSTOMER
         CustomerProfile customerProfile = CustomerProfile.builder()

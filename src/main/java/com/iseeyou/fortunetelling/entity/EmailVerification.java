@@ -35,6 +35,10 @@ public class EmailVerification {
     @Builder.Default
     private Boolean isUsed = false;
 
+    public void setUsed(Boolean used) {
+        this.isUsed = used;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

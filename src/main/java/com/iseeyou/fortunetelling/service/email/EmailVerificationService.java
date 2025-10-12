@@ -149,8 +149,7 @@ public class EmailVerificationService {
                     "Mã xác thực của bạn là: %s\n\n" +
                     "Mã này sẽ hết hạn sau 5 phút.\n\n" +
                     "Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này và mật khẩu của bạn sẽ không thay đổi.\n\n" +
-                    "Trân trọng,\n" +
-                    "Đội ngũ %s",
+                    "Trân trọng,\n",
                     appName, otpCode, appName
             );
         } else {
@@ -160,8 +159,7 @@ public class EmailVerificationService {
                     "Mã xác thực của bạn là: %s\n\n" +
                     "Mã này sẽ hết hạn sau 5 phút.\n\n" +
                     "Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.\n\n" +
-                    "Trân trọng,\n" +
-                    "Đội ngũ %s",
+                    "Trân trọng,\n",
                     appName, otpCode, appName
             );
         }

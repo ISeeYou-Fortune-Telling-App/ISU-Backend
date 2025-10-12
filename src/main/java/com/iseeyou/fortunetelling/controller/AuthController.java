@@ -117,7 +117,7 @@ public class AuthController {
             @RequestBody @Valid RegisterRequest request
     ) throws BindException {
         userService.register(request);
-        return responseFactory.successSingle(null, "Register successful");
+        return responseFactory.successSingle(null, "Register successful, an OTP has been sent to your email for verification");
     }
 
     @PostMapping(path = "/seer/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
