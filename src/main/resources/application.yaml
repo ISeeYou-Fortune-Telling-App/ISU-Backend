@@ -19,6 +19,11 @@ app:
   default-timezone: ${APP_DEFAULT_TIMEZONE}
   url: ${APP_URL}
 
+# AI Configuration
+ai:
+  fastapi:
+    base-url: ${AI_FASTAPI_BASE_URL:http://host.docker.internal:8000}
+
 spring:
   application:
     name: ${APP_NAME}

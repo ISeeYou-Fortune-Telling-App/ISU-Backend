@@ -27,5 +27,6 @@ public class KnowledgeCategory extends AbstractBaseEntity{
     private Set<CertificateCategory> certificateCategories;
 
     @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<ItemCategory> itemCategories = new HashSet<>();
 }

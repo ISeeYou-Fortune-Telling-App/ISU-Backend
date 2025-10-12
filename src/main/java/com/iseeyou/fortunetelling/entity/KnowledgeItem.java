@@ -34,5 +34,6 @@ public class KnowledgeItem extends AbstractBaseEntity {
     private Constants.KnowledgeItemStatusEnum status;
 
     @OneToMany(mappedBy = "knowledgeItem", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<ItemCategory> itemCategories = new HashSet<>();
 }
