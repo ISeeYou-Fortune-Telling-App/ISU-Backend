@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.mapper.UserMapper;
@@ -372,5 +373,65 @@ public class AccountController extends AbstractBaseController {
     ) {
         userService.delete(String.valueOf(id));
         return responseFactory.successSingle(null, "Account blocked successfully");
+    }
+
+    @PatchMapping("/{id}/role")
+    @Operation(
+            summary = "Update user permissions (Admin only)",
+            description = "Update user's role to grant or revoke permissions. Transitions: " +
+                    "GUEST → CUSTOMER/SEER, CUSTOMER ↔ SEER, SEER/CUSTOMER → ADMIN",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "User role updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid role or invalid role transition",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<UserResponse<?>>> updateUserRole(
+            @Parameter(description = "User ID", required = true)
+            @PathVariable UUID id,
+            @Parameter(description = "Role update request", required = true)
+            @RequestBody @Valid UpdateUserRoleRequest request
+    ) throws BindException {
+        User updatedUser = userService.updateUserRole(id, request);
+        UserResponse<?> userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
+        return responseFactory.successSingle(userResponse, "User role updated successfully");
     }
 }

@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.user;
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
+import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import org.springframework.data.domain.Page;
@@ -43,4 +44,6 @@ public interface UserService {
     void delete(String id);
 
     void activeteUser(String id);
+
+    User updateUserRole(UUID id, UpdateUserRoleRequest request) throws BindException;
 }
