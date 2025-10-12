@@ -98,4 +98,22 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid certificate status name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ServiceCategoryEnum {
+        TAROT("TAROT"),
+        PALM_READING("PALM_READING"),
+        CONSULTATION("CONSULTATION"),
+        PHYSIOGNOMY("PHYSIOGNOMY");
+
+        private final String value;
+
+        public static ServiceCategoryEnum get(final String name) {
+            return Stream.of(ServiceCategoryEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid service category name: %s", name)));
+        }
+    }
 }

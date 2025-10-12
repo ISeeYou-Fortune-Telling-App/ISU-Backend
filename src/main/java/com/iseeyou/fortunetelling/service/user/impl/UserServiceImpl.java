@@ -4,6 +4,7 @@ import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
+import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.entity.Certificate;
 import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
@@ -336,5 +337,76 @@ public class UserServiceImpl implements UserService {
         }
 
         userRepository.save(user);
+    }
+
+    @Override
+    public User updateUserRole(UUID id, UpdateUserRoleRequest request) throws BindException {
+        User user = findById(id);
+
+        try {
+            Constants.RoleEnum newRole = Constants.RoleEnum.get(request.getRole().getValue());
+            Constants.RoleEnum currentRole = user.getRole();
+
+            // Validation: prevent role transitions that don't make sense
+            if (!isValidRoleTransition(currentRole, newRole)) {
+                BindingResult bindingResult = new BeanPropertyBindingResult(request, "request");
+                bindingResult.addError(new FieldError(bindingResult.getObjectName(), "role",
+                        "Invalid role transition from " + currentRole + " to " + newRole));
+                throw new BindException(bindingResult);
+            }
+
+            // Handle role-specific logic
+            switch (newRole) {
+                case SEER, UNVERIFIED_SEER -> {
+                    // When upgrading to Seer, create SeerProfile if it doesn't exist
+                    if (user.getSeerProfile() == null) {
+                        SeerProfile seerProfile = new SeerProfile();
+                        seerProfile.setUser(user);
+                        seerProfile.setAvgRating(0.0);
+                        seerProfile.setTotalRates(0);
+                        user.setSeerProfile(seerProfile);
+                    }
+                    // New seers start as UNVERIFIED
+                    user.setStatus(Constants.StatusProfileEnum.UNVERIFIED);
+                }
+                case CUSTOMER -> {
+                    // When downgrading to Customer, clear Seer profile
+                    user.setSeerProfile(null);
+                    user.setStatus(Constants.StatusProfileEnum.VERIFIED);
+                }
+                case ADMIN -> {
+                    user.setStatus(Constants.StatusProfileEnum.ACTIVE);
+                }
+                case GUEST -> {
+                    user.setStatus(Constants.StatusProfileEnum.INACTIVE);
+                }
+                default -> {}
+            }
+
+            user.setRole(newRole);
+            return userRepository.save(user);
+        }
+        catch (IllegalArgumentException e) {
+            BindingResult bindingResult = new BeanPropertyBindingResult(request, "request");
+            bindingResult.addError(new FieldError(bindingResult.getObjectName(), "role",
+                    messageSourceService.get("invalid_role")));
+            throw new BindException(bindingResult);
+        }
+    }
+
+    private boolean isValidRoleTransition(Constants.RoleEnum currentRole, Constants.RoleEnum newRole){
+        // Allow transition to same role
+        if (currentRole == newRole) {
+            return true;
+        }
+
+        // Define invalid transitions
+        return switch (currentRole) {
+            case GUEST -> !newRole.equals(Constants.RoleEnum.ADMIN); // Guest can't go directly to Admin
+            case CUSTOMER -> !newRole.equals(Constants.RoleEnum.GUEST); // Can't downgrade to Guest
+            case SEER -> !newRole.equals(Constants.RoleEnum.GUEST); // Verified Seer can't go to Guest
+            case UNVERIFIED_SEER -> true; // Unverified Seer can transition to any role
+            case ADMIN -> true; // Admin can change to any role
+        };
     }
 }

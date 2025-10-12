@@ -10,6 +10,7 @@ import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.entity.ServicePackage;
 import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -157,5 +158,63 @@ public class ServicePackageController extends AbstractBaseController {
         ServicePackage existingPackage = servicePackageService.findById(id);
         ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeerId(), request);
         return responseFactory.successSingle(servicePackage, "Service package updated successfully");
+    }
+
+    @GetMapping("/by-category/{category}")
+    @Operation(
+            summary = "Get service packages by category",
+            description = "Get all available service packages filtered by specific category",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid category",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<ServicePackageResponse>> getServicePackagesByCategory(
+            @Parameter(description = "Service category (TAROT, PALM_READING, CONSULTATION, PHYSIOGNOMY)", required = true)
+            @PathVariable String category,
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Minimum price filter")
+            @RequestParam(required = false) Double minPrice,
+            @Parameter(description = "Maximum price filter")
+            @RequestParam(required = false) Double maxPrice
+    ) {
+        Constants.ServiceCategoryEnum categoryEnum = Constants.ServiceCategoryEnum.get(category);
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+
+        Page<ServicePackage> servicePackages = servicePackageService.findAvailableByCategoryWithFilters(categoryEnum, minPrice, maxPrice, pageable);
+        Page<ServicePackageResponse> response = simpleMapper.mapToPage(servicePackages, ServicePackageResponse.class);
+
+        return responseFactory.successPage(response,
+                String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));
     }
 }

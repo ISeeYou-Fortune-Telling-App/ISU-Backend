@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.entity;
 
+import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,6 +38,10 @@ public class ServicePackage extends AbstractBaseEntity {
     @Column(name = "status", nullable = false)
     @Builder.Default
     private ServicePackageStatus status = ServicePackageStatus.AVAILABLE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private Constants.ServiceCategoryEnum category;
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
