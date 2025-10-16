@@ -20,7 +20,7 @@ public class AIConfig {
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(10000); // 10 seconds connection timeout
-        factory.setReadTimeout(30000);    // 30 seconds read timeout
+        factory.setReadTimeout(300000);    // 30 seconds read timeout
 
         RestTemplate restTemplate = new RestTemplate(factory);
 
