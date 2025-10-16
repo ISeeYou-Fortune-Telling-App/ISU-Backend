@@ -66,6 +66,8 @@ public class WebSecurityConfig {
                                 "/swagger-ui/**",
                                 "/webjars/**",
                                 "/ws/**",
+                                "/debug/**",
+                                "/bookings/payment/**",
                                 "/ai-chat/**",
                                 "debug/**"
                         ).permitAll()

@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.knowledgecategory;
 
-import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

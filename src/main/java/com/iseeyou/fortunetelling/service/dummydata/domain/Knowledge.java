@@ -1,8 +1,17 @@
 package com.iseeyou.fortunetelling.service.dummydata.domain;
 
-import com.iseeyou.fortunetelling.entity.*;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.ItemCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.entity.user.User;
-import com.iseeyou.fortunetelling.repository.*;
+import com.iseeyou.fortunetelling.repository.certificate.CertificateCategoryRepository;
+import com.iseeyou.fortunetelling.repository.certificate.CertificateRepository;
+import com.iseeyou.fortunetelling.repository.knowledge.ItemCategoryRepository;
+import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeItemRepository;
+import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +33,12 @@ public class Knowledge {
 
     public void createDummyData() {
         // Tạo các knowledge categories
-        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null));
-        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null));
-        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null));
-        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null));
-        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null));
-        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null));
+        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null, null));
+        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null, null));
+        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null, null));
+        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null, null));
+        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null, null));
+        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null, null));
 
         log.info("Dummy knowledge categories created successfully.");
 

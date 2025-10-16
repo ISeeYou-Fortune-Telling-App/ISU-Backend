@@ -46,13 +46,21 @@ spring:
           writetimeout: 5000
   jpa:
     hibernate:
-      ddl-auto: ${DB_DDL_AUTO}
+      ddl-auto: ${DB_DDL_AUTO:create-drop}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         show_sql: true
         format_sql: true
         globally_quoted_identifiers: true
+        # Cho phép Hibernate tạo lại schema
+        hbm2ddl:
+          auto: create-drop
+        # Bật lại validation
+        check_nullability: true
+        validator:
+          apply_to_ddl: true
+        use_sql_comments: true
     open-in-view: false
   datasource:
     url: jdbc:postgresql://${POSTGRESQL_HOST}:${POSTGRESQL_PORT}/${POSTGRESQL_DB}
@@ -105,3 +113,9 @@ cloudinary:
   cloud-name: ${CLOUD_NAME}
   api-key: ${CLOUDINARY_API_KEY}
   api-secret: ${CLOUDINARY_API_SECRET}
+
+
+paypal:
+  client-id: ${CLIENT_ID}
+  client-secret: ${SECRET_KEY}
+  mode: ${PAYPAL_MODE}

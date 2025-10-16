@@ -7,7 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgecategory.KnowledgeCategoryResponse;
-import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +33,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/knowledge-categories")
-@Tag(name = "004. Knowledge Categories", description = "Knowledge Categories API")
+@Tag(name = "005. Knowledge Categories", description = "Knowledge Categories API")
 @Slf4j
 public class KnowledgeCategoryController extends AbstractBaseController {
     private final KnowledgeCategoryService knowledgeCategoryService;
