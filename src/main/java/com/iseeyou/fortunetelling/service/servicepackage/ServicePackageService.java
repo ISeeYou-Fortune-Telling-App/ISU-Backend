@@ -2,7 +2,7 @@ package com.iseeyou.fortunetelling.service.servicepackage;
 
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
-import com.iseeyou.fortunetelling.entity.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

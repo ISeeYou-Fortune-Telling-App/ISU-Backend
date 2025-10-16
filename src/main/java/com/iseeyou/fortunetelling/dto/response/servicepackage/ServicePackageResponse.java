@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
-import com.iseeyou.fortunetelling.entity.ServicePackage;
+import com.iseeyou.fortunetelling.util.Constants;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -18,7 +18,8 @@ public class ServicePackageResponse {
     private String imageUrl;
     private Integer durationMinutes;
     private Double price;
-    private ServicePackage.ServicePackageStatus status;
+    private Constants.ServiceCategoryEnum category;
+    private Constants.PackageStatusEnum status;
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

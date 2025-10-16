@@ -2,16 +2,15 @@ package com.iseeyou.fortunetelling.service.auth.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.iseeyou.fortunetelling.entity.JwtToken;
+import com.iseeyou.fortunetelling.entity.auth.JwtToken;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
-import com.iseeyou.fortunetelling.repository.JwtTokenRepository;
+import com.iseeyou.fortunetelling.repository.auth.JwtTokenRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.auth.JwtTokenService;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.StreamSupport;
 
 @Service
 @RequiredArgsConstructor

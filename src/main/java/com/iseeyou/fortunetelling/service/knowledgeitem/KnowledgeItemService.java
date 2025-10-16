@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.knowledgeitem;
 
-import com.iseeyou.fortunetelling.entity.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.netty.util.Constant;
 import org.springframework.data.domain.Page;

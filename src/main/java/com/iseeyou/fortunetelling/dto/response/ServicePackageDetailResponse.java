@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.dto.response;
 
+import com.iseeyou.fortunetelling.util.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,6 +20,7 @@ public class ServicePackageDetailResponse {
     private String imageUrl;
     private Integer durationMinutes;
     private Double price;
+    private Constants.ServiceCategoryEnum category; // thêm trường category
     private String status;
     private String rejectionReason;
     private LocalDateTime createdAt;

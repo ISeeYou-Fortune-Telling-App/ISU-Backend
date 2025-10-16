@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.dto.request.servicepackage;
 
+import com.iseeyou.fortunetelling.util.Constants;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -10,6 +11,6 @@ public class ServicePackageUpsertRequest {
     private String packageContent;
     private Integer durationMinutes;
     private Double price;
+    private Constants.ServiceCategoryEnum category; // thêm trường category
     private MultipartFile image; // file ảnh minh họa
 }
-

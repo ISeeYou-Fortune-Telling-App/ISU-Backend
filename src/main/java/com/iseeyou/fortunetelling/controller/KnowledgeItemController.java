@@ -7,7 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemResponse;
-import com.iseeyou.fortunetelling.entity.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.mapper.KnowledgeItemMapper;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.knowledgeitem.KnowledgeItemService;
@@ -36,7 +36,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/knowledge-items")
-@Tag(name = "005. Knowledge Item", description = "Knowledge Item API")
+@Tag(name = "006. Knowledge Item", description = "Knowledge Item API")
 @Slf4j
 public class KnowledgeItemController extends AbstractBaseController {
     private final KnowledgeItemService knowledgeItemService;

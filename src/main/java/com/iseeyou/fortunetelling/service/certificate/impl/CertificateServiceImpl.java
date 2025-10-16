@@ -1,12 +1,11 @@
 package com.iseeyou.fortunetelling.service.certificate.impl;
 
-import com.iseeyou.fortunetelling.entity.Certificate;
-import com.iseeyou.fortunetelling.entity.CertificateCategory;
-import com.iseeyou.fortunetelling.entity.KnowledgeCategory;
-import com.iseeyou.fortunetelling.entity.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
-import com.iseeyou.fortunetelling.repository.CertificateCategoryRepository;
-import com.iseeyou.fortunetelling.repository.CertificateRepository;
+import com.iseeyou.fortunetelling.repository.certificate.CertificateCategoryRepository;
+import com.iseeyou.fortunetelling.repository.certificate.CertificateRepository;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;

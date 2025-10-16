@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.mapper;
 
 import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemResponse;
-import com.iseeyou.fortunetelling.entity.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

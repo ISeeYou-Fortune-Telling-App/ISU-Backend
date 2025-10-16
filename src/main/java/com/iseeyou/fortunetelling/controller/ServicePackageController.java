@@ -7,7 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
-import com.iseeyou.fortunetelling.entity.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -156,7 +156,7 @@ public class ServicePackageController extends AbstractBaseController {
         request.setPackageId(id);
         // Lấy seerId từ service package hiện tại thay vì từ request param
         ServicePackage existingPackage = servicePackageService.findById(id);
-        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeerId(), request);
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeer().getId().toString(), request);
         return responseFactory.successSingle(servicePackage, "Service package updated successfully");
     }
 

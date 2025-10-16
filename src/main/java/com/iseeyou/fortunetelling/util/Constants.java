@@ -86,6 +86,24 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum PackageStatusEnum {
+        AVAILABLE("AVAILABLE"),
+        CLOSED("CLOSED"),
+        HAVE_REPORT("HAVE_REPORT"),
+        HIDDEN("HIDDEN");
+
+        private final String value;
+
+        public static PackageStatusEnum get(final String name) {
+            return Stream.of(PackageStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid Package status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum KnowledgeItemStatusEnum {
         DRAFT("DRAFT"),
         PUBLISHED("PUBLISHED"),
@@ -96,6 +114,139 @@ public final class Constants {
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid certificate status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ReportTypeEnum {
+        SPAM("Cảnh báo vi phạm spam"),
+        INAPPROPRIATE_CONTENT("Nội dung không phù hợp"),
+        HARASSMENT("Quấy rối"),
+        HATE_SPEECH("Ngôn từ thù ghét"),
+        VIOLENCE("Bạo lực"),
+        NUDITY("Ảnh khỏa thân / nội dung nhạy cảm"),
+        COPYRIGHT("Vi phạm bản quyền"),
+        IMPERSONATION("Giả mạo danh tính"),
+        FRAUD("Gian lận / lừa đảo"),
+        OTHER("Khác");
+
+        private final String value;
+
+        public static ReportTypeEnum get(final String name) {
+            return Stream.of(ReportTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid report type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ReportStatusEnum {
+        PENDING("Đang chờ xử lý"),
+        VIEWED("Đã xem"),
+        RESOLVED("Đã xử lý"),
+        REJECTED("Từ chối xử lý");
+
+        private final String value;
+
+        public static ReportStatusEnum get(final String name) {
+            return Stream.of(ReportStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid report status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ReportActionEnum {
+        NO_ACTION("Không hành động"),
+        WARNING_ISSUED("Cảnh báo đã được gửi"),
+        CONTENT_REMOVED("Nội dung đã bị xóa"),
+        USER_SUSPENDED("Người dùng bị đình chỉ"),
+        USER_BANNED("Người dùng bị khóa tài khoản");
+
+        private final String value;
+
+        public static ReportActionEnum get(final String name) {
+            return Stream.of(ReportActionEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid report action name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum TargetReportTypeEnum {
+        SERVICE_PACKAGE("SERVICE_PACKAGE"),
+        CHAT("CHAT"),
+        BOOKING("BOOKING"),
+        SEER("SEER");
+
+        private final String value;
+
+        public static TargetReportTypeEnum get(final String name) {
+            return Stream.of(TargetReportTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid target report type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum BookingStatusEnum {
+        PENDING("PENDING"),
+        CONFIRMED("CONFIRMED"),
+        COMPLETED("COMPLETED"),
+        FAILED("FAILED"),
+        CANCELED("CANCELED");
+
+        private final String value;
+
+        public static BookingStatusEnum get(final String name) {
+            return Stream.of(BookingStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid booking status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PaymentMethodEnum {
+        MOMO("MOMO"),
+        VNPAY("VNPAY"),
+        PAYPAL("PAYPAL");
+
+        private final String value;
+
+        public static PaymentMethodEnum get(final String name) {
+            return Stream.of(PaymentMethodEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum PaymentStatusEnum {
+        PENDING("PENDING"),
+        COMPLETED("COMPLETED"),
+        FAILED("FAILED"),
+        REFUNDED("REFUNDED");
+
+        private final String value;
+
+        public static PaymentStatusEnum get(final String name) {
+            return Stream.of(PaymentStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment status name: %s", name)));
         }
     }
 

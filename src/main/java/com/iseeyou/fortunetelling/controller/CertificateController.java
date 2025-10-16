@@ -7,7 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.certificate.CertificateResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
-import com.iseeyou.fortunetelling.entity.Certificate;
+import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.mapper.CertificateMapper;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
@@ -35,7 +35,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/certificates")
-@Tag(name = "003. Certificate", description = "Certificate API")
+@Tag(name = "004. Certificate", description = "Certificate API")
 @Slf4j
 public class CertificateController extends AbstractBaseController {
     private final CertificateService certificateService;

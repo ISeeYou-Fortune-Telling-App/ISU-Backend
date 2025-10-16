@@ -5,8 +5,10 @@ args=$(filter-out $@,$(MAKECMDGOALS))
 ENV_FILE ?= .env
 PROJECT=isu-project
 
--include $(ENV_FILE)
-export
+ifneq (,$(wildcard .env))
+  include .env
+  export $(shell sed -n 's/^\([^#][^=]*\)=.*$$/\1/p' .env)
+endif
 
 all: help ## show all targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
