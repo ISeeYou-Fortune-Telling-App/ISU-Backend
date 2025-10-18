@@ -10,6 +10,7 @@ import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
+import com.iseeyou.fortunetelling.service.converstation.ConverstationService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -34,6 +35,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingPaymentRepository bookingPaymentRepository;
     private final UserService userService;
     private final ServicePackageService servicePackageService;
+    private final ConverstationService conversationService;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
 
     @Override
@@ -145,7 +147,27 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking updateBooking(Booking booking) {
-        return null;
+        Booking existingBooking = bookingRepository.findById(booking.getId())
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + booking.getId()));
+
+        // check if status changed to CONFIRMED
+        boolean statusChangedToConfirmed = !existingBooking.getStatus().equals(booking.getStatus()) &&
+                booking.getStatus().equals(Constants.BookingStatusEnum.CONFIRMED);
+
+        // Update booking
+        existingBooking.setStatus(booking.getStatus());
+        existingBooking.setAdditionalNote(booking.getAdditionalNote());
+        existingBooking.setScheduledTime(booking.getScheduledTime());
+
+        Booking updatedBooking = bookingRepository.save(existingBooking);
+
+        // create chat session if booking confirmed
+        if (statusChangedToConfirmed) {
+            log.info("Booking confirmed, creating chat session for booking: {}", booking.getId());
+            conversationService.createChatSession(booking.getId());
+        }
+
+        return updatedBooking;
     }
 
     @Override

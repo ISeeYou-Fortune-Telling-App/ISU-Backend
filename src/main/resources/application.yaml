@@ -119,3 +119,7 @@ paypal:
   client-id: ${CLIENT_ID}
   client-secret: ${SECRET_KEY}
   mode: ${PAYPAL_MODE}
+
+socketio:
+  port: 8081
+  host: 0.0.0.0
