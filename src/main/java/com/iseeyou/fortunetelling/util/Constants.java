@@ -267,4 +267,53 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid service category name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ConversationTypeEnum {
+        BOOKING_SESSION("BOOKING_SESSION"),
+        SUPPORT("SUPPORT");
+
+        private final String value;
+
+        public static ConversationTypeEnum get(final String name) {
+            return Stream.of(ConversationTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid conversation type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum ConversationStatusEnum {
+        ACTIVE("ACTIVE"),
+        ENDED("ENDED"),
+        CANCELLED("CANCELLED");
+
+        private final String value;
+
+        public static ConversationStatusEnum get(final String name) {
+            return Stream.of(ConversationStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid conversation status name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum MessageTypeEnum  {
+        USER("USER"),
+        SYSTEM("SYSTEM");
+
+        private final String value;
+
+        public static MessageTypeEnum get(final String name) {
+            return Stream.of(MessageTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid message type name: %s", name)));
+        }
+    }
 }
