@@ -5,6 +5,7 @@ import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
+import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
@@ -440,5 +441,26 @@ public class UserServiceImpl implements UserService {
             case UNVERIFIED_SEER -> true; // Unverified Seer can transition to any role
             case ADMIN -> true; // Admin can change to any role
         };
+    }
+
+    @Override
+    public AccountStatsResponse getAccountStats() {
+        long customerAccounts = userRepository.countByRole(Constants.RoleEnum.CUSTOMER);
+        long seerAccounts = userRepository.countByRole(Constants.RoleEnum.SEER);
+        long adminAccounts = userRepository.countByRole(Constants.RoleEnum.ADMIN);
+        long pendingAccounts = userRepository.countPendingSeers();
+        long blockedAccounts = userRepository.countBlockedUsers();
+
+        // Tổng số account không bao gồm guest
+        long totalAccounts = customerAccounts + seerAccounts + adminAccounts + pendingAccounts;
+
+        return AccountStatsResponse.builder()
+                .totalAccounts(totalAccounts)
+                .customerAccounts(customerAccounts)
+                .seerAccounts(seerAccounts)
+                .adminAccounts(adminAccounts)
+                .pendingAccounts(pendingAccounts)
+                .blockedAccounts(blockedAccounts)
+                .build();
     }
 }

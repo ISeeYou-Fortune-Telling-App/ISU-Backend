@@ -24,4 +24,23 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.seerProfile WHERE u.id = :userId")
     Optional<User> findByIdWithSeerProfile(@Param("userId") UUID userId);
+
+    // Statistics methods
+    long countByRole(Constants.RoleEnum role);
+
+    long countByStatus(Constants.StatusProfileEnum status);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role")
+    long countByRoleWithParam(@Param("role") Constants.RoleEnum role);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.status = :status")
+    long countByStatusWithParam(@Param("status") Constants.StatusProfileEnum status);
+
+    default long countPendingSeers() {
+        return countByRoleWithParam(Constants.RoleEnum.UNVERIFIED_SEER);
+    }
+
+    default long countBlockedUsers() {
+        return countByStatusWithParam(Constants.StatusProfileEnum.BLOCKED);
+    }
 }

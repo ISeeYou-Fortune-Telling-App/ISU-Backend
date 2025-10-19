@@ -15,18 +15,5 @@ public class SimpleMapper extends BaseMapper {
 
     @Override
     protected void configureCustomMappings() {
-        // Basic mapping for ServicePackage -> ServicePackageResponse
-        // Keep it simple to avoid null pointer issues during initialization
-        modelMapper.createTypeMap(ServicePackage.class, ServicePackageResponse.class)
-                .addMappings(mapper -> {
-                    // Only map basic fields that are guaranteed to exist
-                    mapper.map(ServicePackage::getPackageTitle, ServicePackageResponse::setPackageTitle);
-                    mapper.map(ServicePackage::getPackageContent, ServicePackageResponse::setPackageContent);
-                    mapper.map(ServicePackage::getImageUrl, ServicePackageResponse::setImageUrl);
-                    mapper.map(ServicePackage::getDurationMinutes, ServicePackageResponse::setDurationMinutes);
-                    mapper.map(ServicePackage::getPrice, ServicePackageResponse::setPrice);
-                    mapper.map(ServicePackage::getCreatedAt, ServicePackageResponse::setCreatedAt);
-                    mapper.map(ServicePackage::getUpdatedAt, ServicePackageResponse::setUpdatedAt);
-                });
     }
 }
