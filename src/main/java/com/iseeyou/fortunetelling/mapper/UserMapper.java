@@ -4,6 +4,7 @@ import com.iseeyou.fortunetelling.dto.response.user.CustomerProfileResponse;
 import com.iseeyou.fortunetelling.dto.response.user.SeerProfileResponse;
 import com.iseeyou.fortunetelling.dto.response.user.UserResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
+import com.iseeyou.fortunetelling.service.user.SeerStatsService;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper extends BaseMapper {
+
+    @Autowired
+    private SeerStatsService seerStatsService;
 
     @Autowired
     public UserMapper(ModelMapper modelMapper) {
@@ -23,11 +27,14 @@ public class UserMapper extends BaseMapper {
                 .addMappings(mapper -> {
                     mapper.using(ctx -> {
                         User user = (User) ctx.getSource();
+
                         if (user.getRole() == Constants.RoleEnum.CUSTOMER && user.getCustomerProfile() != null) {
                             return modelMapper.map(user.getCustomerProfile(), CustomerProfileResponse.class);
                         } else if (user.getRole() == Constants.RoleEnum.SEER && user.getSeerProfile() != null) {
-                            return modelMapper.map(user.getSeerProfile(), SeerProfileResponse.class);
+                            // Sử dụng SeerStatsService để lấy profile với thống kê
+                            return seerStatsService.enrichSeerProfile(user);
                         }
+
                         return null;
                     }).map(src -> src, (dest, value) -> dest.setProfile(value));
                 });

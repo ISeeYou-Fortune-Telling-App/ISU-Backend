@@ -11,6 +11,6 @@ import java.util.UUID;
 
 public interface ConversationRepository extends JpaRepository<Conversation, UUID> {
     Optional<Conversation> findByBookingId(UUID bookingId);
-    Page<Conversation> findByBooking_Seer(User seer, Pageable pageable);
+    Page<Conversation> findByBooking_ServicePackage_Seer(User seer, Pageable pageable);
     Page<Conversation> findByBooking_Customer(User customer, Pageable pageable);
 }

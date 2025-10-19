@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
         @AttributeOverride(name = "id", column = @Column(name = "message_id", nullable = false)),
 })
 public class Message extends AbstractBaseEntity{
-    @Column(name = "text_content", columnDefinition = "TEXT")
+    @Column(name = "text_content", columnDefinition = "text")
     private String textContent;
 
     @Column(name = "image_url", length = 500)

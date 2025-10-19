@@ -13,4 +13,9 @@ public class SeerProfileResponse {
     private Double avgRating;
     private Integer totalRates;
     private String paymentInfo;
+
+    // Thống kê booking
+    private Long totalBookings;
+    private Long completedBookings;
+    private Double totalRevenue;
 }

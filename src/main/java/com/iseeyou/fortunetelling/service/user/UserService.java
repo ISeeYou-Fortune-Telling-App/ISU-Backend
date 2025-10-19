@@ -50,7 +50,14 @@ public interface UserService {
 
     void resetPassword(String email, String newPassword);
 
+    Page<User> searchUsers(String keyword, Pageable pageable);
+
+    Page<User> findAllWithFilters(String role, String status, Pageable pageable);
+
     User updateUserRole(UUID id, UpdateUserRoleRequest request) throws BindException;
 
     AccountStatsResponse getAccountStats();
+
+    // Lấy user với thống kê seer (nếu là seer)
+    User getUserWithSeerStats(UUID userId);
 }

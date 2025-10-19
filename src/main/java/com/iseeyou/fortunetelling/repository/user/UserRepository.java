@@ -2,6 +2,8 @@ package com.iseeyou.fortunetelling.repository.user;
 
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -43,4 +45,20 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     default long countBlockedUsers() {
         return countByStatusWithParam(Constants.StatusProfileEnum.BLOCKED);
     }
+
+    // Search method for admin
+    @Query("SELECT u FROM User u WHERE " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<User> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            @Param("keyword") String fullName,
+            @Param("keyword") String email,
+            Pageable pageable);
+
+    // Filter methods
+    Page<User> findByRole(Constants.RoleEnum role, Pageable pageable);
+
+    Page<User> findByStatus(Constants.StatusProfileEnum status, Pageable pageable);
+
+    Page<User> findByRoleAndStatus(Constants.RoleEnum role, Constants.StatusProfileEnum status, Pageable pageable);
 }

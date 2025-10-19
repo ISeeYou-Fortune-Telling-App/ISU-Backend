@@ -99,7 +99,7 @@ public class converstationServiceImpl implements ConverstationService {
         Page<Conversation> conversations;
 
         if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            conversations = conversationRepository.findByBooking_Seer(currentUser, pageable);
+            conversations = conversationRepository.findByBooking_ServicePackage_Seer(currentUser, pageable);
         } else {
             conversations = conversationRepository.findByBooking_Customer(currentUser, pageable);
         }
