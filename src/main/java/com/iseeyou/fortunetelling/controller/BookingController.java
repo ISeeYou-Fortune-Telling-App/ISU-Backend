@@ -494,7 +494,7 @@ public class BookingController extends AbstractBaseController {
         BookingPaymentResponse response = bookingMapper.mapTo(bookingPayment, BookingPaymentResponse.class);
         return responseFactory.successSingle(response, "Payment executed successfully");
     }
-    
+
     @GetMapping("/payment/cancel")
     @Operation(summary = "Only for redirect URL from payment gateways")
     public ResponseEntity<SingleResponse<String>> paymentCancel() {

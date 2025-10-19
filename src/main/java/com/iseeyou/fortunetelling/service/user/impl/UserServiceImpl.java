@@ -11,6 +11,7 @@ import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
@@ -52,6 +53,7 @@ public class UserServiceImpl implements UserService {
     private final CloudinaryService cloudinaryService;
     private final CertificateService certificateService;
     private final EmailVerificationService emailVerificationService;
+    private final BookingRepository bookingRepository;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -59,13 +61,15 @@ public class UserServiceImpl implements UserService {
             MessageSourceService messageSourceService,
             CloudinaryService cloudinaryService,
             @Lazy CertificateService certificateService,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            BookingRepository bookingRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
         this.cloudinaryService = cloudinaryService;
         this.certificateService = certificateService;
         this.emailVerificationService = emailVerificationService;
+        this.bookingRepository = bookingRepository;
     }
 
     public Authentication getAuthentication() {
@@ -462,5 +466,67 @@ public class UserServiceImpl implements UserService {
                 .pendingAccounts(pendingAccounts)
                 .blockedAccounts(blockedAccounts)
                 .build();
+    }
+
+    @Override
+    public Page<User> searchUsers(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return userRepository.findAll(pageable);
+        }
+        return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                keyword.trim(), keyword.trim(), pageable);
+    }
+
+    @Override
+    public Page<User> findAllWithFilters(String role, String status, Pageable pageable) {
+        if (role == null && status == null) {
+            return userRepository.findAll(pageable);
+        }
+
+        if (role != null && status != null) {
+            try {
+                Constants.RoleEnum roleEnum = Constants.RoleEnum.valueOf(role.toUpperCase());
+                Constants.StatusProfileEnum statusEnum = Constants.StatusProfileEnum.valueOf(status.toUpperCase());
+                return userRepository.findByRoleAndStatus(roleEnum, statusEnum, pageable);
+            } catch (IllegalArgumentException e) {
+                return userRepository.findAll(pageable);
+            }
+        }
+
+        if (role != null) {
+            try {
+                Constants.RoleEnum roleEnum = Constants.RoleEnum.valueOf(role.toUpperCase());
+                return userRepository.findByRole(roleEnum, pageable);
+            } catch (IllegalArgumentException e) {
+                return userRepository.findAll(pageable);
+            }
+        }
+
+        if (status != null) {
+            try {
+                Constants.StatusProfileEnum statusEnum = Constants.StatusProfileEnum.valueOf(status.toUpperCase());
+                return userRepository.findByStatus(statusEnum, pageable);
+            } catch (IllegalArgumentException e) {
+                return userRepository.findAll(pageable);
+            }
+        }
+
+        return userRepository.findAll(pageable);
+    }
+
+    @Override
+    public User getUserWithSeerStats(UUID userId) {
+        User user = findById(userId);
+
+        // Chỉ thêm thống kê nếu user là seer
+        if (user.getRole() == Constants.RoleEnum.SEER && user.getSeerProfile() != null) {
+            // Lấy thống kê booking cho seer
+            Long totalBookings = bookingRepository.countBySeer(user);
+            Long completedBookings = bookingRepository.countBySeerAndStatus(user, Constants.BookingStatusEnum.COMPLETED);
+            Double totalRevenue = bookingRepository.getTotalRevenueBySeer(user, Constants.PaymentStatusEnum.COMPLETED);
+
+        }
+
+        return user;
     }
 }

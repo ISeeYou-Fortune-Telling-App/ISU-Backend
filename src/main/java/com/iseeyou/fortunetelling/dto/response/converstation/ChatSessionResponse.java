@@ -13,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatSessionResponse extends AbstractBaseDataResponse {
+    private UUID conversationId;
     private UUID bookingId;
     private String seerName;
     private String customerName;

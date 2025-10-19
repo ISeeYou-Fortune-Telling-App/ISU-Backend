@@ -6,6 +6,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.mapper.UserMapper;
+import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -67,7 +68,12 @@ public class AccountController extends AbstractBaseController {
             }
     )
     public ResponseEntity<SingleResponse<UserResponse>> me() {
-        UserResponse userResponse = userMapper.mapTo(userService.getUser(), UserResponse.class);
+        User currentUser = userService.getUser();
+        // Nếu là seer, lấy thêm thống kê booking
+        if (currentUser.getRole() == Constants.RoleEnum.SEER) {
+            currentUser = userService.getUserWithSeerStats(currentUser.getId());
+        }
+        UserResponse userResponse = userMapper.mapTo(currentUser, UserResponse.class);
         return responseFactory.successSingle(userResponse, "Successful operation");
     }
 
@@ -206,7 +212,7 @@ public class AccountController extends AbstractBaseController {
 
     @GetMapping
     @Operation(
-            summary = "Get all users with pagination",
+            summary = "Get all users with pagination and filters",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -228,13 +234,21 @@ public class AccountController extends AbstractBaseController {
             }
     )
     public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
+            @Parameter(description = "Filter by role (GUEST, CUSTOMER, SEER, UNVERIFIED_SEER, ADMIN)", required = false)
+            @RequestParam(required = false) String role,
+            @Parameter(description = "Filter by status (ACTIVE, INACTIVE, VERIFIED, UNVERIFIED, BLOCKED)", required = false)
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Page number", required = false)
             @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Items per page", required = false)
             @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort type (asc/desc)", required = false)
             @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort by field", required = false)
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<User> userPage = userService.findAll(pageable);
+        Page<User> userPage = userService.findAllWithFilters(role, status, pageable);
         Page<UserResponse> response = userMapper.mapToPage(userPage, UserResponse.class);
         return responseFactory.successPage(response, "Users retrieved successfully");
     }
@@ -275,6 +289,10 @@ public class AccountController extends AbstractBaseController {
             @PathVariable UUID id
     ) {
         User user = userService.findById(id);
+        // Kiểm tra xem người dùng có phải là seer không và lấy thống kê nếu có
+        if (user.getRole() == Constants.RoleEnum.SEER) {
+            user = userService.getUserWithSeerStats(user.getId());
+        }
         UserResponse<?> userResponse = userMapper.mapTo(user, UserResponse.class);
         return responseFactory.successSingle(userResponse, "User retrieved successfully");
     }
@@ -471,5 +489,60 @@ public class AccountController extends AbstractBaseController {
     public ResponseEntity<SingleResponse<AccountStatsResponse>> getAccountStats() {
         AccountStatsResponse stats = userService.getAccountStats();
         return responseFactory.successSingle(stats, "Account statistics retrieved successfully");
+    }
+
+    @GetMapping("/search")
+    @Operation(
+            summary = "Search users by name or email",
+            description = "Search for users using name or email. Returns paginated results.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Users found successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<UserResponse>> searchUsers(
+            @Parameter(description = "Search keyword (name or email)", required = false)
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "Page number", required = false)
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Items per page", required = false)
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort type (asc/desc)", required = false)
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort by field", required = false)
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<User> userPage = userService.searchUsers(keyword, pageable);
+        Page<UserResponse> response = userMapper.mapToPage(userPage, UserResponse.class);
+
+        String message = (keyword != null && !keyword.trim().isEmpty())
+            ? "Search results retrieved successfully"
+            : "All users retrieved successfully";
+
+        return responseFactory.successPage(response, message);
     }
 }
