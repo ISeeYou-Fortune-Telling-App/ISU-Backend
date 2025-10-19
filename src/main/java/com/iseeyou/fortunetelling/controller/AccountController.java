@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.controller;
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
+import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.mapper.UserMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -433,5 +434,42 @@ public class AccountController extends AbstractBaseController {
         User updatedUser = userService.updateUserRole(id, request);
         UserResponse<?> userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
         return responseFactory.successSingle(userResponse, "User role updated successfully");
+    }
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "Get account statistics",
+            description = "Get statistics of all accounts including total accounts, customers, seers, pending accounts, and blocked accounts",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Account statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<AccountStatsResponse>> getAccountStats() {
+        AccountStatsResponse stats = userService.getAccountStats();
+        return responseFactory.successSingle(stats, "Account statistics retrieved successfully");
     }
 }

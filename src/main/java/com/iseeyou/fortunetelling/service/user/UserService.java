@@ -4,6 +4,7 @@ import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
+import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import org.springframework.data.domain.Page;
@@ -50,4 +51,6 @@ public interface UserService {
     void resetPassword(String email, String newPassword);
 
     User updateUserRole(UUID id, UpdateUserRoleRequest request) throws BindException;
+
+    AccountStatsResponse getAccountStats();
 }
