@@ -74,23 +74,19 @@ public class AuthServiceImpl implements AuthService {
             log.warn("User attempted to login with unverified email: {}", email);
             // Gửi OTP xác thực
             emailVerificationService.sendVerificationEmail(email);
-            throw new EmailNotVerifiedException("Email chưa được xác thực. Vui lòng kiểm tra email để lấy mã OTP xác thực.");
+            throw new EmailNotVerifiedException("Email chưa được xác thực. Vui lòng kiểm tra email đ��� lấy mã OTP xác thực.");
         }
 
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(email, password);
-        try {
-            Authentication authentication = authenticationManager.authenticate(authenticationToken);
-            JwtUserDetails jwtUserDetails = jwtTokenProvider.getPrincipal(authentication);
+        
+        Authentication authentication = authenticationManager.authenticate(authenticationToken);
+        JwtUserDetails jwtUserDetails = jwtTokenProvider.getPrincipal(authentication);
 
-            // Active the user
-            userService.activeteUser(user.getId().toString());
+        // Active the user
+        userService.activateUserByEmail(email);
 
-            return generateTokens(UUID.fromString(jwtUserDetails.getId()), rememberMe);
-        } catch (NotFoundException e) {
-            log.error("Authentication failed for email: {}", email);
-            throw new AuthenticationCredentialsNotFoundException(badCredentialsMessage);
-        }
+        return generateTokens(UUID.fromString(jwtUserDetails.getId()), rememberMe);
     }
 
     /**

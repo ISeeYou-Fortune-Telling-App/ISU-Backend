@@ -233,6 +233,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+
     public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
             @Parameter(description = "Filter by role (GUEST, CUSTOMER, SEER, UNVERIFIED_SEER, ADMIN)", required = false)
             @RequestParam(required = false) String role,

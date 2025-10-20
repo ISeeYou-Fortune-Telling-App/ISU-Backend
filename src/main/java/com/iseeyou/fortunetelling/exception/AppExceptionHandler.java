@@ -108,10 +108,22 @@ public class AppExceptionHandler {
     @ExceptionHandler(EmailNotVerifiedException.class)
     public final ResponseEntity<ErrorResponse> handleEmailNotVerifiedException(final EmailNotVerifiedException e) {
         log.warn("Email not verified: {}", e.getMessage());
-        return ResponseEntity.status(201).body(ErrorResponse.builder()
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ErrorResponse.builder()
                 .message(e.getMessage())
-                .statusCode(201)
+                .statusCode(HttpStatus.FORBIDDEN.value())
                 .build());
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public final ResponseEntity<ErrorResponse> handleNotFoundException(final NotFoundException e) {
+        log.error("Not found: {}", e.getMessage());
+        return build(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(RefreshTokenExpiredException.class)
+    public final ResponseEntity<ErrorResponse> handleRefreshTokenExpiredException(final RefreshTokenExpiredException e) {
+        log.error("Refresh token expired: {}", e.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "Refresh token expired");
     }
 
     @ExceptionHandler(Exception.class)
