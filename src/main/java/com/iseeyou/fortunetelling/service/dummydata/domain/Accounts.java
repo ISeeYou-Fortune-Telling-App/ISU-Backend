@@ -8,6 +8,7 @@ import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class Accounts {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public void createDummyData() {
         createAccount();
@@ -29,7 +31,7 @@ public class Accounts {
                 .email("admin@iseeyou.com")
                 .phone("0901234567")
                 .gender("Nam")
-                .password("P@sswd123.")
+                .password(passwordEncoder.encode("P@sswd123."))
                 .fullName("Nguyễn Văn Quản Trị")
                 .avatarUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755570460/dummy_avatar_4_x9iatb.jpg")
                 .coverUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755572340/OIP_jra5av.jpg")
@@ -46,7 +48,7 @@ public class Accounts {
                 .email("thaytu@iseeyou.com")
                 .phone("0912345678")
                 .gender("Nữ")
-                .password("P@sswd123.")
+                .password(passwordEncoder.encode("P@sswd123."))
                 .fullName("Trần Thị Minh Thầy")
                 .avatarUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755570460/dummy_avatar_4_x9iatb.jpg")
                 .coverUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755572340/OIP_jra5av.jpg")
@@ -75,7 +77,7 @@ public class Accounts {
                 .email("thaymoi@iseeyou.com")
                 .phone("0923456789")
                 .gender("Nam")
-                .password("P@sswd123.")
+                .password(passwordEncoder.encode("P@sswd123."))
                 .fullName("Lê Văn Thầy Mới")
                 .avatarUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755570460/dummy_avatar_4_x9iatb.jpg")
                 .coverUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755572340/OIP_jra5av.jpg")
@@ -104,7 +106,7 @@ public class Accounts {
                 .email("khach@iseeyou.com")
                 .phone("0934567890")
                 .gender("Nữ")
-                .password("P@sswd123.")
+                .password(passwordEncoder.encode("P@sswd123."))
                 .fullName("Khách")
                 .profileDescription("Tài khoản khách tham quan")
                 .birthDate(LocalDateTime.of(1995, 6, 10, 0, 0))
@@ -118,7 +120,7 @@ public class Accounts {
                 .email("khachhang@iseeyou.com")
                 .phone("0945678901")
                 .gender("Nam")
-                .password("P@sswd123.")
+                .password(passwordEncoder.encode("P@sswd123."))
                 .fullName("Phạm Văn Khách Hàng")
                 .avatarUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755570460/dummy_avatar_4_x9iatb.jpg")
                 .coverUrl("https://res.cloudinary.com/dzpv3mfjt/image/upload/v1755572340/OIP_jra5av.jpg")

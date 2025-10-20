@@ -55,6 +55,9 @@ public class ServicePackages {
 
         // Create package interactions (likes/dislikes)
         createPackageInteractions(customers);
+        
+        // Update like/dislike counts based on actual interactions
+        updatePackageCounts();
 
         // Create service reviews (comments)
         createServiceReviews(customers);
@@ -108,9 +111,9 @@ public class ServicePackages {
                     .price(100000.0 + random.nextInt(400000)) // 100k-500k VND
                     .status(Constants.PackageStatusEnum.AVAILABLE)
                     .rejectionReason(null)
-                    .likeCount(random.nextLong(50))
-                    .dislikeCount(random.nextLong(10))
-                    .commentCount(random.nextLong(20))
+                    .likeCount(0L)  // Will be updated after creating interactions
+                    .dislikeCount(0L)  // Will be updated after creating interactions
+                    .commentCount(0L)
                     .seer(seer)
                     .build();
 
@@ -169,7 +172,9 @@ public class ServicePackages {
                     PackageInteraction interaction = PackageInteraction.builder()
                             .user(customer)
                             .servicePackage(servicePackage)
-                            .isLike(random.nextBoolean()) // Random like/dislike
+                            .interactionType(random.nextBoolean() ? 
+                                Constants.InteractionTypeEnum.LIKE : 
+                                Constants.InteractionTypeEnum.DISLIKE)
                             .build();
 
                     packageInteractionRepository.save(interaction);
@@ -178,6 +183,30 @@ public class ServicePackages {
         }
 
         log.info("Đã tạo các package interactions (likes/dislikes)");
+    }
+
+    private void updatePackageCounts() {
+        List<ServicePackage> packages = servicePackageRepository.findAll();
+        
+        for (ServicePackage servicePackage : packages) {
+            // Count likes
+            long likeCount = packageInteractionRepository.countByServicePackage_IdAndInteractionType(
+                    servicePackage.getId(), Constants.InteractionTypeEnum.LIKE);
+            
+            // Count dislikes
+            long dislikeCount = packageInteractionRepository.countByServicePackage_IdAndInteractionType(
+                    servicePackage.getId(), Constants.InteractionTypeEnum.DISLIKE);
+            
+            // Update package
+            servicePackage.setLikeCount(likeCount);
+            servicePackage.setDislikeCount(dislikeCount);
+            servicePackageRepository.save(servicePackage);
+            
+            log.debug("Updated package {} - Likes: {}, Dislikes: {}", 
+                    servicePackage.getPackageTitle(), likeCount, dislikeCount);
+        }
+        
+        log.info("Đã cập nhật like/dislike counts cho tất cả packages dựa trên interactions thực tế");
     }
 
     private void createServiceReviews(List<User> customers) {

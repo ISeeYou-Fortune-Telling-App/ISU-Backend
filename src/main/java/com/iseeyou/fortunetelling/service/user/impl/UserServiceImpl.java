@@ -291,10 +291,23 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public User updateMe(UpdateUserRequest request) throws BindException {
         User user = getUser();
-        user.setBirthDate(request.getBirthDate());
-        user.setGender(request.getGender());
-        user.setPhone(request.getPhone());
-        user.setFullName(request.getFullName());
+        
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (request.getBirthDate() != null) {
+            user.setBirthDate(request.getBirthDate());
+        }
+        if (request.getProfileDescription() != null) {
+            user.setProfileDescription(request.getProfileDescription());
+        }
+        
         return userRepository.save(user);
     }
 

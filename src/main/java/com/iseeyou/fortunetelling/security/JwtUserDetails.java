@@ -31,7 +31,7 @@ public final class JwtUserDetails implements UserDetails {
     }
 
     public static JwtUserDetails create(final User user) {
-        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(String.valueOf(user.getRole())));
+        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.getRole().getValue()));
 
         return new JwtUserDetails(user.getId().toString(), user.getEmail(), user.getPassword(), authorities);
     }

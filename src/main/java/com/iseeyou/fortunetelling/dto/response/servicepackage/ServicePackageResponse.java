@@ -22,6 +22,8 @@ public class ServicePackageResponse {
     private Constants.ServiceCategoryEnum category;
     private Constants.PackageStatusEnum status;
     private String rejectionReason;
+    private Long likeCount;
+    private Long dislikeCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

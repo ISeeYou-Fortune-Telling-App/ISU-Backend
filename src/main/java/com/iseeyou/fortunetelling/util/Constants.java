@@ -316,4 +316,20 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid message type name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum InteractionTypeEnum {
+        LIKE("LIKE"),
+        DISLIKE("DISLIKE");
+
+        private final String value;
+
+        public static InteractionTypeEnum get(final String name) {
+            return Stream.of(InteractionTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid interaction type name: %s", name)));
+        }
+    }
 }

@@ -1,14 +1,17 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.PackageInteractionRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.PackageInteractionResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
-import com.iseeyou.fortunetelling.mapper.SimpleMapper;
+import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.service.servicepackage.PackageInteractionService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +29,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -36,7 +42,8 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 public class ServicePackageController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
-    private final SimpleMapper simpleMapper;
+    private final PackageInteractionService packageInteractionService;
+    private final ServicePackageMapper servicePackageMapper;
 
     @GetMapping
     @Operation(
@@ -84,7 +91,7 @@ public class ServicePackageController extends AbstractBaseController {
             servicePackages = servicePackageService.findAllAvailable(pageable);
         }
 
-        Page<ServicePackageResponse> response = simpleMapper.mapToPage(servicePackages, ServicePackageResponse.class);
+        Page<ServicePackageResponse> response = servicePackageMapper.mapToPage(servicePackages, ServicePackageResponse.class);
         return responseFactory.successPage(response, "Service packages retrieved successfully");
     }
 
@@ -212,9 +219,94 @@ public class ServicePackageController extends AbstractBaseController {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
 
         Page<ServicePackage> servicePackages = servicePackageService.findAvailableByCategoryWithFilters(categoryEnum, minPrice, maxPrice, pageable);
-        Page<ServicePackageResponse> response = simpleMapper.mapToPage(servicePackages, ServicePackageResponse.class);
+        Page<ServicePackageResponse> response = servicePackageMapper.mapToPage(servicePackages, ServicePackageResponse.class);
 
         return responseFactory.successPage(response,
                 String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));
+    }
+
+    @PostMapping("/{packageId}/interact")
+    @Operation(
+            summary = "Like or Dislike a service package",
+            description = "Toggle like/dislike on a service package. " +
+                    "Click LIKE: +1 like (or remove if already liked). " +
+                    "Click DISLIKE: +1 dislike (or remove if already disliked). " +
+                    "Click DISLIKE when LIKED: remove like and add dislike (and vice versa)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Interaction updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PackageInteractionResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid interaction type",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<PackageInteractionResponse>> toggleInteraction(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable UUID packageId,
+            @Parameter(description = "Interaction request (LIKE or DISLIKE)", required = true)
+            @RequestBody @Valid PackageInteractionRequest request
+    ) {
+        Constants.InteractionTypeEnum interactionType = Constants.InteractionTypeEnum.get(request.getInteractionType());
+        PackageInteractionResponse response = packageInteractionService.toggleInteraction(packageId, interactionType);
+        return responseFactory.successSingle(response, "Interaction updated successfully");
+    }
+
+    @GetMapping("/{packageId}/interaction-stats")
+    @Operation(
+            summary = "Get like/dislike statistics for a service package",
+            description = "Get the number of likes and dislikes, plus current user's interaction (if authenticated)",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PackageInteractionResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<PackageInteractionResponse>> getInteractionStats(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable UUID packageId
+    ) {
+        PackageInteractionResponse response = packageInteractionService.getInteractionStats(packageId);
+        return responseFactory.successSingle(response, "Interaction statistics retrieved successfully");
     }
 }
