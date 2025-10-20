@@ -2,11 +2,14 @@ package com.iseeyou.fortunetelling.entity.servicepackage;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.user.User;
+import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name="package_interaction")
+@Table(name="package_interaction", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id", "package_id"})
+})
 @Builder
 @Getter
 @Setter
@@ -16,8 +19,9 @@ import lombok.*;
         @AttributeOverride(name = "id", column = @Column(name = "package_interaction_id", nullable = false)),
 })
 public class PackageInteraction extends AbstractBaseEntity {
-    @Column(name = "is_like", nullable = false)
-    private boolean isLike;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "interaction_type", nullable = false)
+    private Constants.InteractionTypeEnum interactionType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

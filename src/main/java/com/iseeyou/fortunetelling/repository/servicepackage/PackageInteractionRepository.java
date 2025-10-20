@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.repository.servicepackage;
 
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
+import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,7 @@ public interface PackageInteractionRepository extends JpaRepository<PackageInter
 
     boolean existsByUser_IdAndServicePackage_Id(UUID userId, UUID packageId);
 
-    long countByServicePackage_IdAndIsLikeTrue(UUID packageId);
-
-    long countByServicePackage_IdAndIsLikeFalse(UUID packageId);
+    long countByServicePackage_IdAndInteractionType(UUID packageId, Constants.InteractionTypeEnum interactionType);
+    
+    void deleteByUser_IdAndServicePackage_Id(UUID userId, UUID packageId);
 }
