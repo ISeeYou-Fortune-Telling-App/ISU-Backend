@@ -18,7 +18,7 @@ public interface ReportService {
     Page<Report> findAllReportsByStatus(Constants.ReportStatusEnum status, Pageable pageable);
     Page<ReportType> findAllReportTypes(Pageable pageable);
     Report findReportById(UUID id);
-    Report createReport(Report report, Set<UUID> reportTypeIds, Set<String> evidenceUrls);
+    Report createReport(Report report, Constants.ReportTypeEnum reportTypeEnum, Set<String> evidenceUrls);
     Report deleteReport(UUID id);
     Report updateReport(UUID id, Report report);
 }

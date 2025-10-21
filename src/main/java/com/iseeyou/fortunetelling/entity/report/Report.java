@@ -27,7 +27,7 @@ public class Report extends AbstractBaseEntity {
     @Column(name = "target_id", nullable = false)
     private UUID targetId;
 
-    @Column(name = "report_description", nullable = false, length = 1000)
+    @Column(name = "report_description", length = 1000)
     private String reportDescription;
 
     @Column(name = "status", nullable = false, length = 20)
