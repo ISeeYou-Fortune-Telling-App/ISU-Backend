@@ -128,10 +128,18 @@ public class ReportController extends AbstractBaseController {
         return responseFactory.successSingle(response, "Report retrieved successfully");
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
-            summary = "Create a new report",
+            summary = "Create a new report with image evidence upload",
+            description = "Create a new report. You can upload multiple image files as evidence. " +
+                         "All files will be uploaded to cloud storage and URLs will be stored in the database.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportCreateRequest.class)
+                    )
+            ),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
@@ -160,7 +168,6 @@ public class ReportController extends AbstractBaseController {
             }
     )
     public ResponseEntity<SingleResponse<ReportResponse>> createReport(
-            @Parameter(description = "Report data to create", required = true)
             @ModelAttribute @Valid ReportCreateRequest request
     ) throws IOException {
         Report reportToCreate = reportMapper.mapTo(request, Report.class);
@@ -176,10 +183,8 @@ public class ReportController extends AbstractBaseController {
             }
         }
 
-        // Create set with single report type ID for service method
-        Set<UUID> reportTypeIds = Set.of(request.getReportTypeId());
-
-        Report createdReport = reportService.createReport(reportToCreate, reportTypeIds, evidenceUrls);
+        // Create report with enum report type
+        Report createdReport = reportService.createReport(reportToCreate, request.getReportType(), evidenceUrls);
         ReportResponse response = reportMapper.mapTo(createdReport, ReportResponse.class);
         return responseFactory.successSingle(response, "Report created successfully");
     }

@@ -1,12 +1,20 @@
 package com.iseeyou.fortunetelling.service.report.impl;
 
+import com.iseeyou.fortunetelling.entity.Conversation;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportEvidence;
 import com.iseeyou.fortunetelling.entity.report.ReportType;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
+import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportEvidenceRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportTypeRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.report.ReportService;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -31,6 +39,10 @@ public class ReportServiceImpl implements ReportService {
     private final ReportTypeRepository reportTypeRepository;
     private final UserService userService;
     private final CloudinaryService cloudinaryService;
+    private final UserRepository userRepository;
+    private final ServicePackageRepository servicePackageRepository;
+    private final BookingRepository bookingRepository;
+    private final ConversationRepository conversationRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -83,18 +95,20 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional
-    public Report createReport(Report report, Set<UUID> reportTypeIds, Set<String> evidenceUrls) {
+    public Report createReport(Report report, Constants.ReportTypeEnum reportTypeEnum, Set<String> evidenceUrls) {
         // Set the reporter to current user
         report.setReporter(userService.getUser());
         report.setStatus(Constants.ReportStatusEnum.PENDING);
+        report.setActionType(Constants.ReportActionEnum.NO_ACTION);
 
-        // Handle report type - assuming we take the first one from the set since entity only supports one
-        if (reportTypeIds != null && !reportTypeIds.isEmpty()) {
-            UUID reportTypeId = reportTypeIds.iterator().next();
-            ReportType reportType = reportTypeRepository.findById(reportTypeId)
-                    .orElseThrow(() -> new NotFoundException("ReportType not found with id: " + reportTypeId));
-            report.setReportType(reportType);
-        }
+        // Automatically determine reported user based on target type and target ID
+        User reportedUser = findReportedUserByTargetTypeAndId(report.getTargetType(), report.getTargetId());
+        report.setReportedUser(reportedUser);
+
+        // Find report type by enum
+        ReportType reportType = reportTypeRepository.findByName(reportTypeEnum)
+                .orElseThrow(() -> new NotFoundException("ReportType not found with name: " + reportTypeEnum));
+        report.setReportType(reportType);
 
         // Save the report first
         Report savedReport = reportRepository.save(report);
@@ -110,10 +124,67 @@ public class ReportServiceImpl implements ReportService {
             }
         }
 
-        log.info("Created new report with id: {} for target type: {} with target id: {}",
-                savedReport.getId(), report.getTargetType(), report.getTargetId());
+        log.info("Created new report with id: {} for target type: {} with target id: {} reporting user: {} with report type: {}",
+                savedReport.getId(), report.getTargetType(), report.getTargetId(), reportedUser.getId(), reportTypeEnum);
 
         return savedReport;
+    }
+
+    /**
+     * Automatically find the reported user based on target type and target ID
+     * - SEER: The seer user being reported
+     * - SERVICE_PACKAGE: The seer who owns the package
+     * - BOOKING: The seer in the booking (assuming customer reports seer)
+     * - CHAT: The other participant in the conversation (not the reporter)
+     */
+    private User findReportedUserByTargetTypeAndId(Constants.TargetReportTypeEnum targetType, UUID targetId) {
+        return switch (targetType) {
+            case SEER -> {
+                // Direct user report
+                yield userRepository.findById(targetId)
+                        .orElseThrow(() -> new NotFoundException("User not found with id: " + targetId));
+            }
+            case SERVICE_PACKAGE -> {
+                // Report a service package - reported user is the seer who owns the package
+                ServicePackage servicePackage = servicePackageRepository.findById(targetId)
+                        .orElseThrow(() -> new NotFoundException("Service package not found with id: " + targetId));
+                if (servicePackage.getSeer() == null) {
+                    throw new NotFoundException("Seer not found for service package: " + targetId);
+                }
+                yield servicePackage.getSeer();
+            }
+            case BOOKING -> {
+                // Report a booking - reported user is the seer in the booking
+                Booking booking = bookingRepository.findById(targetId)
+                        .orElseThrow(() -> new NotFoundException("Booking not found with id: " + targetId));
+                if (booking.getServicePackage() == null || booking.getServicePackage().getSeer() == null) {
+                    throw new NotFoundException("Seer not found for booking: " + targetId);
+                }
+                yield booking.getServicePackage().getSeer();
+            }
+            case CHAT -> {
+                // Report a conversation - find the other participant (not the reporter)
+                Conversation conversation = conversationRepository.findById(targetId)
+                        .orElseThrow(() -> new NotFoundException("Conversation not found with id: " + targetId));
+                if (conversation.getBooking() == null) {
+                    throw new NotFoundException("Booking not found for conversation: " + targetId);
+                }
+                Booking booking = conversation.getBooking();
+                User currentUser = userService.getUser();
+                // If current user is customer, reported user is seer and vice versa
+                if (booking.getCustomer() != null && booking.getCustomer().getId().equals(currentUser.getId())) {
+                    if (booking.getServicePackage() == null || booking.getServicePackage().getSeer() == null) {
+                        throw new NotFoundException("Seer not found for conversation: " + targetId);
+                    }
+                    yield booking.getServicePackage().getSeer();
+                } else {
+                    if (booking.getCustomer() == null) {
+                        throw new NotFoundException("Customer not found for conversation: " + targetId);
+                    }
+                    yield booking.getCustomer();
+                }
+            }
+        };
     }
 
     @Override

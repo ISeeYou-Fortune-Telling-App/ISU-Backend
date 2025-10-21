@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.mapper;
 
+import com.iseeyou.fortunetelling.dto.request.report.ReportCreateRequest;
 import com.iseeyou.fortunetelling.dto.response.report.ReportResponse;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -18,6 +19,22 @@ public class ReportMapper extends BaseMapper {
 
     @Override
     protected void configureCustomMappings() {
+        // Configure ReportCreateRequest to Report mapping
+        modelMapper.addMappings(new PropertyMap<ReportCreateRequest, Report>() {
+            @Override
+            protected void configure() {
+                map(source.getTargetReportType(), destination.getTargetType());
+                map(source.getDescription(), destination.getReportDescription());
+                map(source.getTargetId(), destination.getTargetId());
+                // reportType enum and imageFiles are handled separately in controller/service
+                skip(destination.getReporter());
+                skip(destination.getReportedUser());
+                skip(destination.getReportType());
+                skip(destination.getStatus());
+                skip(destination.getActionType());
+            }
+        });
+
         // Configure Report to ReportResponse mapping
         modelMapper.addMappings(new PropertyMap<Report, ReportResponse>() {
             @Override
