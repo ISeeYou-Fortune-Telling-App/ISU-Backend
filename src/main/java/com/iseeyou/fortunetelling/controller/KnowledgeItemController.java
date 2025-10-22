@@ -29,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
@@ -389,6 +390,8 @@ public class KnowledgeItemController extends AbstractBaseController {
     @GetMapping("/search")
     @Operation(
             summary = "Search knowledge items with filters",
+            description = "Search knowledge items by title, filter by multiple categories and status. " +
+                         "You can provide multiple categoryIds to filter items that belong to ANY of those categories.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -412,8 +415,9 @@ public class KnowledgeItemController extends AbstractBaseController {
     public ResponseEntity<PageResponse<KnowledgeItemResponse>> searchKnowledgeItems(
             @Parameter(description = "Search keyword by title")
             @RequestParam(required = false) String title,
-            @Parameter(description = "Category ID filter")
-            @RequestParam(required = false) UUID categoryId,
+            @Parameter(description = "Category IDs filter (multiple values supported)", 
+                      example = "123e4567-e89b-12d3-a456-426614174000,223e4567-e89b-12d3-a456-426614174001")
+            @RequestParam(required = false) List<UUID> categoryIds,
             @Parameter(description = "Status filter")
             @RequestParam(required = false) Constants.KnowledgeItemStatusEnum status,
             @Parameter(description = "Page number (1-based)")
@@ -426,7 +430,7 @@ public class KnowledgeItemController extends AbstractBaseController {
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, categoryId, status, pageable);
+        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, categoryIds, status, pageable);
         Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
         return responseFactory.successPage(response, "Knowledge items searched successfully");
     }
