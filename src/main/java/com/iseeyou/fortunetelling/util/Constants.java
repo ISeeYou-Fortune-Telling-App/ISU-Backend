@@ -218,9 +218,9 @@ public final class Constants {
     @Getter
     @AllArgsConstructor
     public enum PaymentMethodEnum {
-        MOMO("MOMO"),
-        VNPAY("VNPAY"),
-        PAYPAL("PAYPAL");
+        // MOMO("MOMO"),  // Temporarily disabled
+        // VNPAY("VNPAY"),  // Temporarily disabled
+        PAYPAL("PAYPAL");  // Only PayPal is supported temporarily
 
         private final String value;
 
@@ -228,7 +228,7 @@ public final class Constants {
             return Stream.of(PaymentMethodEnum.values())
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s", name)));
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s. Currently only PAYPAL is supported", name)));
         }
     }
 
