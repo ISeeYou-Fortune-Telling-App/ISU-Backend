@@ -6,9 +6,19 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
-public interface ConverstationService {
+public interface ConversationService {
     ChatSessionResponse createChatSession(UUID bookingId);
     ChatSessionResponse getChatSessionByBookingId(UUID bookingId);
     Page<ChatSessionResponse> getMyChatSessions(Pageable pageable);
     void endChatSession(UUID conversationId);
+
+    // Auto-cancel late sessions
+    void cancelLateSession(UUID conversationId);
+
+    //Warning & auto-end
+    void sendWarningNotification(UUID conversationId);
+    void autoEndSession(UUID conversationId); // auto end if 10 mins late (system)
+
+    //Extend session
+    void extendSession(UUID conversationId, Integer additionalMinutes);
 }

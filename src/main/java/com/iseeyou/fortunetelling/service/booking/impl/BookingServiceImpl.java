@@ -10,7 +10,7 @@ import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
-import com.iseeyou.fortunetelling.service.converstation.ConverstationService;
+import com.iseeyou.fortunetelling.service.converstation.ConversationService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -35,7 +35,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingPaymentRepository bookingPaymentRepository;
     private final UserService userService;
     private final ServicePackageService servicePackageService;
-    private final ConverstationService conversationService;
+    private final ConversationService conversationService;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
 
     @Override
