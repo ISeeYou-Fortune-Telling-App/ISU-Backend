@@ -164,7 +164,9 @@ public class KnowledgeItemServiceImpl implements KnowledgeItemService {
 
     @Override
     @Transactional
-    public Page<KnowledgeItem> search(String title, UUID categoryId, Constants.KnowledgeItemStatusEnum status, Pageable pageable) {
-        return knowledgeItemRepository.search(title, categoryId, status, pageable);
+    public Page<KnowledgeItem> search(String title, List<UUID> categoryIds, Constants.KnowledgeItemStatusEnum status, Pageable pageable) {
+        // Convert empty list to null to avoid empty IN clause
+        List<UUID> effectiveCategoryIds = (categoryIds != null && categoryIds.isEmpty()) ? null : categoryIds;
+        return knowledgeItemRepository.search(title, effectiveCategoryIds, status, pageable);
     }
 }

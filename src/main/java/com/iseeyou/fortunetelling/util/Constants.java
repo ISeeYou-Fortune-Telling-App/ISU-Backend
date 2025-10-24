@@ -228,7 +228,7 @@ public final class Constants {
             return Stream.of(PaymentMethodEnum.values())
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s", name)));
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment method name: %s. Currently only PAYPAL is supported", name)));
         }
     }
 

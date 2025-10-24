@@ -466,31 +466,42 @@ public class BookingController extends AbstractBaseController {
     }
 
     @GetMapping("/payment/success")
-    @Operation(summary = "Only for redirect URL from payment gateways")
+    @Operation(summary = "Only for redirect URL from payment gateways (Currently only PayPal)")
     public ResponseEntity<SingleResponse<BookingPaymentResponse>> paymentSuccess(
-            @RequestParam(value = "paymentId", required = false) String paymentId,
-            @RequestParam(value = "PayerID", required = false) String payerId,
-            @RequestParam(required = false) String vnp_BankCode,
-            @RequestParam(required = false) String vnp_CardType,
-            @RequestParam(required = false) String vnp_TransactionNo,
-            @RequestParam(required = false) String vnp_ResponseCode,
-            @RequestParam(required = false) String vnp_TxnRef
+            @RequestParam(value = "paymentId", required = true) String paymentId,
+            @RequestParam(value = "PayerID", required = true) String payerId
+            // VNPay parameters temporarily disabled
+            // @RequestParam(required = false) String vnp_BankCode,
+            // @RequestParam(required = false) String vnp_CardType,
+            // @RequestParam(required = false) String vnp_TransactionNo,
+            // @RequestParam(required = false) String vnp_ResponseCode,
+            // @RequestParam(required = false) String vnp_TxnRef
     ) {
-        BookingPayment bookingPayment = null;
-        if (paymentId != null && payerId != null) {
-            bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.PAYPAL, Map.of(
-                    "paymentId", paymentId,
-                    "PayerID", payerId
-            ));
-        } else {
-            bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.VNPAY, Map.of(
-                    "vnp_BankCode", vnp_BankCode,
-                    "vnp_CardType", vnp_CardType,
-                    "vnp_TransactionNo", vnp_TransactionNo,
-                    "vnp_ResponseCode", vnp_ResponseCode,
-                    "vnp_TxnRef", vnp_TxnRef
-            ));
-        }
+        // Only PayPal is supported temporarily
+        BookingPayment bookingPayment = bookingService.executePayment(
+                Constants.PaymentMethodEnum.PAYPAL, 
+                Map.of(
+                        "paymentId", paymentId,
+                        "PayerID", payerId
+                )
+        );
+        
+        // VNPay disabled
+        // if (paymentId != null && payerId != null) {
+        //     bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.PAYPAL, Map.of(
+        //             "paymentId", paymentId,
+        //             "PayerID", payerId
+        //     ));
+        // } else {
+        //     bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.VNPAY, Map.of(
+        //             "vnp_BankCode", vnp_BankCode,
+        //             "vnp_CardType", vnp_CardType,
+        //             "vnp_TransactionNo", vnp_TransactionNo,
+        //             "vnp_ResponseCode", vnp_ResponseCode,
+        //             "vnp_TxnRef", vnp_TxnRef
+        //     ));
+        // }
+        
         BookingPaymentResponse response = bookingMapper.mapTo(bookingPayment, BookingPaymentResponse.class);
         return responseFactory.successSingle(response, "Payment executed successfully");
     }
