@@ -1,11 +1,14 @@
 package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
 import com.iseeyou.fortunetelling.util.Constants;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -24,6 +27,7 @@ public class ServicePackageResponse {
     private String rejectionReason;
     private Long likeCount;
     private Long dislikeCount;
+    private List<UserInteractionInfo> userInteractions; // Array of users who interacted
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -36,5 +40,16 @@ public class ServicePackageResponse {
         private String avatarUrl;
         private Double avgRating;
         private Integer totalRates;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class UserInteractionInfo {
+        private UUID userId;
+        private String name;
+        private String avatar;
+        private String typeInteract; // LIKE or DISLIKE
     }
 }

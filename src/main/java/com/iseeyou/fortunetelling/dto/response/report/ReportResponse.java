@@ -13,7 +13,6 @@ import java.util.UUID;
 @SuperBuilder
 @NoArgsConstructor
 public class ReportResponse extends AbstractBaseDataResponse {
-    private UUID reporterId;
     private UserInfo reporter;
     private UserInfo reported;
     private String targetReportType;

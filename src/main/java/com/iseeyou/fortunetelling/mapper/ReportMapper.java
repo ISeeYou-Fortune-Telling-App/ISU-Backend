@@ -39,9 +39,6 @@ public class ReportMapper extends BaseMapper {
         modelMapper.addMappings(new PropertyMap<Report, ReportResponse>() {
             @Override
             protected void configure() {
-                // Map reporter fields
-                map().setReporterId(source.getReporter().getId());
-
                 // Map enum values to strings
                 using((Converter<Object, String>) ctx ->
                     ctx.getSource() != null ? ctx.getSource().toString() : null)

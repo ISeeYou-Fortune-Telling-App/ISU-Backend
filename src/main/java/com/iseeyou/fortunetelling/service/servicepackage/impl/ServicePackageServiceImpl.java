@@ -2,18 +2,24 @@ package com.iseeyou.fortunetelling.service.servicepackage.impl;
 
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.config.CloudinaryConfig;
 import com.iseeyou.fortunetelling.util.Constants;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,8 +31,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +45,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final KnowledgeCategoryRepository knowledgeCategoryRepository;
     private final CloudinaryConfig cloudinaryConfig;
     private final UserRepository userRepository;
+    private final PackageInteractionRepository interactionRepository;
+    private final UserService userService;
+    private final ServicePackageMapper servicePackageMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -229,5 +240,140 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .updatedAt(servicePackage.getUpdatedAt())
                 .seer(seerInfo)
                 .build();
+    }
+
+    // ============ Interaction methods (merged from PackageInteractionService) ============
+
+    @Override
+    @Transactional
+    public ServicePackageResponse toggleInteraction(UUID packageId, Constants.InteractionTypeEnum interactionType) {
+        User currentUser = userService.getUser();
+        ServicePackage servicePackage = servicePackageRepository.findById(packageId)
+                .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
+
+        Optional<PackageInteraction> existingInteraction = 
+                interactionRepository.findByUser_IdAndServicePackage_Id(currentUser.getId(), packageId);
+
+        if (existingInteraction.isPresent()) {
+            PackageInteraction interaction = existingInteraction.get();
+            
+            if (interaction.getInteractionType() == interactionType) {
+                // Same type clicked again -> Remove interaction (toggle off)
+                log.info("User {} removing {} from package {}", currentUser.getId(), interactionType, packageId);
+                interactionRepository.delete(interaction);
+            } else {
+                // Different type clicked -> Change interaction
+                log.info("User {} changing interaction from {} to {} on package {}", 
+                        currentUser.getId(), interaction.getInteractionType(), interactionType, packageId);
+                interaction.setInteractionType(interactionType);
+                interactionRepository.save(interaction);
+            }
+        } else {
+            // No existing interaction -> Create new one
+            log.info("User {} adding {} to package {}", currentUser.getId(), interactionType, packageId);
+            PackageInteraction newInteraction = PackageInteraction.builder()
+                    .user(currentUser)
+                    .servicePackage(servicePackage)
+                    .interactionType(interactionType)
+                    .build();
+            interactionRepository.save(newInteraction);
+        }
+
+        // Update counts in service package
+        updatePackageCounts(packageId);
+
+        return getPackageWithInteractions(packageId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServicePackageResponse getPackageWithInteractions(UUID packageId) {
+        ServicePackage servicePackage = servicePackageRepository.findById(packageId)
+                .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
+
+        // Map service package to response
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+
+        // Get all interactions with user info
+        List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(packageId);
+        
+        List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
+                .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
+                        .userId(interaction.getUser().getId())
+                        .name(interaction.getUser().getFullName())
+                        .avatar(interaction.getUser().getAvatarUrl())
+                        .typeInteract(interaction.getInteractionType().getValue())
+                        .build())
+                .collect(Collectors.toList());
+
+        response.setUserInteractions(userInteractions);
+
+        return response;
+    }
+
+    @Transactional
+    private void updatePackageCounts(UUID packageId) {
+        ServicePackage servicePackage = servicePackageRepository.findById(packageId)
+                .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
+
+        long likeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                packageId, Constants.InteractionTypeEnum.LIKE);
+        long dislikeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                packageId, Constants.InteractionTypeEnum.DISLIKE);
+
+        servicePackage.setLikeCount(likeCount);
+        servicePackage.setDislikeCount(dislikeCount);
+        servicePackageRepository.save(servicePackage);
+
+        log.debug("Updated package {} counts: {} likes, {} dislikes", packageId, likeCount, dislikeCount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable, Double minPrice, Double maxPrice) {
+        Page<ServicePackage> servicePackages;
+        
+        if (minPrice != null || maxPrice != null) {
+            servicePackages = findAvailableWithFilters(minPrice, maxPrice, pageable);
+        } else {
+            servicePackages = findAllAvailable(pageable);
+        }
+        
+        return enrichWithInteractions(servicePackages);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(
+            Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice) {
+        Page<ServicePackage> servicePackages = findAvailableByCategoryWithFilters(category, minPrice, maxPrice, pageable);
+        return enrichWithInteractions(servicePackages);
+    }
+
+    /**
+     * Helper method to enrich service packages with user interaction data
+     */
+    private Page<ServicePackageResponse> enrichWithInteractions(Page<ServicePackage> servicePackages) {
+        return servicePackages.map(pkg -> {
+            // Map basic package info
+            ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
+            
+            // Get all interactions for this package
+            List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(pkg.getId());
+            
+            // Map interactions to UserInteractionInfo
+            List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
+                    .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
+                            .userId(interaction.getUser().getId())
+                            .name(interaction.getUser().getFullName())
+                            .avatar(interaction.getUser().getAvatarUrl())
+                            .typeInteract(interaction.getInteractionType().getValue())
+                            .build())
+                    .collect(Collectors.toList());
+            
+            response.setUserInteractions(userInteractions);
+            
+            return response;
+        });
     }
 }

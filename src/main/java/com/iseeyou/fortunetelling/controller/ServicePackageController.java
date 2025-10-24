@@ -6,12 +6,10 @@ import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpser
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
-import com.iseeyou.fortunetelling.dto.response.servicepackage.PackageInteractionResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
-import com.iseeyou.fortunetelling.service.servicepackage.PackageInteractionService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,7 +40,6 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 public class ServicePackageController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
-    private final PackageInteractionService packageInteractionService;
     private final ServicePackageMapper servicePackageMapper;
 
     @GetMapping
@@ -83,15 +80,7 @@ public class ServicePackageController extends AbstractBaseController {
             @RequestParam(required = false) Double maxPrice
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ServicePackage> servicePackages;
-
-        if (minPrice != null || maxPrice != null) {
-            servicePackages = servicePackageService.findAvailableWithFilters(minPrice, maxPrice, pageable);
-        } else {
-            servicePackages = servicePackageService.findAllAvailable(pageable);
-        }
-
-        Page<ServicePackageResponse> response = servicePackageMapper.mapToPage(servicePackages, ServicePackageResponse.class);
+        Page<ServicePackageResponse> response = servicePackageService.getAllPackagesWithInteractions(pageable, minPrice, maxPrice);
         return responseFactory.successPage(response, "Service packages retrieved successfully");
     }
 
@@ -218,8 +207,7 @@ public class ServicePackageController extends AbstractBaseController {
         Constants.ServiceCategoryEnum categoryEnum = Constants.ServiceCategoryEnum.get(category);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
 
-        Page<ServicePackage> servicePackages = servicePackageService.findAvailableByCategoryWithFilters(categoryEnum, minPrice, maxPrice, pageable);
-        Page<ServicePackageResponse> response = servicePackageMapper.mapToPage(servicePackages, ServicePackageResponse.class);
+        Page<ServicePackageResponse> response = servicePackageService.getPackagesByCategoryWithInteractions(categoryEnum, pageable, minPrice, maxPrice);
 
         return responseFactory.successPage(response,
                 String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));
@@ -231,7 +219,8 @@ public class ServicePackageController extends AbstractBaseController {
             description = "Toggle like/dislike on a service package. " +
                     "Click LIKE: +1 like (or remove if already liked). " +
                     "Click DISLIKE: +1 dislike (or remove if already disliked). " +
-                    "Click DISLIKE when LIKED: remove like and add dislike (and vice versa)",
+                    "Click DISLIKE when LIKED: remove like and add dislike (and vice versa). " +
+                    "Returns full service package response with all user interactions.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -239,7 +228,7 @@ public class ServicePackageController extends AbstractBaseController {
                             description = "Interaction updated successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PackageInteractionResponse.class)
+                                    schema = @Schema(implementation = ServicePackageResponse.class)
                             )
                     ),
                     @ApiResponse(
@@ -268,28 +257,28 @@ public class ServicePackageController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<PackageInteractionResponse>> toggleInteraction(
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> toggleInteraction(
             @Parameter(description = "Service Package ID", required = true)
             @PathVariable UUID packageId,
             @Parameter(description = "Interaction request (LIKE or DISLIKE)", required = true)
             @RequestBody @Valid PackageInteractionRequest request
     ) {
         Constants.InteractionTypeEnum interactionType = Constants.InteractionTypeEnum.get(request.getInteractionType());
-        PackageInteractionResponse response = packageInteractionService.toggleInteraction(packageId, interactionType);
+        ServicePackageResponse response = servicePackageService.toggleInteraction(packageId, interactionType);
         return responseFactory.successSingle(response, "Interaction updated successfully");
     }
 
-    @GetMapping("/{packageId}/interaction-stats")
+    @GetMapping("/{packageId}/interactions")
     @Operation(
-            summary = "Get like/dislike statistics for a service package",
-            description = "Get the number of likes and dislikes, plus current user's interaction (if authenticated)",
+            summary = "Get service package with all user interactions",
+            description = "Get service package information with list of all users who interacted (liked/disliked)",
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Statistics retrieved successfully",
+                            description = "Service package with interactions retrieved successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PackageInteractionResponse.class)
+                                    schema = @Schema(implementation = ServicePackageResponse.class)
                             )
                     ),
                     @ApiResponse(
@@ -302,11 +291,11 @@ public class ServicePackageController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<SingleResponse<PackageInteractionResponse>> getInteractionStats(
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> getPackageWithInteractions(
             @Parameter(description = "Service Package ID", required = true)
             @PathVariable UUID packageId
     ) {
-        PackageInteractionResponse response = packageInteractionService.getInteractionStats(packageId);
-        return responseFactory.successSingle(response, "Interaction statistics retrieved successfully");
+        ServicePackageResponse response = servicePackageService.getPackageWithInteractions(packageId);
+        return responseFactory.successSingle(response, "Service package with interactions retrieved successfully");
     }
 }

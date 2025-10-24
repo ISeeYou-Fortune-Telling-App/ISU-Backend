@@ -218,9 +218,9 @@ public final class Constants {
     @Getter
     @AllArgsConstructor
     public enum PaymentMethodEnum {
-        // MOMO("MOMO"),  // Temporarily disabled
-        // VNPAY("VNPAY"),  // Temporarily disabled
-        PAYPAL("PAYPAL");  // Only PayPal is supported temporarily
+        MOMO("MOMO"),
+        VNPAY("VNPAY"),
+        PAYPAL("PAYPAL");
 
         private final String value;
 
