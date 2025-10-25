@@ -194,6 +194,117 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
+    public Booking cancelBooking(UUID id) {
+        log.info("Starting cancel booking process for booking {}", id);
+        
+        // 1. Find booking
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
+        
+        // 2. Validate booking status - can only cancel PENDING or CONFIRMED bookings
+        if (booking.getStatus() == Constants.BookingStatusEnum.CANCELED) {
+            throw new IllegalArgumentException("Booking is already cancelled");
+        }
+        
+        if (booking.getStatus() == Constants.BookingStatusEnum.COMPLETED) {
+            throw new IllegalArgumentException("Cannot cancel a completed booking");
+        }
+        
+        if (booking.getStatus() == Constants.BookingStatusEnum.FAILED) {
+            throw new IllegalArgumentException("Cannot cancel a failed booking");
+        }
+        
+        // 3. Validate user permission - only customer can cancel their own booking
+        User currentUser = userService.getUser();
+        boolean isCustomer = booking.getCustomer().getId().equals(currentUser.getId());
+        
+        if (!isCustomer) {
+            throw new IllegalArgumentException("Only the booking customer can cancel this booking");
+        }
+        
+        // 4. Validate cancellation time - must be at least 2 hours before scheduled time
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime scheduledTime = booking.getScheduledTime();
+        
+        if (scheduledTime == null) {
+            log.warn("Booking {} has no scheduled time. Allowing cancellation.", id);
+        } else {
+            LocalDateTime cancellationDeadline = scheduledTime.minusHours(2);
+            
+            if (now.isAfter(cancellationDeadline)) {
+                long hoursUntilScheduled = java.time.Duration.between(now, scheduledTime).toHours();
+                throw new IllegalArgumentException(
+                    String.format("Cannot cancel booking less than 2 hours before scheduled time. " +
+                                "Your booking is scheduled for %s (in %d hours). " +
+                                "Cancellation deadline was %s.",
+                                scheduledTime.toString(),
+                                hoursUntilScheduled,
+                                cancellationDeadline.toString())
+                );
+            }
+            
+            log.info("Cancellation allowed. Current time: {}, Scheduled time: {}, Deadline: {}", 
+                    now, scheduledTime, cancellationDeadline);
+        }
+        
+        // 5. Check if there's a completed payment to refund
+        BookingPayment completedPayment = booking.getBookingPayments().stream()
+                .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
+                .findFirst()
+                .orElse(null);
+        
+        if (completedPayment != null) {
+            log.info("Found completed payment {} for booking {}. Processing refund.", 
+                    completedPayment.getId(), id);
+            
+            // Process refund through payment strategy
+            try {
+                PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
+                
+                if (paymentStrategy == null) {
+                    throw new IllegalArgumentException(
+                        "Payment method not supported for refund: " + completedPayment.getPaymentMethod()
+                    );
+                }
+                
+                // Call strategy to refund payment
+                BookingPayment refundedPayment = paymentStrategy.refund(id, completedPayment);
+                log.info("Payment {} refunded successfully", refundedPayment.getId());
+                
+            } catch (Exception e) {
+                log.error("Failed to refund payment for booking {}: {}", id, e.getMessage(), e);
+                throw new RuntimeException(
+                    "Cancellation failed: Unable to process refund. " + e.getMessage(), e
+                );
+            }
+        } else {
+            log.info("No completed payment found for booking {}. No refund needed.", id);
+        }
+        
+        // 6. Update booking status to CANCELED
+        booking.setStatus(Constants.BookingStatusEnum.CANCELED);
+        Booking cancelledBooking = bookingRepository.save(booking);
+        
+        log.info("Booking {} cancelled successfully by user {}", id, currentUser.getId());
+        
+        // TODO: Send push notification to seer about booking cancellation
+        // This will notify the seer that the customer has cancelled the booking
+        // Implementation pending: Push notification service integration
+        // Expected payload: {
+        //   "type": "BOOKING_CANCELLED",
+        //   "bookingId": id,
+        //   "customerId": currentUser.getId(),
+        //   "customerName": currentUser.getFullName(),
+        //   "seerId": booking.getServicePackage().getSeer().getId(),
+        //   "scheduledTime": scheduledTime,
+        //   "message": "Customer {customerName} has cancelled booking {bookingId} scheduled for {scheduledTime}"
+        // }
+        
+        return cancelledBooking;
+    }
+
+    @Override
+    @Transactional
     public Booking refundBooking(UUID id) {
         log.info("Starting refund process for booking {}", id);
         

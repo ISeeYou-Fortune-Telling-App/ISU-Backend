@@ -27,6 +27,7 @@ public interface BookingService {
     Booking updateBooking(UUID id, BookingUpdateRequest request);
     void deleteBooking(UUID id);
     Booking refundBooking(UUID id);
+    Booking cancelBooking(UUID id);
     
     // Review methods
     BookingReviewResponse submitReview(UUID bookingId, BookingReviewRequest reviewRequest);

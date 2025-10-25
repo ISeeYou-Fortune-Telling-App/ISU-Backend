@@ -265,9 +265,60 @@ public class BookingController extends AbstractBaseController {
         return responseFactory.successSingle("Booking deleted successfully", "Booking deleted successfully");
     }
 
+    @PostMapping("/{id}/cancel")
+    @Operation(
+            summary = "Cancel booking (Customer only)",
+            description = "Allows customer to cancel their booking. Booking must be cancelled at least 2 hours before scheduled time. " +
+                         "If payment was completed, refund will be processed automatically. Only PENDING or CONFIRMED bookings can be cancelled.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Booking cancelled successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Booking not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Booking cannot be cancelled - already cancelled, completed, failed, or less than 2 hours before scheduled time",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized - only booking customer can cancel",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<BookingResponse>> cancelBooking(
+            @Parameter(description = "Booking ID", required = true)
+            @PathVariable UUID id
+    ) {
+        Booking cancelledBooking = bookingService.cancelBooking(id);
+        BookingResponse response = bookingMapper.mapTo(cancelledBooking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking cancelled and refund processed successfully");
+    }
+
     @PostMapping("/{id}/refund")
     @Operation(
-            summary = "Refund booking",
+            summary = "Refund booking (Admin only)",
+            description = "Administrative endpoint to manually refund a booking. Use /cancel endpoint for customer-initiated cancellations.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
