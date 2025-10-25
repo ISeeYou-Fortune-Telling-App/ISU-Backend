@@ -273,6 +273,48 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void deleteServicePackage(String id) {
+        log.info("Starting soft delete process for service package {}", id);
+        
+        // 1. Find service package
+        ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+        
+        // 2. Check if already deleted
+        if (servicePackage.getDeletedAt() != null) {
+            throw new IllegalArgumentException("Service package is already deleted");
+        }
+        
+        // 3. Validate permission - seer can only delete their own packages, admin can delete any
+        User currentUser = userService.getUser();
+        boolean isSeerOwner = servicePackage.getSeer() != null && 
+                              servicePackage.getSeer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
+        
+        if (!isSeerOwner && !isAdmin) {
+            throw new IllegalArgumentException(
+                "Access denied: Only the package owner or admin can delete this service package"
+            );
+        }
+        
+        // 4. Check if package has active bookings
+        long activeBookingsCount = bookingRepository.countBySeer(servicePackage.getSeer());
+        if (activeBookingsCount > 0) {
+            log.warn("Service package {} has {} active bookings, but soft delete will proceed", 
+                    id, activeBookingsCount);
+            // Soft delete allows us to keep the data for these bookings
+        }
+        
+        // 5. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
+        // which sets deleted_at = NOW()
+        servicePackageRepository.delete(servicePackage);
+        
+        log.info("Service package {} soft deleted successfully by user {} (role: {})", 
+                id, currentUser.getId(), currentUser.getRole());
+    }
+
     // ============ Interaction methods (merged from PackageInteractionService) ============
 
     @Override
