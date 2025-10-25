@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,6 +20,5 @@ public interface KnowledgeItemService {
     KnowledgeItem update(UUID id, KnowledgeItem knowledgeItem, Set<UUID> categoryIds) throws IOException;
     void delete(UUID id) throws IOException;
     void view(UUID id);
-    // TODO: Full text search by name
-    Page<KnowledgeItem> search(String title, UUID categoryId, Constants.KnowledgeItemStatusEnum status, Pageable pageable);
+    Page<KnowledgeItem> search(String title, List<UUID> categoryIds, Constants.KnowledgeItemStatusEnum status, Pageable pageable);
 }

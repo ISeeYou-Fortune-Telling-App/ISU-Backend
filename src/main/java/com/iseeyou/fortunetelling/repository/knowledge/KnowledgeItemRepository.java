@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -30,11 +31,11 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
     @Query("SELECT DISTINCT knowledgeItem FROM KnowledgeItem knowledgeItem " +
             "LEFT JOIN knowledgeItem.itemCategories itemCategories " +
             "WHERE (:title IS NULL OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
-            "AND (:categoryId IS NULL OR itemCategories.knowledgeCategory.id = :categoryId) " +
+            "AND (:categoryIds IS NULL OR itemCategories.knowledgeCategory.id IN :categoryIds) " +
             "AND (:status IS NULL OR knowledgeItem.status = :status)")
     Page<KnowledgeItem> search(
             @Param("title") String title,
-            @Param("categoryId") UUID categoryId,
+            @Param("categoryIds") List<UUID> categoryIds,
             @Param("status") Constants.KnowledgeItemStatusEnum status,
             Pageable pageable
     );

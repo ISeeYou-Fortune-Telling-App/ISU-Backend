@@ -105,6 +105,11 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod) {
+        // Validate that only PayPal is supported temporarily
+        if (paymentMethod != Constants.PaymentMethodEnum.PAYPAL) {
+            throw new IllegalArgumentException("Currently only PayPal payment method is supported. Please use PAYPAL.");
+        }
+        
         booking.setStatus(Constants.BookingStatusEnum.PENDING);
         booking.setServicePackage(servicePackageService.findById(packageId.toString()));
         User customer = userService.getUser();
