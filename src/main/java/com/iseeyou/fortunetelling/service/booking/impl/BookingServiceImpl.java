@@ -195,7 +195,96 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking refundBooking(UUID id) {
-        return null;
+        log.info("Starting refund process for booking {}", id);
+        
+        // 1. Find booking with payments
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
+        
+        // 2. Validate booking status - cannot refund already cancelled or completed bookings
+        if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED)) {
+            throw new IllegalArgumentException("Booking is already cancelled. Cannot refund.");
+        }
+        
+        if (booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
+            throw new IllegalArgumentException("Cannot refund a completed booking. Please contact support.");
+        }
+        
+        if (booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+            throw new IllegalArgumentException("Cannot refund a failed booking.");
+        }
+        
+        // 3. Validate user permission - only customer can refund their own booking (or admin)
+        User currentUser = userService.getUser();
+        boolean isCustomer = booking.getCustomer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
+        
+        if (!isCustomer && !isAdmin) {
+            throw new IllegalArgumentException("Only the booking customer or admin can request a refund");
+        }
+        
+        // 4. Find completed payment to refund
+        BookingPayment completedPayment = booking.getBookingPayments().stream()
+                .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
+                .findFirst()
+                .orElse(null);
+        
+        if (completedPayment == null) {
+            log.warn("No completed payment found for booking {}", id);
+            throw new IllegalArgumentException("No completed payment found for this booking. Nothing to refund.");
+        }
+        
+        // 5. Check if payment was already refunded
+        boolean hasRefundedPayment = booking.getBookingPayments().stream()
+                .anyMatch(p -> p.getStatus().equals(Constants.PaymentStatusEnum.REFUNDED));
+        
+        if (hasRefundedPayment) {
+            throw new IllegalArgumentException("This booking has already been refunded");
+        }
+        
+        // 6. Process refund through payment strategy
+        try {
+            PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
+            
+            if (paymentStrategy == null) {
+                throw new IllegalArgumentException(
+                    "Payment method not supported for refund: " + completedPayment.getPaymentMethod()
+                );
+            }
+            
+            log.info("Processing refund for payment {} using {} strategy", 
+                    completedPayment.getId(), completedPayment.getPaymentMethod());
+            
+            // Call strategy to refund payment
+            BookingPayment refundedPayment = paymentStrategy.refund(id, completedPayment);
+            
+            // 7. Update booking status to CANCELED
+            booking.setStatus(Constants.BookingStatusEnum.CANCELED);
+            Booking updatedBooking = bookingRepository.save(booking);
+            
+            log.info("Booking {} refunded successfully. Payment {} status: REFUNDED", 
+                    id, refundedPayment.getId());
+            
+            return updatedBooking;
+            
+        } catch (IllegalArgumentException e) {
+            // These are validation errors with clear messages - pass them through
+            log.error("Refund validation failed for booking {}: {}", id, e.getMessage());
+            throw e;
+        } catch (PayPalRESTException e) {
+            log.error("PayPal refund processing failed for booking {}: {} - Details: {}", 
+                    id, e.getMessage(), e.getDetails(), e);
+            
+            // Provide more specific error messages based on PayPal error codes
+            String errorMessage = buildRefundErrorMessage(id, completedPayment, e);
+            throw new RuntimeException(errorMessage, e);
+        } catch (UnsupportedOperationException e) {
+            log.error("Refund not supported for booking {}: {}", id, e.getMessage());
+            throw new IllegalArgumentException(e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error during refund for booking {}: {}", id, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error during refund processing. Please contact support with booking ID: " + id, e);
+        }
     }
 
     @Override
@@ -266,5 +355,106 @@ public class BookingServiceImpl implements BookingService {
                         .packageTitle(booking.getServicePackage().getPackageTitle())
                         .build())
                 .build());
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsWithInvalidTransactionIds(Pageable pageable) {
+        log.info("Searching for payments with invalid transaction IDs");
+        
+        // Get all payments and filter for invalid ones
+        Page<BookingPayment> allPayments = bookingPaymentRepository.findAll(pageable);
+        
+        // Filter in-memory for invalid transaction IDs
+        // Note: This is not optimal for large datasets, but suitable for admin debugging
+        java.util.List<BookingPayment> invalidPayments = allPayments.getContent().stream()
+            .filter(payment -> isInvalidPayment(payment))
+            .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Found {} payments with invalid transaction IDs out of {} total", 
+                invalidPayments.size(), allPayments.getContent().size());
+        
+        return new org.springframework.data.domain.PageImpl<>(
+            invalidPayments, 
+            pageable, 
+            invalidPayments.size()
+        );
+    }
+    
+    /**
+     * Check if a payment has invalid transaction ID
+     */
+    private boolean isInvalidPayment(BookingPayment payment) {
+        // Check if completed/refunded payment is missing transaction ID
+        if ((payment.getStatus() == Constants.PaymentStatusEnum.COMPLETED || 
+             payment.getStatus() == Constants.PaymentStatusEnum.REFUNDED) &&
+            (payment.getTransactionId() == null || payment.getTransactionId().trim().isEmpty())) {
+            log.debug("Payment {} has status {} but missing transaction ID", 
+                    payment.getId(), payment.getStatus());
+            return true;
+        }
+        
+        // Check if PayPal payment has invalid transaction ID format
+        if (payment.getPaymentMethod() == Constants.PaymentMethodEnum.PAYPAL &&
+            payment.getTransactionId() != null && 
+            !payment.getTransactionId().trim().isEmpty()) {
+            
+            String txnId = payment.getTransactionId();
+            // Check for invalid prefixes indicating wrong payment method
+            if (txnId.toUpperCase().startsWith("MOMO_") || 
+                txnId.toUpperCase().startsWith("VNPAY_") ||
+                txnId.toUpperCase().startsWith("ZALOPAY_") ||
+                txnId.toUpperCase().startsWith("BANKING_")) {
+                log.debug("PayPal payment {} has invalid transaction ID with wrong prefix: {}", 
+                        payment.getId(), txnId);
+                return true;
+            }
+            
+            // Check for other invalid patterns
+            if (txnId.length() < 5 || txnId.length() > 100) {
+                log.debug("PayPal payment {} has invalid transaction ID length: {}", 
+                        payment.getId(), txnId.length());
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Build a user-friendly error message for refund failures
+     */
+    private String buildRefundErrorMessage(UUID bookingId, BookingPayment payment, PayPalRESTException e) {
+        StringBuilder message = new StringBuilder();
+        message.append("Refund failed for booking ").append(bookingId).append(". ");
+        
+        // Check for specific PayPal error codes
+        if (e.getDetails() != null && e.getDetails().contains("INVALID_RESOURCE_ID")) {
+            message.append("The payment transaction could not be found in PayPal system. ");
+            message.append("This may occur if: ");
+            message.append("(1) The payment was created with a different payment gateway, ");
+            message.append("(2) The transaction ID is invalid or corrupted (Current ID: '")
+                   .append(payment.getTransactionId()).append("'), ");
+            message.append("(3) The payment is too old and no longer available for refund. ");
+            message.append("Please contact support for manual refund processing.");
+        } else if (e.getDetails() != null && e.getDetails().contains("TRANSACTION_REFUSED")) {
+            message.append("The refund was refused by PayPal. ");
+            message.append("The transaction may have already been refunded or is not eligible for refund. ");
+            message.append("Please contact support.");
+        } else if (e.getDetails() != null && e.getDetails().contains("INSUFFICIENT_FUNDS")) {
+            message.append("Insufficient funds in merchant account to process refund. ");
+            message.append("Please contact support immediately.");
+        } else {
+            // Generic error
+            message.append("PayPal returned an error: ").append(e.getMessage()).append(". ");
+            message.append("Please contact support with this booking ID for assistance.");
+        }
+        
+        // Always include booking ID and payment ID for support
+        message.append(" [Booking ID: ").append(bookingId)
+               .append(", Payment ID: ").append(payment.getId())
+               .append(", Transaction ID: ").append(payment.getTransactionId()).append("]");
+        
+        return message.toString();
     }
 }

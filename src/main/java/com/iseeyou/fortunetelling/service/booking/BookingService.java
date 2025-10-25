@@ -31,4 +31,7 @@ public interface BookingService {
     // Review methods
     BookingReviewResponse submitReview(UUID bookingId, BookingReviewRequest reviewRequest);
     Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable);
+    
+    // Admin/Debug methods
+    Page<BookingPayment> findPaymentsWithInvalidTransactionIds(Pageable pageable);
 }

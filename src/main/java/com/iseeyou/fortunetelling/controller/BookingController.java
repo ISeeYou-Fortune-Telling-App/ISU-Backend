@@ -552,4 +552,44 @@ public class BookingController extends AbstractBaseController {
     public ResponseEntity<SingleResponse<String>> paymentCancel() {
         return responseFactory.successSingle("Payment cancelled", "Payment cancelled");
     }
+
+    @GetMapping("/payments/invalid")
+    @Operation(
+            summary = "Get payments with invalid transaction IDs (Admin/Debug)",
+            description = "Returns payments that have invalid or missing transaction IDs. Useful for debugging payment issues.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> getInvalidPayments(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingPayment> invalidPayments = bookingService.findPaymentsWithInvalidTransactionIds(pageable);
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(invalidPayments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "Invalid payments retrieved successfully");
+    }
 }
