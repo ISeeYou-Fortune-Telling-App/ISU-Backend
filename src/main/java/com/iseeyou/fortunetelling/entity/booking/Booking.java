@@ -7,6 +7,7 @@ import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +32,16 @@ public class Booking extends AbstractBaseEntity {
     @Column(name = "additional_note", length = 1000)
     private String additionalNote;
 
+    // Review fields (1-1 relationship: booking can have one review)
+    @Column(name = "rating", precision = 2, scale = 1)
+    private BigDecimal rating; // Range: 1.0 - 5.0, nullable (user may not review)
+
+    @Column(name = "comment", length = 1000)
+    private String comment; // Optional review comment
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt; // When the review was submitted
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_package_id", nullable = false)
     private ServicePackage servicePackage;
@@ -42,8 +53,4 @@ public class Booking extends AbstractBaseEntity {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<BookingPayment> bookingPayments = new ArrayList<>();
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<BookingReview> bookingReviews = new ArrayList<>();
 }

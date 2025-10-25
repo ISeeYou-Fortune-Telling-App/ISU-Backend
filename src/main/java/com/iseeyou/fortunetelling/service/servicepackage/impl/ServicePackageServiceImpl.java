@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.servicepackage.impl;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
@@ -11,6 +12,7 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
@@ -23,7 +25,9 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +50,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final CloudinaryConfig cloudinaryConfig;
     private final UserRepository userRepository;
     private final PackageInteractionRepository interactionRepository;
+    private final BookingRepository bookingRepository;
     private final UserService userService;
     private final ServicePackageMapper servicePackageMapper;
 
@@ -225,6 +230,29 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 })
                 .orElse(null);
 
+        // Get review statistics
+        UUID packageId = servicePackage.getId();
+        Long totalReviews = bookingRepository.countReviewsByServicePackageId(packageId);
+        Double avgRating = bookingRepository.getAverageRatingByServicePackageId(packageId);
+
+        // Get reviews (latest 10 reviews by default)
+        Pageable reviewPageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "reviewedAt"));
+        Page<Booking> reviewsPage = bookingRepository.findReviewsByServicePackageId(packageId, reviewPageable);
+        
+        List<ServicePackageDetailResponse.ReviewInfo> reviews = reviewsPage.getContent().stream()
+                .map(booking -> ServicePackageDetailResponse.ReviewInfo.builder()
+                        .bookingId(booking.getId())
+                        .rating(booking.getRating())
+                        .comment(booking.getComment())
+                        .reviewedAt(booking.getReviewedAt())
+                        .customer(ServicePackageDetailResponse.CustomerInfo.builder()
+                                .customerId(booking.getCustomer().getId())
+                                .customerName(booking.getCustomer().getFullName())
+                                .customerAvatar(booking.getCustomer().getAvatarUrl())
+                                .build())
+                        .build())
+                .collect(Collectors.toList());
+
         // Tạo ServicePackageDetailResponse
         return ServicePackageDetailResponse.builder()
                 .packageId(servicePackage.getId().toString())
@@ -238,6 +266,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .rejectionReason(servicePackage.getRejectionReason())
                 .createdAt(servicePackage.getCreatedAt())
                 .updatedAt(servicePackage.getUpdatedAt())
+                .avgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                .totalReviews(totalReviews != null ? totalReviews : 0L)
+                .reviews(reviews)
                 .seer(seerInfo)
                 .build();
     }
@@ -351,7 +382,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     /**
-     * Helper method to enrich service packages with user interaction data
+     * Helper method to enrich service packages with user interaction data and review statistics
      */
     private Page<ServicePackageResponse> enrichWithInteractions(Page<ServicePackage> servicePackages) {
         return servicePackages.map(pkg -> {
@@ -372,6 +403,13 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                     .collect(Collectors.toList());
             
             response.setUserInteractions(userInteractions);
+            
+            // Get review statistics from bookings
+            Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
+            Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
+            
+            response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
+            response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place
             
             return response;
         });

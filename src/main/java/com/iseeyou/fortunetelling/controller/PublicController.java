@@ -149,39 +149,6 @@ public class PublicController extends AbstractBaseController {
                 String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));
     }
 
-    @GetMapping("/service-packages/{packageId}/interactions")
-    @Operation(
-            summary = "Get service package with all user interactions (Public)",
-            description = "Get service package information with list of all users who interacted (liked/disliked). No authentication required.",
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Service package with interactions retrieved successfully",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ServicePackageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "Service package not found",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<SingleResponse<ServicePackageResponse>> getPackageWithInteractions(
-            @Parameter(description = "Service Package ID", required = true)
-            @PathVariable String packageId
-    ) {
-        log.info("Public API: Get service package with interactions - packageId: {}", packageId);
-        ServicePackageResponse response = servicePackageService.getPackageWithInteractions(java.util.UUID.fromString(packageId));
-        return responseFactory.successSingle(response, "Service package with interactions retrieved successfully");
-    }
-
-    // ============ PLACEHOLDER FOR FUTURE PUBLIC ENDPOINTS ============
 
 }
 

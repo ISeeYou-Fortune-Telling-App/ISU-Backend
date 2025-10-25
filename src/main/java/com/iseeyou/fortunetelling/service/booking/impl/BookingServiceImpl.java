@@ -1,13 +1,16 @@
 package com.iseeyou.fortunetelling.service.booking.impl;
 
+import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
-import com.iseeyou.fortunetelling.entity.booking.BookingReview;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.BookingMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingPaymentRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
-import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
 import com.iseeyou.fortunetelling.service.converstation.ConverstationService;
@@ -22,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -31,11 +35,11 @@ import java.util.UUID;
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
-    private final BookingReviewRepository bookingReviewRepository;
     private final BookingPaymentRepository bookingPaymentRepository;
     private final UserService userService;
     private final ServicePackageService servicePackageService;
     private final ConverstationService conversationService;
+    private final BookingMapper bookingMapper;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
 
     @Override
@@ -73,12 +77,6 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<BookingReview> findAllReviewByBookingId(UUID id, Pageable pageable) {
-        return bookingReviewRepository.findAllByBooking_Id(id, pageable);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Page<BookingPayment> findAllByPaymentMethod(Constants.PaymentMethodEnum paymentMethodEnum, Pageable pageable) {
         return bookingPaymentRepository.findAllByPaymentMethod(paymentMethodEnum, pageable);
     }
@@ -104,12 +102,16 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking createBooking(Booking booking, UUID packageId, Constants.PaymentMethodEnum paymentMethod) {
+    public Booking createBooking(BookingCreateRequest request, UUID packageId) {
         // Validate that only PayPal is supported temporarily
-        if (paymentMethod != Constants.PaymentMethodEnum.PAYPAL) {
+        if (request.getPaymentMethod() != Constants.PaymentMethodEnum.PAYPAL) {
             throw new IllegalArgumentException("Currently only PayPal payment method is supported. Please use PAYPAL.");
         }
         
+        // Map DTO to Entity
+        Booking booking = bookingMapper.mapTo(request, Booking.class);
+        
+        // Set business logic fields
         booking.setStatus(Constants.BookingStatusEnum.PENDING);
         booking.setServicePackage(servicePackageService.findById(packageId.toString()));
         User customer = userService.getUser();
@@ -118,7 +120,7 @@ public class BookingServiceImpl implements BookingService {
         Booking newBooking = bookingRepository.save(booking);
 
         try {
-            BookingPayment bookingPayment = createBookingPayment(newBooking, paymentMethod);
+            BookingPayment bookingPayment = createBookingPayment(newBooking, request.getPaymentMethod());
             newBooking.getBookingPayments().add(bookingPayment);
         } catch (PayPalRESTException e) {
             log.error("Error creating PayPal payment: {}", e.getMessage());
@@ -151,25 +153,32 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking updateBooking(Booking booking) {
-        Booking existingBooking = bookingRepository.findById(booking.getId())
-                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + booking.getId()));
+    public Booking updateBooking(UUID id, BookingUpdateRequest request) {
+        Booking existingBooking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
 
         // check if status changed to CONFIRMED
-        boolean statusChangedToConfirmed = !existingBooking.getStatus().equals(booking.getStatus()) &&
-                booking.getStatus().equals(Constants.BookingStatusEnum.CONFIRMED);
+        boolean statusChangedToConfirmed = request.getStatus() != null &&
+                !existingBooking.getStatus().equals(request.getStatus()) &&
+                request.getStatus().equals(Constants.BookingStatusEnum.CONFIRMED);
 
-        // Update booking
-        existingBooking.setStatus(booking.getStatus());
-        existingBooking.setAdditionalNote(booking.getAdditionalNote());
-        existingBooking.setScheduledTime(booking.getScheduledTime());
+        // Update booking fields from request
+        if (request.getStatus() != null) {
+            existingBooking.setStatus(request.getStatus());
+        }
+        if (request.getAdditionalNote() != null) {
+            existingBooking.setAdditionalNote(request.getAdditionalNote());
+        }
+        if (request.getScheduledTime() != null) {
+            existingBooking.setScheduledTime(request.getScheduledTime());
+        }
 
         Booking updatedBooking = bookingRepository.save(existingBooking);
 
         // create chat session if booking confirmed
         if (statusChangedToConfirmed) {
-            log.info("Booking confirmed, creating chat session for booking: {}", booking.getId());
-            conversationService.createChatSession(booking.getId());
+            log.info("Booking confirmed, creating chat session for booking: {}", id);
+            conversationService.createChatSession(id);
         }
 
         return updatedBooking;
@@ -187,5 +196,75 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public Booking refundBooking(UUID id) {
         return null;
+    }
+
+    @Override
+    @Transactional
+    public BookingReviewResponse submitReview(UUID bookingId, BookingReviewRequest reviewRequest) {
+        User currentUser = userService.getUser();
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
+        
+        // Validate: Only customer of the booking can review
+        if (!booking.getCustomer().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Only the customer of this booking can submit a review");
+        }
+        
+        // Validate: Booking must be COMPLETED
+        if (!booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
+            throw new IllegalArgumentException("Can only review completed bookings. Current status: " + booking.getStatus());
+        }
+        
+        // Validate: Cannot review twice
+        if (booking.getRating() != null) {
+            throw new IllegalArgumentException("This booking has already been reviewed");
+        }
+        
+        // Set review data
+        booking.setRating(reviewRequest.getRating());
+        booking.setComment(reviewRequest.getComment());
+        booking.setReviewedAt(LocalDateTime.now());
+        
+        Booking savedBooking = bookingRepository.save(booking);
+        log.info("Review submitted for booking {} by user {}", bookingId, currentUser.getId());
+        
+        // Build response
+        return BookingReviewResponse.builder()
+                .bookingId(savedBooking.getId())
+                .rating(savedBooking.getRating())
+                .comment(savedBooking.getComment())
+                .reviewedAt(savedBooking.getReviewedAt())
+                .customer(BookingReviewResponse.CustomerInfo.builder()
+                        .customerId(savedBooking.getCustomer().getId())
+                        .customerName(savedBooking.getCustomer().getFullName())
+                        .customerAvatar(savedBooking.getCustomer().getAvatarUrl())
+                        .build())
+                .servicePackage(BookingReviewResponse.ServicePackageInfo.builder()
+                        .packageId(savedBooking.getServicePackage().getId())
+                        .packageTitle(savedBooking.getServicePackage().getPackageTitle())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable) {
+        Page<Booking> bookingsWithReviews = bookingRepository.findReviewsByServicePackageId(packageId, pageable);
+        
+        return bookingsWithReviews.map(booking -> BookingReviewResponse.builder()
+                .bookingId(booking.getId())
+                .rating(booking.getRating())
+                .comment(booking.getComment())
+                .reviewedAt(booking.getReviewedAt())
+                .customer(BookingReviewResponse.CustomerInfo.builder()
+                        .customerId(booking.getCustomer().getId())
+                        .customerName(booking.getCustomer().getFullName())
+                        .customerAvatar(booking.getCustomer().getAvatarUrl())
+                        .build())
+                .servicePackage(BookingReviewResponse.ServicePackageInfo.builder()
+                        .packageId(booking.getServicePackage().getId())
+                        .packageTitle(booking.getServicePackage().getPackageTitle())
+                        .build())
+                .build());
     }
 }

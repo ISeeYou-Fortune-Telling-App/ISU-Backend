@@ -48,5 +48,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     @EntityGraph(attributePaths = {"servicePackage", "customer", "bookingPayments"})
     @Query("SELECT b FROM Booking b WHERE b.servicePackage.seer = :seer ORDER BY b.scheduledTime DESC")
     List<Booking> findRecentBookingsBySeer(User seer, Pageable pageable);
+
+    // Review related queries
+    @EntityGraph(attributePaths = {"servicePackage", "customer"})
+    @Query("SELECT b FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL ORDER BY b.reviewedAt DESC")
+    Page<Booking> findReviewsByServicePackageId(UUID packageId, Pageable pageable);
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL")
+    Long countReviewsByServicePackageId(UUID packageId);
+
+    @Query("SELECT AVG(b.rating) FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL")
+    Double getAverageRatingByServicePackageId(UUID packageId);
 }
 

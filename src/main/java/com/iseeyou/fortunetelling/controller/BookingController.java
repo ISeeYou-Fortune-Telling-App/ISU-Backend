@@ -2,16 +2,17 @@ package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
-import com.iseeyou.fortunetelling.entity.booking.BookingReview;
 import com.iseeyou.fortunetelling.mapper.BookingMapper;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -170,14 +171,7 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Booking data to create", required = true)
             @RequestBody @Valid BookingCreateRequest request
     ) {
-        Booking bookingToCreate = bookingMapper.mapTo(request, Booking.class);
-
-        Booking createdBooking = bookingService.createBooking(
-                bookingToCreate,
-                servicePackageId,
-                request.getPaymentMethod()
-        );
-
+        Booking createdBooking = bookingService.createBooking(request, servicePackageId);
         BookingResponse response = bookingMapper.mapTo(createdBooking, BookingResponse.class);
         return responseFactory.successSingle(response, "Booking created successfully");
     }
@@ -227,10 +221,7 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Booking data to update", required = true)
             @RequestBody @Valid BookingUpdateRequest request
     ) {
-        Booking bookingToUpdate = bookingMapper.mapTo(request, Booking.class);
-        bookingToUpdate.setId(id);
-
-        Booking updatedBooking = bookingService.updateBooking(bookingToUpdate);
+        Booking updatedBooking = bookingService.updateBooking(id, request);
         BookingResponse response = bookingMapper.mapTo(updatedBooking, BookingResponse.class);
         return responseFactory.successSingle(response, "Booking updated successfully");
     }
@@ -322,14 +313,65 @@ public class BookingController extends AbstractBaseController {
         return responseFactory.successSingle(response, "Booking refunded successfully");
     }
 
-    @GetMapping("/{id}/reviews")
+    @PostMapping("/{bookingId}/review")
     @Operation(
-            summary = "Get reviews for a booking",
+            summary = "Submit a review for a completed booking",
+            description = "Customers can submit a review (rating 1.0-5.0 and optional comment) for completed bookings. Each booking can only be reviewed once.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Successful operation",
+                            description = "Review submitted successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - booking not completed or already reviewed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Booking not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized - only booking customer can review",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<BookingReviewResponse>> submitReview(
+            @Parameter(description = "Booking ID", required = true)
+            @PathVariable UUID bookingId,
+            @Parameter(description = "Review data (rating and optional comment)", required = true)
+            @Valid @RequestBody BookingReviewRequest reviewRequest
+    ) {
+        BookingReviewResponse response = bookingService.submitReview(bookingId, reviewRequest);
+        return responseFactory.successSingle(response, "Review submitted successfully");
+    }
+
+    @GetMapping("/reviews/service-package/{packageId}")
+    @Operation(
+            summary = "Get all reviews for a service package",
+            description = "Get paginated list of all reviews for a specific service package",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Reviews retrieved successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = PageResponse.class)
@@ -337,7 +379,7 @@ public class BookingController extends AbstractBaseController {
                     ),
                     @ApiResponse(
                             responseCode = "404",
-                            description = "Booking not found",
+                            description = "Service package not found",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = ErrorResponse.class)
@@ -353,9 +395,9 @@ public class BookingController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<BookingRatingResponse>> getBookingReviews(
-            @Parameter(description = "Booking ID", required = true)
-            @PathVariable UUID id,
+    public ResponseEntity<PageResponse<BookingReviewResponse>> getReviewsByServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable UUID packageId,
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -363,12 +405,11 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            @RequestParam(defaultValue = "reviewedAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<BookingReview> reviews = bookingService.findAllReviewByBookingId(id, pageable);
-        Page<BookingRatingResponse> response = bookingMapper.mapToPage(reviews, BookingRatingResponse.class);
-        return responseFactory.successPage(response, "Booking reviews retrieved successfully");
+        Page<BookingReviewResponse> response = bookingService.getReviewsByServicePackage(packageId, pageable);
+        return responseFactory.successPage(response, "Reviews retrieved successfully");
     }
 
     @GetMapping("/payments")
