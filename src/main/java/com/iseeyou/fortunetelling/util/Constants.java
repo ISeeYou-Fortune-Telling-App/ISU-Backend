@@ -272,7 +272,7 @@ public final class Constants {
     @AllArgsConstructor
     public enum ConversationTypeEnum {
         BOOKING_SESSION("BOOKING_SESSION"),
-        SUPPORT("SUPPORT");
+        SUPPORT("AI_SUPPORT");
 
         private final String value;
 

@@ -10,6 +10,7 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.service.auth.JwtTokenService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -42,7 +43,7 @@ public class JwtTokenProvider {
             @Value("${app.secret}") final String appSecret,
             @Value("${app.jwt.token.expires-in}") final Long tokenExpiresIn,
             @Value("${app.jwt.refresh-token.expires-in}") final Long refreshTokenExpiresIn,
-            final UserService userService,
+            @Lazy final UserService userService,
             final JwtTokenService jwtTokenService,
             final HttpServletRequest httpServletRequest
     ) {

@@ -15,11 +15,27 @@ import java.util.UUID;
 public class ChatSessionResponse extends AbstractBaseDataResponse {
     private UUID conversationId;
     private UUID bookingId;
+    // PARTICIPANTS INFO
     private String seerName;
+    private String seerAvatar;
     private String customerName;
+    private String customerAvatar;
+    // SESSION INFO
     private LocalDateTime sessionStartTime;
     private LocalDateTime sessionEndTime;
     private Integer sessionDurationMinutes;
+    private Integer extendedMinutes;
+    // Status
     private Constants.ConversationStatusEnum status;
-    private String servicePackageName;
+    // Package info
+    private String packageTitle;
+    // LAST MESSAGE INFO
+    private String lastMessageContent;
+    private String lastMessageSenderName;
+    private UUID lastMessageSenderId;
+    private LocalDateTime lastMessageTime;
+    // Conversation type
+    private Constants.ConversationTypeEnum conversationType;
+    // Message count
+    private Integer totalMessages;
 }
