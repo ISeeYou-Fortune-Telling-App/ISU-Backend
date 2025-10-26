@@ -38,10 +38,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingPaymentRepository bookingPaymentRepository;
     private final UserService userService;
     private final ServicePackageService servicePackageService;
-    private final ConverstationService conversationService;
-    private final BookingMapper bookingMapper;
-
     private final ConversationService conversationService;
+    private final BookingMapper bookingMapper;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
 
     @Override
