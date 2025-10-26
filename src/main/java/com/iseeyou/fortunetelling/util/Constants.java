@@ -272,7 +272,7 @@ public final class Constants {
     @AllArgsConstructor
     public enum ConversationTypeEnum {
         BOOKING_SESSION("BOOKING_SESSION"),
-        SUPPORT("SUPPORT");
+        SUPPORT("AI_SUPPORT");
 
         private final String value;
 
@@ -330,6 +330,23 @@ public final class Constants {
                     .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid interaction type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum NotificationTypeEnum {
+        PAYMENT("PAYMENT"),
+        ACCOUNT("ACCOUNT"),
+        CERTIFICATE("CERTIFICATE");
+
+        private final String value;
+
+        public static NotificationTypeEnum get(final String name) {
+            return Stream.of(NotificationTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid notification type name: %s", name)));
         }
     }
 }

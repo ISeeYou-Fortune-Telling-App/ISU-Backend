@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.config;
 
+import com.iseeyou.fortunetelling.handler.logout.CustomLogoutSuccessHandler;
 import com.iseeyou.fortunetelling.security.JwtAuthenticationEntryPoint;
 import com.iseeyou.fortunetelling.security.JwtAuthenticationFilter;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -39,6 +40,8 @@ public class WebSecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+
+    private final CustomLogoutSuccessHandler logoutSuccessHandler;
 
     @Bean
     public UserDetailsService userDetailsService() {
@@ -107,6 +110,13 @@ public class WebSecurityConfig {
                         ).permitAll()
                         .requestMatchers("/admin/**").hasAuthority(Constants.RoleEnum.ADMIN.name())
                         .anyRequest().authenticated()
+                )
+                .logout(
+                        logout -> logout
+                        .logoutUrl("/auth/logout")
+                        .logoutSuccessHandler(logoutSuccessHandler)
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                 )
                 .build();
     }

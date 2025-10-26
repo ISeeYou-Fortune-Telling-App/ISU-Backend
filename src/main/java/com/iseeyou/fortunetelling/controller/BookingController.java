@@ -30,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -69,6 +70,7 @@ public class BookingController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'SEER', 'ADMIN')")
     public ResponseEntity<PageResponse<BookingResponse>> getMyBookings(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
@@ -165,6 +167,7 @@ public class BookingController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<SingleResponse<BookingResponse>> createBooking(
             @Parameter(description = "Service package ID", required = true)
             @PathVariable UUID servicePackageId,
@@ -486,6 +489,7 @@ public class BookingController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<BookingPaymentResponse>> getBookingPayments(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,

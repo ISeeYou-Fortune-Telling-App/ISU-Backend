@@ -27,6 +27,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -67,6 +68,7 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<ReportResponse>> getAllReports(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
@@ -162,6 +164,7 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'SEER', 'GUEST', 'ADMIN')")
     public ResponseEntity<SingleResponse<ReportResponse>> createReport(
             @ModelAttribute @Valid ReportCreateRequest request
     ) throws IOException {
