@@ -38,7 +38,10 @@ public class MessageMapper extends BaseMapper {
                     destination.setMessageType(Constants.MessageTypeEnum.valueOf(source.getMessageType()));
                     destination.setIsRead(source.getIsRead());
                     destination.setCreatedAt(source.getCreatedAt());
-
+                    destination.setUpdatedAt(source.getUpdatedAt());
+                    destination.setIsRecalled(source.getIsRecalled());
+                    destination.setRecalledAt(source.getRecalledAt());
+                    destination.setRecalledBy(source.getRecalledBy().getId());
                     return destination;
                 });
     }
