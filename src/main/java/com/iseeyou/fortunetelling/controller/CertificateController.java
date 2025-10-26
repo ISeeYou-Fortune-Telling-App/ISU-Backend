@@ -24,7 +24,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -151,7 +150,6 @@ public class CertificateController extends AbstractBaseController {
                     )
             }
     )
-    @PreAuthorize("hasAnyAuthority('SEER', 'ADMIN')")
     public ResponseEntity<SingleResponse<CertificateResponse>> createCertificate(
             @Parameter(description = "Certificate data to create", required = true)
             @ModelAttribute @Valid CertificateCreateRequest request

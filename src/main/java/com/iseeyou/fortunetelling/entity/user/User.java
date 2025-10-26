@@ -1,8 +1,6 @@
 package com.iseeyou.fortunetelling.entity.user;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
-import com.iseeyou.fortunetelling.entity.Notification;
-import com.iseeyou.fortunetelling.entity.UserLoginHistory;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
@@ -93,11 +91,4 @@ public class User extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<Report> reportsReceived = new HashSet<>();
-
-    // Notification relationship: Notifications received by this user
-    @OneToMany(mappedBy = "recipient", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<Notification> notifications = new HashSet<>();
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<UserLoginHistory> loginHistories = new HashSet<>();
 }

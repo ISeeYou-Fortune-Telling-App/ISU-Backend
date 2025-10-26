@@ -26,7 +26,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -131,7 +130,6 @@ public class ServicePackageController extends AbstractBaseController {
         description = "Create a new service package with full info, image upload, price, duration. Status is HIDDEN (pending approval)",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    @PreAuthorize("hasAuthority('SEER')")
     public ResponseEntity<SingleResponse<ServicePackage>> createServicePackage(
             @RequestParam("seerId") String seerId,
             @ModelAttribute ServicePackageUpsertRequest request
@@ -146,7 +144,6 @@ public class ServicePackageController extends AbstractBaseController {
         description = "Update an existing service package. Status remains HIDDEN if not approved.",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    @PreAuthorize("hasAuthority('SEER')")
     public ResponseEntity<SingleResponse<ServicePackage>> updateServicePackage(
             @Parameter(description = "Service Package ID", required = true)
             @RequestParam String id,

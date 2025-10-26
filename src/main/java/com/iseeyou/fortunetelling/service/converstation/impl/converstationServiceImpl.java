@@ -1,6 +1,5 @@
 package com.iseeyou.fortunetelling.service.converstation.impl;
 
-import com.iseeyou.fortunetelling.dto.request.converstation.ChatHistoryFilterRequest;
 import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
 import com.iseeyou.fortunetelling.entity.Conversation;
 import com.iseeyou.fortunetelling.entity.Message;
@@ -22,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -184,47 +185,6 @@ public class converstationServiceImpl implements ConversationService {
         conversationRepository.save(conversation);
 
         log.info("Session extended by {} minutes: conversation={}", additionalMinutes, conversationId);
-    }
-
-    @Override
-    public Page<ChatSessionResponse> getChatHistory(ChatHistoryFilterRequest filter, Pageable pageable) {
-        User currentUser = userService.getUser();
-        Page<Conversation> conversations;
-
-        // ADMIN: Full filters (participant name, type, statuses)
-        if (currentUser.getRole().equals(Constants.RoleEnum.ADMIN)) {
-            String participantName = filter.getParticipantName();
-            Constants.ConversationTypeEnum conversationType = filter.getConversationType();
-            List<Constants.ConversationStatusEnum> statuses = filter.getStatuses();
-
-            // Default to all statuses if not provided
-            if (statuses == null || statuses.isEmpty()) {
-                statuses = Arrays.asList(
-                        Constants.ConversationStatusEnum.ACTIVE,
-                        Constants.ConversationStatusEnum.ENDED,
-                        Constants.ConversationStatusEnum.CANCELLED
-                );
-            }
-
-            conversations = conversationRepository.findChatHistoryWithFilters(
-                    participantName,
-                    conversationType,
-                    statuses,
-                    pageable
-            );
-        }
-        // NON-ADMIN: Search by MESSAGE CONTENT only
-        else {
-            String messageContent = filter.getMessageContent();
-
-            conversations = conversationRepository.searchUserConversationsByMessageContent(
-                    currentUser.getId(),
-                    messageContent,
-                    pageable
-            );
-        }
-
-        return conversations.map(conv -> conversationMapper.mapTo(conv, ChatSessionResponse.class));
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {

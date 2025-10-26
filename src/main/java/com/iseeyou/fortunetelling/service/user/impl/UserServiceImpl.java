@@ -61,7 +61,7 @@ public class UserServiceImpl implements UserService {
             MessageSourceService messageSourceService,
             CloudinaryService cloudinaryService,
             @Lazy CertificateService certificateService,
-            @Lazy EmailVerificationService emailVerificationService,
+            EmailVerificationService emailVerificationService,
             BookingRepository bookingRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;

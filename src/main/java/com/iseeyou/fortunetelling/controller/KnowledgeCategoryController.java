@@ -24,7 +24,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -158,7 +157,6 @@ public class KnowledgeCategoryController extends AbstractBaseController {
                     )
             }
     )
-    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<KnowledgeCategoryResponse>> updateKnowledgeCategory(
             @Parameter(description = "Knowledge Category ID", required = true)
             @PathVariable UUID id,
@@ -242,7 +240,6 @@ public class KnowledgeCategoryController extends AbstractBaseController {
                     )
             }
     )
-    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<KnowledgeCategoryResponse>> createKnowledgeCategory(
             @Parameter(description = "Knowledge category data to create", required = true)
             @RequestBody @Valid KnowledgeCategoryCreateRequest request
@@ -284,7 +281,6 @@ public class KnowledgeCategoryController extends AbstractBaseController {
                     )
             }
     )
-    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<Void>> deleteKnowledgeCategory(
             @Parameter(description = "Knowledge Category ID", required = true)
             @PathVariable String id

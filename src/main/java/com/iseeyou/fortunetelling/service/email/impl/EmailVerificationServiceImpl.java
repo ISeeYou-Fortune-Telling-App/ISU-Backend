@@ -1,10 +1,7 @@
 package com.iseeyou.fortunetelling.service.email.impl;
 
 import com.iseeyou.fortunetelling.entity.EmailVerification;
-import com.iseeyou.fortunetelling.entity.user.User;
-import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.EmailVerificationRepository;
-import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.email.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +22,6 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
 
     private final EmailVerificationRepository emailVerificationRepository;
     private final JavaMailSender mailSender;
-    private final UserRepository userRepository;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -36,7 +30,6 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     private String appName;
 
     private static final SecureRandom random = new SecureRandom();
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Override
     @Transactional
@@ -136,140 +129,6 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         log.info("Cleaned up expired OTPs");
     }
 
-    @Override
-    public void sendLoginAlertEmail(UUID userId, String ipAddress, String deviceInfo, String location, LocalDateTime loginTime) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new NotFoundException("User not found"));
-
-            String subject = appName + " - Thông báo đăng nhập";
-            String content = String.format(
-                    "Xin chào %s!\n\n" +
-                            "Chúng tôi nhận thấy có một hoạt động đăng nhập vào tài khoản của bạn:\n\n" +
-                            "Thời gian: %s\n" +
-                            "Địa chỉ IP: %s\n" +
-                            "Thiết bị: %s\n" +
-                            "Vị trí: %s\n\n" +
-                            "Nếu đây là bạn, bạn có thể bỏ qua email này.\n" +
-                            "Nếu bạn không thực hiện hành động này, vui lòng thay đổi mật khẩu ngay lập tức và liên hệ với chúng tôi.\n\n" +
-                            "Trân trọng,\n%s Team",
-                    user.getFullName(),
-                    loginTime.format(FORMATTER),
-                    ipAddress,
-                    deviceInfo,
-                    location != null ? location : "Không xác định",
-                    appName
-            );
-
-            sendEmail(user.getEmail(), subject, content);
-            log.info("Sent login alert email to user {}", userId);
-
-        } catch (Exception e) {
-            log.error("Failed to send login alert email to user {}", userId, e);
-        }
-    }
-
-    @Override
-    public void sendNewDeviceAlertEmail(UUID userId, String ipAddress, String deviceInfo, String location, LocalDateTime loginTime) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new NotFoundException("User not found"));
-
-            String subject = appName + " - ⚠️ Cảnh báo đăng nhập từ thiết bị mới";
-            String content = String.format(
-                    "Xin chào %s!\n\n" +
-                            "!! CẢNH BÁO BẢO MẬT !!\n\n" +
-                            "Chúng tôi phát hiện đăng nhập từ một thiết bị MỚI vào tài khoản của bạn:\n\n" +
-                            "Thời gian: %s\n" +
-                            "Địa chỉ IP: %s\n" +
-                            "Thiết bị: %s\n" +
-                            "Vị trí: %s\n\n" +
-                            "Nếu đây là bạn:\n" +
-                            "- Bạn có thể bỏ qua email này\n" +
-                            "- Thiết bị này sẽ được ghi nhớ cho các lần đăng nhập sau\n\n" +
-                            "Nếu KHÔNG phải bạn:\n" +
-                            "- Thay đổi mật khẩu NGAY LẬP TỨC\n" +
-                            "- Kiểm tra các hoạt động gần đây trong tài khoản\n" +
-                            "- Liên hệ với chúng tôi để được hỗ trợ\n\n" +
-                            "Trân trọng,\n%s Team",
-                    user.getFullName(),
-                    loginTime.format(FORMATTER),
-                    ipAddress,
-                    deviceInfo,
-                    location != null ? location : "Không xác định",
-                    appName
-            );
-
-            sendEmail(user.getEmail(), subject, content);
-            log.info("Sent new device alert email to user {}", userId);
-
-        } catch (Exception e) {
-            log.error("Failed to send new device alert email to user {}", userId, e);
-        }
-    }
-
-    @Override
-    public void sendLogoutAlertEmail(UUID userId, String deviceInfo, LocalDateTime logoutTime) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new NotFoundException("User not found"));
-
-            String subject = appName + " - Thông báo đăng xuất";
-            String content = String.format(
-                    "Xin chào %s!\n\n" +
-                            "Tài khoản của bạn đã đăng xuất:\n\n" +
-                            "Thời gian: %s\n" +
-                            "Thiết bị: %s\n\n" +
-                            "Nếu bạn không thực hiện hành động này, vui lòng liên hệ với chúng tôi ngay.\n\n" +
-                            "Trân trọng,\n%s Team",
-                    user.getFullName(),
-                    logoutTime.format(FORMATTER),
-                    deviceInfo,
-                    appName
-            );
-
-            sendEmail(user.getEmail(), subject, content);
-            log.info("Sent logout alert email to user {}", userId);
-
-        } catch (Exception e) {
-            log.error("Failed to send logout alert email to user {}", userId, e);
-        }
-    }
-
-    @Override
-    public void sendSecurityAlertEmail(UUID userId, String alertMessage, String severity) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new NotFoundException("User not found"));
-
-            String emoji = severity.equals("HIGH") ? "🚨" : "⚠️";
-            String subject = appName + " - " + emoji + " Cảnh báo bảo mật " + severity;
-            String content = String.format(
-                    "Xin chào %s!\n\n" +
-                            "%s CẢNH BÁO BẢO MẬT [%s] %s\n\n" +
-                            "%s\n\n" +
-                            "Khuyến nghị:\n" +
-                            "- Thay đổi mật khẩu ngay lập tức\n" +
-                            "- Kiểm tra các hoạt động gần đây\n" +
-                            "- Đảm bảo không ai khác có quyền truy cập tài khoản của bạn\n" +
-                            "- Liên hệ với chúng tôi nếu cần hỗ trợ\n\n" +
-                            "Trân trọng,\n%s Team",
-                    user.getFullName(),
-                    emoji,
-                    severity,
-                    emoji,
-                    alertMessage,
-                    appName
-            );
-
-            sendEmail(user.getEmail(), subject, content);
-            log.info("Sent security alert email ({}) to user {}", severity, userId);
-
-        } catch (Exception e) {
-            log.error("Failed to send security alert email to user {}", userId, e);
-        }
-    }
-
 
     private String generateOtp() {
         return String.format("%06d", random.nextInt(1000000));
@@ -306,15 +165,6 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         }
 
         message.setText(emailContent);
-        mailSender.send(message);
-    }
-
-    private void sendEmail(String to, String subject, String content) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(content);
         mailSender.send(message);
     }
 }

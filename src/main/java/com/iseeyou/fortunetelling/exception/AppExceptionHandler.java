@@ -132,12 +132,6 @@ public class AppExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Server cooked!!!");
     }
 
-    @ExceptionHandler(UnauthorizedException.class)
-    public final ResponseEntity<ErrorResponse> handleUnauthorizedException(final UnauthorizedException e) {
-        log.error("Unauthorized: {}", e.getMessage());
-        return build(HttpStatus.UNAUTHORIZED, e.getMessage());
-    }
-
     /**
      * Build error response.
      *

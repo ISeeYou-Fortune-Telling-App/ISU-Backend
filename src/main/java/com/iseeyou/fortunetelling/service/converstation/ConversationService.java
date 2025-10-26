@@ -1,6 +1,5 @@
 package com.iseeyou.fortunetelling.service.converstation;
 
-import com.iseeyou.fortunetelling.dto.request.converstation.ChatHistoryFilterRequest;
 import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +21,4 @@ public interface ConversationService {
 
     //Extend session
     void extendSession(UUID conversationId, Integer additionalMinutes);
-
-    Page<ChatSessionResponse> getChatHistory(ChatHistoryFilterRequest filter, Pageable pageable);
 }

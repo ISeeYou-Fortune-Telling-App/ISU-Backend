@@ -49,43 +49,4 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("status") Constants.ConversationStatusEnum status,
             @Param("now") LocalDateTime now
     );
-
-    // FOR ADMIN: Get all conversations with filters (participant name, conversation type, statuses)
-    @Query("SELECT DISTINCT conv FROM Conversation conv " +
-            "LEFT JOIN FETCH conv.booking b " +
-            "LEFT JOIN FETCH b.customer c " +
-            "LEFT JOIN FETCH b.servicePackage sp " +
-            "LEFT JOIN FETCH sp.seer s " +
-            "WHERE 1=1 " +
-            "AND (:participantName IS NULL OR " +
-            "     LOWER(c.fullName) LIKE LOWER(CONCAT('%', :participantName, '%')) OR " +
-            "     LOWER(s.fullName) LIKE LOWER(CONCAT('%', :participantName, '%'))) " +
-            "AND (:conversationType IS NULL OR conv.type = :conversationType) " +
-            "AND (:statuses IS NULL OR conv.status IN :statuses) " +
-            "ORDER BY COALESCE(conv.sessionEndTime, conv.createdAt) DESC")
-    Page<Conversation> findChatHistoryWithFilters(
-            @Param("participantName") String participantName,
-            @Param("conversationType") Constants.ConversationTypeEnum conversationType,
-            @Param("statuses") List<Constants.ConversationStatusEnum> statuses,
-            Pageable pageable
-    );
-
-    // FOR NON-ADMIN: Search by MESSAGE CONTENT in their own conversations
-    @Query("SELECT DISTINCT conv FROM Conversation conv " +
-            "LEFT JOIN FETCH conv.booking b " +
-            "LEFT JOIN FETCH b.customer c " +
-            "LEFT JOIN FETCH b.servicePackage sp " +
-            "LEFT JOIN FETCH sp.seer s " +
-            "LEFT JOIN conv.messages msg " +
-            "WHERE (c.id = :userId OR s.id = :userId) " +
-            "AND (:keyword IS NULL OR :keyword = '' OR " +
-            "     LOWER(msg.textContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND msg.isDeleted = false " +
-            "AND msg.isRemoved = false " +
-            "ORDER BY COALESCE(conv.sessionEndTime, conv.createdAt) DESC")
-    Page<Conversation> searchUserConversationsByMessageContent(
-            @Param("userId") UUID userId,
-            @Param("keyword") String keyword,
-            Pageable pageable
-    );
 }
