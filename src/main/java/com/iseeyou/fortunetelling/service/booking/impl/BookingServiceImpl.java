@@ -13,7 +13,6 @@ import com.iseeyou.fortunetelling.repository.booking.BookingPaymentRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
-import com.iseeyou.fortunetelling.service.converstation.ConversationService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -38,7 +37,6 @@ public class BookingServiceImpl implements BookingService {
     private final BookingPaymentRepository bookingPaymentRepository;
     private final UserService userService;
     private final ServicePackageService servicePackageService;
-    private final ConversationService conversationService;
     private final BookingMapper bookingMapper;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
 
@@ -110,7 +108,7 @@ public class BookingServiceImpl implements BookingService {
         
         // Map DTO to Entity
         Booking booking = bookingMapper.mapTo(request, Booking.class);
-        
+
         // Set business logic fields
         booking.setStatus(Constants.BookingStatusEnum.PENDING);
         booking.setServicePackage(servicePackageService.findById(packageId.toString()));
@@ -178,11 +176,6 @@ public class BookingServiceImpl implements BookingService {
 
         bookingRepository.save(existingBooking);
 
-        // create chat session if booking confirmed
-        if (statusChangedToConfirmed) {
-            log.info("Booking confirmed, creating chat session for booking: {}", id);
-            conversationService.createChatSession(id);
-        }
 
         // Fetch booking with all relationships to avoid LazyInitializationException
         Booking updatedBooking = bookingRepository.findWithDetailById(id)
@@ -203,41 +196,41 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public Booking cancelBooking(UUID id) {
         log.info("Starting cancel booking process for booking {}", id);
-        
+
         // 1. Find booking
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
-        
+
         // 2. Validate booking status - can only cancel PENDING or CONFIRMED bookings
         if (booking.getStatus() == Constants.BookingStatusEnum.CANCELED) {
             throw new IllegalArgumentException("Booking is already cancelled");
         }
-        
+
         if (booking.getStatus() == Constants.BookingStatusEnum.COMPLETED) {
             throw new IllegalArgumentException("Cannot cancel a completed booking");
         }
-        
+
         if (booking.getStatus() == Constants.BookingStatusEnum.FAILED) {
             throw new IllegalArgumentException("Cannot cancel a failed booking");
         }
-        
+
         // 3. Validate user permission - only customer can cancel their own booking
         User currentUser = userService.getUser();
         boolean isCustomer = booking.getCustomer().getId().equals(currentUser.getId());
-        
+
         if (!isCustomer) {
             throw new IllegalArgumentException("Only the booking customer can cancel this booking");
         }
-        
+
         // 4. Validate cancellation time - must be at least 2 hours before scheduled time
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime scheduledTime = booking.getScheduledTime();
-        
+
         if (scheduledTime == null) {
             log.warn("Booking {} has no scheduled time. Allowing cancellation.", id);
         } else {
             LocalDateTime cancellationDeadline = scheduledTime.minusHours(2);
-            
+
             if (now.isAfter(cancellationDeadline)) {
                 long hoursUntilScheduled = java.time.Duration.between(now, scheduledTime).toHours();
                 throw new IllegalArgumentException(
@@ -249,35 +242,35 @@ public class BookingServiceImpl implements BookingService {
                                 cancellationDeadline.toString())
                 );
             }
-            
-            log.info("Cancellation allowed. Current time: {}, Scheduled time: {}, Deadline: {}", 
+
+            log.info("Cancellation allowed. Current time: {}, Scheduled time: {}, Deadline: {}",
                     now, scheduledTime, cancellationDeadline);
         }
-        
+
         // 5. Check if there's a completed payment to refund
         BookingPayment completedPayment = booking.getBookingPayments().stream()
                 .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
                 .findFirst()
                 .orElse(null);
-        
+
         if (completedPayment != null) {
-            log.info("Found completed payment {} for booking {}. Processing refund.", 
+            log.info("Found completed payment {} for booking {}. Processing refund.",
                     completedPayment.getId(), id);
-            
+
             // Process refund through payment strategy
             try {
                 PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
-                
+
                 if (paymentStrategy == null) {
                     throw new IllegalArgumentException(
                         "Payment method not supported for refund: " + completedPayment.getPaymentMethod()
                     );
                 }
-                
+
                 // Call strategy to refund payment
                 BookingPayment refundedPayment = paymentStrategy.refund(id, completedPayment);
                 log.info("Payment {} refunded successfully", refundedPayment.getId());
-                
+
             } catch (Exception e) {
                 log.error("Failed to refund payment for booking {}: {}", id, e.getMessage(), e);
                 throw new RuntimeException(
@@ -287,13 +280,13 @@ public class BookingServiceImpl implements BookingService {
         } else {
             log.info("No completed payment found for booking {}. No refund needed.", id);
         }
-        
+
         // 6. Update booking status to CANCELED
         booking.setStatus(Constants.BookingStatusEnum.CANCELED);
         bookingRepository.save(booking);
-        
+
         log.info("Booking {} cancelled successfully by user {}", id, currentUser.getId());
-        
+
         // TODO: Send push notification to seer about booking cancellation
         // This will notify the seer that the customer has cancelled the booking
         // Implementation pending: Push notification service integration
@@ -306,11 +299,11 @@ public class BookingServiceImpl implements BookingService {
         //   "scheduledTime": scheduledTime,
         //   "message": "Customer {customerName} has cancelled booking {bookingId} scheduled for {scheduledTime}"
         // }
-        
+
         // 7. Fetch booking with all relationships to avoid LazyInitializationException
         Booking cancelledBooking = bookingRepository.findWithDetailById(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
-        
+
         return cancelledBooking;
     }
 
@@ -318,89 +311,89 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public Booking refundBooking(UUID id) {
         log.info("Starting refund process for booking {}", id);
-        
+
         // 1. Find booking with payments
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
-        
+
         // 2. Validate booking status - cannot refund already cancelled or completed bookings
         if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED)) {
             throw new IllegalArgumentException("Booking is already cancelled. Cannot refund.");
         }
-        
+
         if (booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
             throw new IllegalArgumentException("Cannot refund a completed booking. Please contact support.");
         }
-        
+
         if (booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
             throw new IllegalArgumentException("Cannot refund a failed booking.");
         }
-        
+
         // 3. Validate user permission - only customer can refund their own booking (or admin)
         User currentUser = userService.getUser();
         boolean isCustomer = booking.getCustomer().getId().equals(currentUser.getId());
         boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
-        
+
         if (!isCustomer && !isAdmin) {
             throw new IllegalArgumentException("Only the booking customer or admin can request a refund");
         }
-        
+
         // 4. Find completed payment to refund
         BookingPayment completedPayment = booking.getBookingPayments().stream()
                 .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
                 .findFirst()
                 .orElse(null);
-        
+
         if (completedPayment == null) {
             log.warn("No completed payment found for booking {}", id);
             throw new IllegalArgumentException("No completed payment found for this booking. Nothing to refund.");
         }
-        
+
         // 5. Check if payment was already refunded
         boolean hasRefundedPayment = booking.getBookingPayments().stream()
                 .anyMatch(p -> p.getStatus().equals(Constants.PaymentStatusEnum.REFUNDED));
-        
+
         if (hasRefundedPayment) {
             throw new IllegalArgumentException("This booking has already been refunded");
         }
-        
+
         // 6. Process refund through payment strategy
         try {
             PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
-            
+
             if (paymentStrategy == null) {
                 throw new IllegalArgumentException(
                     "Payment method not supported for refund: " + completedPayment.getPaymentMethod()
                 );
             }
-            
-            log.info("Processing refund for payment {} using {} strategy", 
+
+            log.info("Processing refund for payment {} using {} strategy",
                     completedPayment.getId(), completedPayment.getPaymentMethod());
-            
+
             // Call strategy to refund payment
             BookingPayment refundedPayment = paymentStrategy.refund(id, completedPayment);
-            
+
             // 7. Update booking status to CANCELED
             booking.setStatus(Constants.BookingStatusEnum.CANCELED);
             bookingRepository.save(booking);
-            
-            log.info("Booking {} refunded successfully. Payment {} status: REFUNDED", 
+
+            log.info("Booking {} refunded successfully. Payment {} status: REFUNDED",
                     id, refundedPayment.getId());
-            
+
             // 8. Fetch booking with all relationships to avoid LazyInitializationException
             Booking updatedBooking = bookingRepository.findWithDetailById(id)
                     .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
-            
+
             return updatedBooking;
-            
+
         } catch (IllegalArgumentException e) {
             // These are validation errors with clear messages - pass them through
             log.error("Refund validation failed for booking {}: {}", id, e.getMessage());
             throw e;
         } catch (PayPalRESTException e) {
-            log.error("PayPal refund processing failed for booking {}: {} - Details: {}", 
+            log.error("PayPal refund processing failed for booking {}: {} - Details: {}",
                     id, e.getMessage(), e.getDetails(), e);
-            
+
             // Provide more specific error messages based on PayPal error codes
             String errorMessage = buildRefundErrorMessage(id, completedPayment, e);
             throw new RuntimeException(errorMessage, e);
@@ -419,30 +412,30 @@ public class BookingServiceImpl implements BookingService {
         User currentUser = userService.getUser();
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
-        
+
         // Validate: Only customer of the booking can review
         if (!booking.getCustomer().getId().equals(currentUser.getId())) {
             throw new IllegalArgumentException("Only the customer of this booking can submit a review");
         }
-        
+
         // Validate: Booking must be COMPLETED
         if (!booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
             throw new IllegalArgumentException("Can only review completed bookings. Current status: " + booking.getStatus());
         }
-        
+
         // Validate: Cannot review twice
         if (booking.getRating() != null) {
             throw new IllegalArgumentException("This booking has already been reviewed");
         }
-        
+
         // Set review data
         booking.setRating(reviewRequest.getRating());
         booking.setComment(reviewRequest.getComment());
         booking.setReviewedAt(LocalDateTime.now());
-        
+
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Review submitted for booking {} by user {}", bookingId, currentUser.getId());
-        
+
         // Build response
         return BookingReviewResponse.builder()
                 .bookingId(savedBooking.getId())
@@ -465,7 +458,7 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     public Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable) {
         Page<Booking> bookingsWithReviews = bookingRepository.findReviewsByServicePackageId(packageId, pageable);
-        
+
         return bookingsWithReviews.map(booking -> BookingReviewResponse.builder()
                 .bookingId(booking.getId())
                 .rating(booking.getRating())
@@ -482,80 +475,80 @@ public class BookingServiceImpl implements BookingService {
                         .build())
                 .build());
     }
-    
+
     @Override
     @Transactional(readOnly = true)
     public Page<BookingPayment> findPaymentsWithInvalidTransactionIds(Pageable pageable) {
         log.info("Searching for payments with invalid transaction IDs");
-        
+
         // Get all payments and filter for invalid ones
         Page<BookingPayment> allPayments = bookingPaymentRepository.findAll(pageable);
-        
+
         // Filter in-memory for invalid transaction IDs
         // Note: This is not optimal for large datasets, but suitable for admin debugging
         java.util.List<BookingPayment> invalidPayments = allPayments.getContent().stream()
             .filter(payment -> isInvalidPayment(payment))
             .collect(java.util.stream.Collectors.toList());
-        
-        log.info("Found {} payments with invalid transaction IDs out of {} total", 
+
+        log.info("Found {} payments with invalid transaction IDs out of {} total",
                 invalidPayments.size(), allPayments.getContent().size());
-        
+
         return new org.springframework.data.domain.PageImpl<>(
-            invalidPayments, 
-            pageable, 
+            invalidPayments,
+            pageable,
             invalidPayments.size()
         );
     }
-    
+
     /**
      * Check if a payment has invalid transaction ID
      */
     private boolean isInvalidPayment(BookingPayment payment) {
         // Check if completed/refunded payment is missing transaction ID
-        if ((payment.getStatus() == Constants.PaymentStatusEnum.COMPLETED || 
+        if ((payment.getStatus() == Constants.PaymentStatusEnum.COMPLETED ||
              payment.getStatus() == Constants.PaymentStatusEnum.REFUNDED) &&
             (payment.getTransactionId() == null || payment.getTransactionId().trim().isEmpty())) {
-            log.debug("Payment {} has status {} but missing transaction ID", 
+            log.debug("Payment {} has status {} but missing transaction ID",
                     payment.getId(), payment.getStatus());
             return true;
         }
-        
+
         // Check if PayPal payment has invalid transaction ID format
         if (payment.getPaymentMethod() == Constants.PaymentMethodEnum.PAYPAL &&
-            payment.getTransactionId() != null && 
+            payment.getTransactionId() != null &&
             !payment.getTransactionId().trim().isEmpty()) {
-            
+
             String txnId = payment.getTransactionId();
             // Check for invalid prefixes indicating wrong payment method
-            if (txnId.toUpperCase().startsWith("MOMO_") || 
+            if (txnId.toUpperCase().startsWith("MOMO_") ||
                 txnId.toUpperCase().startsWith("VNPAY_")) {
-                log.debug("PayPal payment {} has invalid transaction ID with wrong prefix: {}", 
+                log.debug("PayPal payment {} has invalid transaction ID with wrong prefix: {}",
                         payment.getId(), txnId);
                 return true;
             }
-            
+
             // Check for other invalid patterns
             if (txnId.length() < 5 || txnId.length() > 100) {
-                log.debug("PayPal payment {} has invalid transaction ID length: {}", 
+                log.debug("PayPal payment {} has invalid transaction ID length: {}",
                         payment.getId(), txnId.length());
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Build a user-friendly error message for refund failures
      */
     private String buildRefundErrorMessage(UUID bookingId, BookingPayment payment, PayPalRESTException e) {
         StringBuilder message = new StringBuilder();
         message.append("Refund failed for booking ").append(bookingId).append(". ");
-        
+
         // Get error details as string for checking
         String errorDetails = e.getDetails() != null ? e.getDetails().toString() : "";
         String errorMessage = e.getMessage() != null ? e.getMessage() : "";
-        
+
         // Check for specific PayPal error codes
         if (errorDetails.contains("INVALID_RESOURCE_ID") || errorMessage.contains("INVALID_RESOURCE_ID")) {
             message.append("The payment transaction could not be found in PayPal system. ");
@@ -577,12 +570,12 @@ public class BookingServiceImpl implements BookingService {
             message.append("PayPal returned an error: ").append(errorMessage).append(". ");
             message.append("Please contact support with this booking ID for assistance.");
         }
-        
+
         // Always include booking ID and payment ID for support
         message.append(" [Booking ID: ").append(bookingId)
                .append(", Payment ID: ").append(payment.getId())
                .append(", Transaction ID: ").append(payment.getTransactionId()).append("]");
-        
+
         return message.toString();
     }
 }

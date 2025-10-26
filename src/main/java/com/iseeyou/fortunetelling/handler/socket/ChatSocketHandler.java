@@ -8,6 +8,7 @@ import com.iseeyou.fortunetelling.dto.response.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.Conversation;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.MessageMapper;
 import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.message.MessageService;
@@ -66,14 +67,6 @@ public class ChatSocketHandler {
                 // Join room
                 client.joinRoom(conversationId);
                 log.info("User {} joined conversation {}", userId, conversationId);
-
-                // Track customer join time
-                boolean isCustomer = conversation.getBooking().getCustomer().getId().toString().equals(userId);
-                if (isCustomer && conversation.getCustomerJoinedAt() == null) {
-                    conversation.setCustomerJoinedAt(LocalDateTime.now());
-                    conversationRepository.save(conversation);
-                    log.info("Customer joined on time for conversation: {}", conversationId);
-                }
 
                 // Notify others in room
                 com.corundumstudio.socketio.BroadcastOperations roomOps = namespace.getRoomOperations(conversationId);

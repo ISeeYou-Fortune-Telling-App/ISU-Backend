@@ -43,18 +43,4 @@ public class Conversation extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "conversation", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Message> messages;
-
-    @Column(name = "customer_joined_at")
-    private LocalDateTime customerJoinedAt;  // Track khi customer join
-
-    @Column(name = "cancel_reason", length = 500)
-    private String cancelReason;  // Lý do hủy
-
-    @Column(name = "warning_notification_sent")
-    @Builder.Default
-    private Boolean warningNotificationSent = false;  // Đã gửi warning chưa
-
-    @Column(name = "extended_minutes")
-    @Builder.Default
-    private Integer extendedMinutes = 0;
 }

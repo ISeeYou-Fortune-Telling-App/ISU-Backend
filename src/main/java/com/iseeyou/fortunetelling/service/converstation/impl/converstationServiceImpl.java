@@ -10,7 +10,7 @@ import com.iseeyou.fortunetelling.mapper.ConversationMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
-import com.iseeyou.fortunetelling.service.converstation.ConversationService;
+import com.iseeyou.fortunetelling.service.converstation.ConverstationService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class converstationServiceImpl implements ConversationService {
+public class converstationServiceImpl implements ConverstationService {
 
     private final MessageSourceService messageSourceService;
     private final ConversationRepository conversationRepository;
@@ -99,9 +99,9 @@ public class converstationServiceImpl implements ConversationService {
         Page<Conversation> conversations;
 
         if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            conversations = conversationRepository.findByBooking_ServicePackage_Seer(currentUser.getId(), pageable);
+            conversations = conversationRepository.findByBooking_ServicePackage_Seer(currentUser, pageable);
         } else {
-            conversations = conversationRepository.findByBooking_Customer(currentUser.getId(), pageable);
+            conversations = conversationRepository.findByBooking_Customer(currentUser, pageable);
         }
 
         return conversations.map(conv -> conversationMapper.mapTo(conv, ChatSessionResponse.class));
@@ -117,74 +117,6 @@ public class converstationServiceImpl implements ConversationService {
         conversation.setSessionEndTime(LocalDateTime.now());
         conversationRepository.save(conversation);
         log.info("Chat session ended for conversation: {}", conversationId);
-    }
-
-    @Override
-    @Transactional
-    public void cancelLateSession(UUID conversationId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
-
-        // Cancel conversation
-        conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
-        conversation.setCancelReason("Customer late >10 minutes");
-        conversationRepository.save(conversation);
-
-        // Cancel booking
-        Booking booking = conversation.getBooking();
-        booking.setStatus(Constants.BookingStatusEnum.CANCELED);
-        bookingRepository.save(booking);
-
-        log.info("Session canceled due to customer late: conversation={}, booking={}",
-                conversationId, booking.getId());
-    }
-
-    @Override
-    @Transactional
-    public void sendWarningNotification(UUID conversationId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
-
-        // Mark warning sent
-        conversation.setWarningNotificationSent(true);
-        conversationRepository.save(conversation);
-
-        log.info("Warning notification sent for conversation: {}", conversationId);
-    }
-
-    @Override
-    @Transactional
-    public void autoEndSession(UUID conversationId) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
-
-        // End conversation
-        conversation.setStatus(Constants.ConversationStatusEnum.ENDED);
-        conversation.setSessionEndTime(LocalDateTime.now());
-        conversationRepository.save(conversation);
-
-        // Complete booking
-        Booking booking = conversation.getBooking();
-        booking.setStatus(Constants.BookingStatusEnum.COMPLETED);
-        bookingRepository.save(booking);
-
-        log.info("Session auto-ended: conversation={}, booking={}",
-                conversationId, booking.getId());
-    }
-
-    @Override
-    public void extendSession(UUID conversationId, Integer additionalMinutes) {
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
-
-        // Extend session
-        LocalDateTime newEndTime = conversation.getSessionEndTime().plusMinutes(additionalMinutes);
-        conversation.setSessionEndTime(newEndTime);
-        conversation.setExtendedMinutes(conversation.getExtendedMinutes() + additionalMinutes);
-        conversation.setWarningNotificationSent(false); // Reset warning flag
-        conversationRepository.save(conversation);
-
-        log.info("Session extended by {} minutes: conversation={}", additionalMinutes, conversationId);
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {
