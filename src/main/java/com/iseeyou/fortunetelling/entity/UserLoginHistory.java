@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "user_login_history")
@@ -17,7 +16,7 @@ import java.util.UUID;
 @AttributeOverrides({
         @AttributeOverride(name = "id", column = @Column(name = "login_history_id", nullable = false)),
 })
-public class UserLoginHistory extends AbstractBaseEntity{
+public class UserLoginHistory extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -25,7 +24,7 @@ public class UserLoginHistory extends AbstractBaseEntity{
     @Column(name = "ip_address", length = 50)
     private String ipAddress;
 
-    @Column(name = "device_info", columnDefinition = "TEXT")
+    @Column(name = "device_info")
     private String deviceInfo;
 
     @Column(name = "location")
@@ -48,3 +47,4 @@ public class UserLoginHistory extends AbstractBaseEntity{
     @Column(name = "failure_reason")
     private String failureReason;
 }
+

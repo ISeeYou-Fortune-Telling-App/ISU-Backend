@@ -20,10 +20,10 @@ public class Notification extends AbstractBaseEntity {
     @Builder.Default
     private Constants.NotificationTypeEnum notificationType = Constants.NotificationTypeEnum.ACCOUNT;
 
-    @Column(name = "notification_title", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "notification_title", nullable = false)
     private String notificationTitle;
 
-    @Column(name = "notification_body", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "notification_body", nullable = false)
     private String notificationBody;
 
     @ManyToOne(fetch = FetchType.LAZY)
