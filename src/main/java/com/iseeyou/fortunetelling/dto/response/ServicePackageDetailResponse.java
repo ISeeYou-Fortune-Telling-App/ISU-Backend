@@ -6,7 +6,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -26,6 +29,11 @@ public class ServicePackageDetailResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Review statistics
+    private Double avgRating;
+    private Long totalReviews;
+    private List<ReviewInfo> reviews;
+
     // Thông tin Seer
     private SeerInfo seer;
 
@@ -44,5 +52,27 @@ public class ServicePackageDetailResponse {
         private Double avgRating;
         private Integer totalRates;
         private String paymentInfo;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReviewInfo {
+        private UUID bookingId;
+        private BigDecimal rating;
+        private String comment;
+        private LocalDateTime reviewedAt;
+        private CustomerInfo customer;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CustomerInfo {
+        private UUID customerId;
+        private String customerName;
+        private String customerAvatar;
     }
 }

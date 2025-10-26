@@ -256,26 +256,10 @@ public class UserServiceImpl implements UserService {
         if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {
             for (CertificateCreateRequest certRequest : request.getCertificates()) {
                 try {
-                    // Create certificate entity from request
-                    Certificate certificate = new Certificate();
-                    certificate.setCertificateName(certRequest.getCertificateName());
-                    certificate.setCertificateDescription(certRequest.getCertificateDescription());
-                    certificate.setIssuedBy(certRequest.getIssuedBy());
-                    certificate.setIssuedAt(certRequest.getIssuedAt());
-                    certificate.setExpirationDate(certRequest.getExpirationDate());
-                    certificate.setSeer(user);
-                    certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
-
-                    // Upload certificate file if provided
-                    if (certRequest.getCertificateFile() != null && !certRequest.getCertificateFile().isEmpty()) {
-                        String imageUrl = cloudinaryService.uploadFile(certRequest.getCertificateFile(), "certificates");
-                        certificate.setCertificateUrl(imageUrl);
-                    }
-
-                    // Create certificate with associated categories
-                    certificateService.create(certificate, certRequest.getCategoryIds());
+                    // CertificateService now handles all logic: mapping, upload, and creation
+                    certificateService.create(certRequest);
                 } catch (IOException e) {
-                    log.error("Failed to upload certificate file: {}", e.getMessage());
+                    log.error("Failed to create certificate: {}", e.getMessage());
                 }
             }
         }

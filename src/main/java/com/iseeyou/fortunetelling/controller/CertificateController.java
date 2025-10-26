@@ -10,7 +10,6 @@ import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.mapper.CertificateMapper;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
-import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -40,7 +39,6 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 public class CertificateController extends AbstractBaseController {
     private final CertificateService certificateService;
     private final CertificateMapper certificateMapper;
-    private final CloudinaryService cloudinaryService;
 
     @GetMapping
     @Operation(
@@ -156,10 +154,7 @@ public class CertificateController extends AbstractBaseController {
             @Parameter(description = "Certificate data to create", required = true)
             @ModelAttribute @Valid CertificateCreateRequest request
     ) throws IOException {
-        Certificate certificateToCreate = certificateMapper.mapTo(request, Certificate.class);
-        String imageUrl = cloudinaryService.uploadFile(request.getCertificateFile(), "certificates");
-        certificateToCreate.setCertificateUrl(imageUrl);
-        Certificate createdCertificate = certificateService.create(certificateToCreate, request.getCategoryIds());
+        Certificate createdCertificate = certificateService.create(request);
         CertificateResponse response = certificateMapper.mapTo(createdCertificate, CertificateResponse.class);
         return responseFactory.successSingle(response, "Certificate created successfully");
     }
@@ -209,8 +204,7 @@ public class CertificateController extends AbstractBaseController {
             @Parameter(description = "Updated certificate data", required = true)
             @ModelAttribute @Valid CertificateUpdateRequest request
     ) throws IOException {
-        Certificate certificateToUpdate = certificateMapper.mapTo(request, Certificate.class);
-        Certificate updatedCertificate = certificateService.update(id, certificateToUpdate, request.getCategoryIds());
+        Certificate updatedCertificate = certificateService.update(id, request);
         CertificateResponse response = certificateMapper.mapTo(updatedCertificate, CertificateResponse.class);
         return responseFactory.successSingle(response, "Certificate updated successfully");
     }

@@ -14,6 +14,7 @@ import java.util.UUID;
 @SuperBuilder
 public class ReportUpdateRequest {
     private UUID reportId;
+    private Constants.ReportStatusEnum status;
     private Constants.ReportActionEnum actionType;
     private String note;
 }

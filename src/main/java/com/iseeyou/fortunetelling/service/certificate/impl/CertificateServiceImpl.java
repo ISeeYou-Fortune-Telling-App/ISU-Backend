@@ -1,9 +1,12 @@
 package com.iseeyou.fortunetelling.service.certificate.impl;
 
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateRequest;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.CertificateMapper;
 import com.iseeyou.fortunetelling.repository.certificate.CertificateCategoryRepository;
 import com.iseeyou.fortunetelling.repository.certificate.CertificateRepository;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
@@ -35,6 +38,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final KnowledgeCategoryService knowledgeCategoryService;
     private final CloudinaryService cloudinaryService;
     private final UserService userService;
+    private final CertificateMapper certificateMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -51,60 +55,91 @@ public class CertificateServiceImpl implements CertificateService {
 
     @Override
     @Transactional
-    public Certificate create(Certificate certificate, Set<UUID> categoryIds) {
+    public Certificate create(CertificateCreateRequest request) throws IOException {
+        // Map DTO to Entity
+        Certificate certificate = certificateMapper.mapTo(request, Certificate.class);
+        
+        // Upload certificate file to Cloudinary
+        if (request.getCertificateFile() != null && !request.getCertificateFile().isEmpty()) {
+            String imageUrl = cloudinaryService.uploadFile(request.getCertificateFile(), "certificates");
+            certificate.setCertificateUrl(imageUrl);
+        }
+        
+        // Set business logic fields
         certificate.setSeer(userService.getUser());
         certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
         Certificate newCertificate = certificateRepository.save(certificate);
-        List<KnowledgeCategory> categories = knowledgeCategoryService.findAllByIds(categoryIds);
+        
+        // Handle categories if provided
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            List<KnowledgeCategory> categories = knowledgeCategoryService.findAllByIds(request.getCategoryIds());
 
-        Set<CertificateCategory> certificateCategories = new HashSet<>();
-        for (KnowledgeCategory category : categories) {
-            CertificateCategory certificateCategory = CertificateCategory.builder()
-                    .certificate(newCertificate)
-                    .knowledgeCategory(category)
-                    .build();
+            Set<CertificateCategory> certificateCategories = new HashSet<>();
+            for (KnowledgeCategory category : categories) {
+                CertificateCategory certificateCategory = CertificateCategory.builder()
+                        .certificate(newCertificate)
+                        .knowledgeCategory(category)
+                        .build();
 
-            certificateCategories.add(certificateCategory);
+                certificateCategories.add(certificateCategory);
+            }
+
+            certificateCategoryRepository.saveAll(certificateCategories);
+            newCertificate.setCertificateCategories(certificateCategories);
         }
-
-        certificateCategoryRepository.saveAll(certificateCategories);
-
-        newCertificate.setCertificateCategories(certificateCategories);
 
         return newCertificate;
     }
 
     @Override
     @Transactional
-    public Certificate update(UUID id, Certificate certificate, Set<UUID> newCategoryIds) throws IOException {
+    public Certificate update(UUID id, CertificateUpdateRequest request) throws IOException {
         Certificate existingCertificate = certificateRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Certificate not found with id: " + id));
 
-        if (existingCertificate.getCertificateUrl() != null) {
-            // Nếu có URL cũ, xóa nó khỏi Cloudinary
-            cloudinaryService.deleteFile(existingCertificate.getCertificateUrl());
-            existingCertificate.setCertificateUrl(null);
+        // Handle file upload if new file provided
+        if (request.getCertificateFile() != null && !request.getCertificateFile().isEmpty()) {
+            // Delete old file from Cloudinary if exists
+            if (existingCertificate.getCertificateUrl() != null) {
+                cloudinaryService.deleteFile(existingCertificate.getCertificateUrl());
+            }
+            // Upload new file
+            String imageUrl = cloudinaryService.uploadFile(request.getCertificateFile(), "certificates");
+            existingCertificate.setCertificateUrl(imageUrl);
         }
 
-        updateCertificateFields(existingCertificate, certificate);
-
-        if (newCategoryIds != null) {
-            updateCertificateCategories(existingCertificate, newCategoryIds);
+        // Update fields from request
+        if (request.getCertificateName() != null) {
+            existingCertificate.setCertificateName(request.getCertificateName());
+        }
+        if (request.getCertificateDescription() != null) {
+            existingCertificate.setCertificateDescription(request.getCertificateDescription());
+        }
+        if (request.getIssuedBy() != null) {
+            existingCertificate.setIssuedBy(request.getIssuedBy());
+        }
+        if (request.getIssuedAt() != null) {
+            existingCertificate.setIssuedAt(request.getIssuedAt());
+        }
+        if (request.getExpirationDate() != null) {
+            existingCertificate.setExpirationDate(request.getExpirationDate());
+        }
+        if (request.getStatus() != null) {
+            existingCertificate.setStatus(request.getStatus());
+        }
+        if (request.getDecisionDate() != null) {
+            existingCertificate.setDecisionDate(request.getDecisionDate());
+        }
+        if (request.getDecisionReason() != null) {
+            existingCertificate.setDecisionReason(request.getDecisionReason());
         }
 
-        return existingCertificate;
-    }
+        // Update categories if provided
+        if (request.getCategoryIds() != null) {
+            updateCertificateCategories(existingCertificate, request.getCategoryIds());
+        }
 
-    private void updateCertificateFields(Certificate existing, Certificate updated) {
-        existing.setCertificateName(updated.getCertificateName());
-        existing.setCertificateDescription(updated.getCertificateDescription());
-        existing.setIssuedBy(updated.getIssuedBy());
-        existing.setIssuedAt(updated.getIssuedAt());
-        existing.setExpirationDate(updated.getExpirationDate());
-        existing.setCertificateUrl(updated.getCertificateUrl());
-        existing.setStatus(updated.getStatus());
-        existing.setDecisionDate(updated.getDecisionDate());
-        existing.setDecisionReason(updated.getDecisionReason());
+        return certificateRepository.save(existingCertificate);
     }
 
     private void updateCertificateCategories(Certificate certificate, Set<UUID> newCategoryIds) {

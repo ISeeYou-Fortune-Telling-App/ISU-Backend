@@ -28,6 +28,8 @@ public class ServicePackageResponse {
     private Long likeCount;
     private Long dislikeCount;
     private List<UserInteractionInfo> userInteractions; // Array of users who interacted
+    private Double avgRating; // Average rating from booking reviews
+    private Long totalReviews; // Total number of reviews
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

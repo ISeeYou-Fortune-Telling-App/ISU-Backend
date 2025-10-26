@@ -75,4 +75,48 @@ public class PayPalGateway {
 
         return completePayment;
     }
+
+    /**
+     * Hoàn tiền cho một Sale transaction trên PayPal
+     * @param saleId ID của sale transaction cần hoàn tiền
+     * @param amount Số tiền cần hoàn (null = hoàn toàn bộ)
+     * @return DetailedRefund object chứa thông tin hoàn tiền
+     * @throws PayPalRESTException nếu có lỗi từ PayPal API
+     */
+    @Transactional
+    public DetailedRefund refundSale(String saleId, Double amount) throws PayPalRESTException {
+        try {
+            // Lấy thông tin Sale transaction
+            Sale sale = Sale.get(apiContext, saleId);
+            
+            // Tạo refund request
+            RefundRequest refundRequest = new RefundRequest();
+            
+            if (amount != null && amount > 0) {
+                // Partial refund
+                Amount refundAmount = new Amount();
+                refundAmount.setCurrency("USD");
+                refundAmount.setTotal(String.format("%.2f", amount));
+                refundRequest.setAmount(refundAmount);
+                log.info("Processing partial refund of ${} for sale {}", amount, saleId);
+            } else {
+                // Full refund (no amount = refund entire transaction)
+                log.info("Processing full refund for sale {}", saleId);
+            }
+            
+            // Thực hiện hoàn tiền
+            DetailedRefund refund = sale.refund(apiContext, refundRequest);
+            
+            log.info("PayPal refund successful. Refund ID: {}, Status: {}, Amount: {}", 
+                    refund.getId(), refund.getState(), 
+                    refund.getAmount() != null ? refund.getAmount().getTotal() : "full");
+            
+            return refund;
+            
+        } catch (PayPalRESTException e) {
+            log.error("PayPal refund failed for sale {}: {} - {}", 
+                    saleId, e.getMessage(), e.getDetails());
+            throw e;
+        }
+    }
 }

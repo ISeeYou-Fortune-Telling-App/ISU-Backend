@@ -2,12 +2,10 @@ package com.iseeyou.fortunetelling.service.dummydata.domain;
 
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
-import com.iseeyou.fortunetelling.entity.booking.BookingReview;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.repository.booking.BookingPaymentRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
-import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -16,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
@@ -28,7 +27,6 @@ public class Bookings {
 
     private final BookingRepository bookingRepository;
     private final BookingPaymentRepository bookingPaymentRepository;
-    private final BookingReviewRepository bookingReviewRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final UserRepository userRepository;
 
@@ -198,15 +196,14 @@ public class Bookings {
             // 70% chance of having a review
             if (random.nextDouble() < 0.7) {
                 String comment = reviewComments[random.nextInt(reviewComments.length)];
-                Integer rating = 3 + random.nextInt(3); // Rating between 3-5 (mostly positive)
+                double rating = 3.0 + (random.nextInt(21) / 10.0); // Rating between 3.0-5.0 (3.0, 3.1, 3.2, ..., 5.0)
 
-                BookingReview review = BookingReview.builder()
-                        .rating(rating)
-                        .comment(comment)
-                        .booking(booking)
-                        .build();
+                // Set review directly in booking entity
+                booking.setRating(BigDecimal.valueOf(rating));
+                booking.setComment(comment);
+                booking.setReviewedAt(LocalDateTime.now().minusDays(random.nextInt(30))); // Reviewed within last 30 days
 
-                bookingReviewRepository.save(review);
+                bookingRepository.save(booking);
             }
         }
 

@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.servicepackage.impl;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
@@ -11,22 +12,29 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.config.CloudinaryConfig;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
@@ -37,7 +45,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ServicePackageServiceImpl implements ServicePackageService {
 
@@ -46,8 +53,35 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final CloudinaryConfig cloudinaryConfig;
     private final UserRepository userRepository;
     private final PackageInteractionRepository interactionRepository;
+    private final BookingRepository bookingRepository;
     private final UserService userService;
     private final ServicePackageMapper servicePackageMapper;
+    private final BookingService bookingService;
+    private final TransactionTemplate transactionTemplate;
+
+    // Constructor with @Lazy for BookingService to prevent circular dependency
+    public ServicePackageServiceImpl(
+            ServicePackageRepository servicePackageRepository,
+            KnowledgeCategoryRepository knowledgeCategoryRepository,
+            CloudinaryConfig cloudinaryConfig,
+            UserRepository userRepository,
+            PackageInteractionRepository interactionRepository,
+            BookingRepository bookingRepository,
+            UserService userService,
+            ServicePackageMapper servicePackageMapper,
+            @Lazy BookingService bookingService,
+            TransactionTemplate transactionTemplate) {
+        this.servicePackageRepository = servicePackageRepository;
+        this.knowledgeCategoryRepository = knowledgeCategoryRepository;
+        this.cloudinaryConfig = cloudinaryConfig;
+        this.userRepository = userRepository;
+        this.interactionRepository = interactionRepository;
+        this.bookingRepository = bookingRepository;
+        this.userService = userService;
+        this.servicePackageMapper = servicePackageMapper;
+        this.bookingService = bookingService;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -225,6 +259,29 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 })
                 .orElse(null);
 
+        // Get review statistics
+        UUID packageId = servicePackage.getId();
+        Long totalReviews = bookingRepository.countReviewsByServicePackageId(packageId);
+        Double avgRating = bookingRepository.getAverageRatingByServicePackageId(packageId);
+
+        // Get reviews (latest 10 reviews by default)
+        Pageable reviewPageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "reviewedAt"));
+        Page<Booking> reviewsPage = bookingRepository.findReviewsByServicePackageId(packageId, reviewPageable);
+        
+        List<ServicePackageDetailResponse.ReviewInfo> reviews = reviewsPage.getContent().stream()
+                .map(booking -> ServicePackageDetailResponse.ReviewInfo.builder()
+                        .bookingId(booking.getId())
+                        .rating(booking.getRating())
+                        .comment(booking.getComment())
+                        .reviewedAt(booking.getReviewedAt())
+                        .customer(ServicePackageDetailResponse.CustomerInfo.builder()
+                                .customerId(booking.getCustomer().getId())
+                                .customerName(booking.getCustomer().getFullName())
+                                .customerAvatar(booking.getCustomer().getAvatarUrl())
+                                .build())
+                        .build())
+                .collect(Collectors.toList());
+
         // Tạo ServicePackageDetailResponse
         return ServicePackageDetailResponse.builder()
                 .packageId(servicePackage.getId().toString())
@@ -238,8 +295,107 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .rejectionReason(servicePackage.getRejectionReason())
                 .createdAt(servicePackage.getCreatedAt())
                 .updatedAt(servicePackage.getUpdatedAt())
+                .avgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                .totalReviews(totalReviews != null ? totalReviews : 0L)
+                .reviews(reviews)
                 .seer(seerInfo)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteServicePackage(String id) {
+        log.info("Starting soft delete process for service package {}", id);
+        
+        // 1. Find service package
+        ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+        
+        // 2. Check if already deleted
+        if (servicePackage.getDeletedAt() != null) {
+            throw new IllegalArgumentException("Service package is already deleted");
+        }
+        
+        // 3. Validate permission - seer can only delete their own packages, admin can delete any
+        User currentUser = userService.getUser();
+        boolean isSeerOwner = servicePackage.getSeer() != null && 
+                              servicePackage.getSeer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
+        
+        if (!isSeerOwner && !isAdmin) {
+            throw new IllegalArgumentException(
+                "Access denied: Only the package owner or admin can delete this service package"
+            );
+        }
+        
+        // 4. Find all bookings for this service package that are not completed
+        List<Booking> incompleteBookings = servicePackage.getBookings().stream()
+                .filter(booking -> !booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED))
+                .collect(Collectors.toList());
+        
+        log.info("Found {} incomplete bookings for service package {}", incompleteBookings.size(), id);
+        
+        // 5. Refund incomplete bookings
+        // Use separate transactions for each refund to prevent rollback contamination
+        int successfulRefunds = 0;
+        int failedRefunds = 0;
+        List<String> refundErrors = new java.util.ArrayList<>();
+        
+        for (Booking booking : incompleteBookings) {
+            log.info("Processing refund for booking {} (status: {})", booking.getId(), booking.getStatus());
+            
+            // Check if booking is already canceled or failed
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
+                booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                log.info("Booking {} already in terminal state {}, skipping refund", 
+                        booking.getId(), booking.getStatus());
+                continue;
+            }
+            
+            // Try to refund the booking in a separate transaction using TransactionTemplate
+            // This creates a new transaction that won't affect the parent transaction if it fails
+            try {
+                // Create a new TransactionTemplate with REQUIRES_NEW propagation
+                TransactionTemplate newTransactionTemplate = new TransactionTemplate(transactionTemplate.getTransactionManager());
+                newTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                
+                newTransactionTemplate.execute(status -> {
+                    bookingService.refundBooking(booking.getId());
+                    return null;
+                });
+                successfulRefunds++;
+                log.info("Successfully refunded booking {}", booking.getId());
+            } catch (Exception e) {
+                failedRefunds++;
+                String errorMsg = String.format("Failed to refund booking %s: %s", 
+                        booking.getId(), e.getMessage());
+                log.error(errorMsg, e);
+                refundErrors.add(errorMsg);
+                
+                // Continue with other bookings even if one fails
+                // We still want to delete the package
+            }
+        }
+        
+        log.info("Refund summary for service package {}: {} successful, {} failed out of {} incomplete bookings",
+                id, successfulRefunds, failedRefunds, incompleteBookings.size());
+        
+        // Log any refund errors
+        if (!refundErrors.isEmpty()) {
+            log.warn("Refund errors for service package {}: {}", id, String.join("; ", refundErrors));
+        }
+        
+        // 6. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
+        // which sets deleted_at = NOW()
+        // IMPORTANT: Bookings and BookingPayments are NOT deleted (no cascade)
+        // They are preserved for reporting and transaction history
+        // Only the ServicePackage is soft-deleted (deleted_at is set)
+        servicePackageRepository.delete(servicePackage);
+        
+        log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
+                "Refunded {} bookings, {} failed. " +
+                "All bookings and payments are preserved for historical records.", 
+                id, currentUser.getId(), currentUser.getRole(), successfulRefunds, failedRefunds);
     }
 
     // ============ Interaction methods (merged from PackageInteractionService) ============
@@ -351,7 +507,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     /**
-     * Helper method to enrich service packages with user interaction data
+     * Helper method to enrich service packages with user interaction data and review statistics
      */
     private Page<ServicePackageResponse> enrichWithInteractions(Page<ServicePackage> servicePackages) {
         return servicePackages.map(pkg -> {
@@ -372,6 +528,13 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                     .collect(Collectors.toList());
             
             response.setUserInteractions(userInteractions);
+            
+            // Get review statistics from bookings
+            Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
+            Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
+            
+            response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
+            response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place
             
             return response;
         });

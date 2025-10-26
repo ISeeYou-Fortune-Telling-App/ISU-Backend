@@ -156,6 +156,68 @@ public class ServicePackageController extends AbstractBaseController {
         return responseFactory.successSingle(servicePackage, "Service package updated successfully");
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete service package (Soft Delete with Auto Refund)",
+            description = "Soft delete a service package. Seer can delete their own packages, Admin can delete any package. " +
+                         "The package will be hidden from all queries but data is preserved for existing bookings and reports. " +
+                         "All incomplete bookings (PENDING, CONFIRMED) will be automatically refunded and canceled.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Service package deleted successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Service package already deleted or cannot be deleted",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Only package owner or admin can delete",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<String>> deleteServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable String id
+    ) {
+        servicePackageService.deleteServicePackage(id);
+        return responseFactory.successSingle(
+                "Service package deleted successfully. All incomplete bookings have been refunded and canceled. " +
+                "Data is preserved for existing bookings and reports (soft delete).", 
+                "Service package deleted successfully"
+        );
+    }
+
     @GetMapping("/by-category/{category}")
     @Operation(
             summary = "Get service packages by category",

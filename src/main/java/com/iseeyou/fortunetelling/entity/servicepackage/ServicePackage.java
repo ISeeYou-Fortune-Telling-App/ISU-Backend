@@ -6,7 +6,10 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +25,8 @@ import java.util.Set;
 @AttributeOverrides({
         @AttributeOverride(name = "id", column = @Column(name = "package_id", nullable = false)),
 })
+@SQLDelete(sql = "UPDATE service_package SET deleted_at = NOW() WHERE package_id = ?")
+@Where(clause = "deleted_at IS NULL")
 public class ServicePackage extends AbstractBaseEntity {
     @Column(name = "package_title", nullable = false, length = 100)
     private String packageTitle;
@@ -56,6 +61,9 @@ public class ServicePackage extends AbstractBaseEntity {
     @Builder.Default
     private Long commentCount = 0L;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PackageCategory> packageCategories = new HashSet<>();
 
@@ -69,7 +77,9 @@ public class ServicePackage extends AbstractBaseEntity {
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ServiceReview> serviceReviews = new HashSet<>();
 
-    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    // No cascade delete for bookings - preserve booking history for reports even when package is deleted
+    // Bookings contain critical payment and transaction data that must be retained
+    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY)
     @Builder.Default
     private Set<Booking> bookings = new HashSet<>();
 }

@@ -19,6 +19,7 @@ public interface ServicePackageService {
     ServicePackage createOrUpdatePackage(String seerId, ServicePackageUpsertRequest request);
     String uploadImage(MultipartFile image);
     ServicePackageDetailResponse findDetailById(String id);
+    void deleteServicePackage(String id);
     
     // Interaction methods merged from PackageInteractionService
     ServicePackageResponse toggleInteraction(UUID packageId, Constants.InteractionTypeEnum interactionType);
