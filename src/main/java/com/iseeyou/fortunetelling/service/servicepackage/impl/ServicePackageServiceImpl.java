@@ -32,7 +32,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
@@ -55,6 +57,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final UserService userService;
     private final ServicePackageMapper servicePackageMapper;
     private final BookingService bookingService;
+    private final TransactionTemplate transactionTemplate;
 
     // Constructor with @Lazy for BookingService to prevent circular dependency
     public ServicePackageServiceImpl(
@@ -66,7 +69,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             BookingRepository bookingRepository,
             UserService userService,
             ServicePackageMapper servicePackageMapper,
-            @Lazy BookingService bookingService) {
+            @Lazy BookingService bookingService,
+            TransactionTemplate transactionTemplate) {
         this.servicePackageRepository = servicePackageRepository;
         this.knowledgeCategoryRepository = knowledgeCategoryRepository;
         this.cloudinaryConfig = cloudinaryConfig;
@@ -76,6 +80,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         this.userService = userService;
         this.servicePackageMapper = servicePackageMapper;
         this.bookingService = bookingService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
@@ -331,27 +336,35 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         log.info("Found {} incomplete bookings for service package {}", incompleteBookings.size(), id);
         
         // 5. Refund incomplete bookings
+        // Use separate transactions for each refund to prevent rollback contamination
         int successfulRefunds = 0;
         int failedRefunds = 0;
         List<String> refundErrors = new java.util.ArrayList<>();
         
         for (Booking booking : incompleteBookings) {
+            log.info("Processing refund for booking {} (status: {})", booking.getId(), booking.getStatus());
+            
+            // Check if booking is already canceled or failed
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
+                booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                log.info("Booking {} already in terminal state {}, skipping refund", 
+                        booking.getId(), booking.getStatus());
+                continue;
+            }
+            
+            // Try to refund the booking in a separate transaction using TransactionTemplate
+            // This creates a new transaction that won't affect the parent transaction if it fails
             try {
-                log.info("Processing refund for booking {} (status: {})", booking.getId(), booking.getStatus());
+                // Create a new TransactionTemplate with REQUIRES_NEW propagation
+                TransactionTemplate newTransactionTemplate = new TransactionTemplate(transactionTemplate.getTransactionManager());
+                newTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
                 
-                // Check if booking is already canceled or failed
-                if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
-                    booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
-                    log.info("Booking {} already in terminal state {}, skipping refund", 
-                            booking.getId(), booking.getStatus());
-                    continue;
-                }
-                
-                // Try to refund the booking
-                bookingService.refundBooking(booking.getId());
+                newTransactionTemplate.execute(status -> {
+                    bookingService.refundBooking(booking.getId());
+                    return null;
+                });
                 successfulRefunds++;
                 log.info("Successfully refunded booking {}", booking.getId());
-                
             } catch (Exception e) {
                 failedRefunds++;
                 String errorMsg = String.format("Failed to refund booking %s: %s", 
@@ -374,10 +387,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         
         // 6. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
         // which sets deleted_at = NOW()
+        // IMPORTANT: Bookings and BookingPayments are NOT deleted (no cascade)
+        // They are preserved for reporting and transaction history
+        // Only the ServicePackage is soft-deleted (deleted_at is set)
         servicePackageRepository.delete(servicePackage);
         
         log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
-                "Refunded {} bookings, {} failed", 
+                "Refunded {} bookings, {} failed. " +
+                "All bookings and payments are preserved for historical records.", 
                 id, currentUser.getId(), currentUser.getRole(), successfulRefunds, failedRefunds);
     }
 

@@ -77,7 +77,9 @@ public class ServicePackage extends AbstractBaseEntity {
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ServiceReview> serviceReviews = new HashSet<>();
 
-    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    // No cascade delete for bookings - preserve booking history for reports even when package is deleted
+    // Bookings contain critical payment and transaction data that must be retained
+    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY)
     @Builder.Default
     private Set<Booking> bookings = new HashSet<>();
 }

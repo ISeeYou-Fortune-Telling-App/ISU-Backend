@@ -12,10 +12,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
+
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    Optional<Booking> findWithDetailById(UUID id);
 
     @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer","servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAllByCustomer(User customer, Pageable pageable);

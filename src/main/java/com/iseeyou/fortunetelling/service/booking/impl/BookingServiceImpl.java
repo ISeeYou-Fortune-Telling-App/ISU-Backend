@@ -71,7 +71,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public Booking findById(UUID id) {
-        return bookingRepository.findById(id)
+        return bookingRepository.findWithDetailById(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
     }
 
@@ -122,14 +122,17 @@ public class BookingServiceImpl implements BookingService {
         try {
             BookingPayment bookingPayment = createBookingPayment(newBooking, request.getPaymentMethod());
             newBooking.getBookingPayments().add(bookingPayment);
+            bookingRepository.save(newBooking);
         } catch (PayPalRESTException e) {
             log.error("Error creating PayPal payment: {}", e.getMessage());
             newBooking.setStatus(Constants.BookingStatusEnum.FAILED);
-
+            bookingRepository.save(newBooking);
             throw new RuntimeException("Error creating payment", e);
         }
 
-        return bookingRepository.save(newBooking);
+        // Fetch booking with all relationships to avoid LazyInitializationException
+        return bookingRepository.findWithDetailById(newBooking.getId())
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + newBooking.getId()));
     }
 
     @Override
@@ -173,13 +176,17 @@ public class BookingServiceImpl implements BookingService {
             existingBooking.setScheduledTime(request.getScheduledTime());
         }
 
-        Booking updatedBooking = bookingRepository.save(existingBooking);
+        bookingRepository.save(existingBooking);
 
         // create chat session if booking confirmed
         if (statusChangedToConfirmed) {
             log.info("Booking confirmed, creating chat session for booking: {}", id);
             conversationService.createChatSession(id);
         }
+
+        // Fetch booking with all relationships to avoid LazyInitializationException
+        Booking updatedBooking = bookingRepository.findWithDetailById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
 
         return updatedBooking;
     }
@@ -283,7 +290,7 @@ public class BookingServiceImpl implements BookingService {
         
         // 6. Update booking status to CANCELED
         booking.setStatus(Constants.BookingStatusEnum.CANCELED);
-        Booking cancelledBooking = bookingRepository.save(booking);
+        bookingRepository.save(booking);
         
         log.info("Booking {} cancelled successfully by user {}", id, currentUser.getId());
         
@@ -299,6 +306,10 @@ public class BookingServiceImpl implements BookingService {
         //   "scheduledTime": scheduledTime,
         //   "message": "Customer {customerName} has cancelled booking {bookingId} scheduled for {scheduledTime}"
         // }
+        
+        // 7. Fetch booking with all relationships to avoid LazyInitializationException
+        Booking cancelledBooking = bookingRepository.findWithDetailById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
         
         return cancelledBooking;
     }
@@ -371,10 +382,14 @@ public class BookingServiceImpl implements BookingService {
             
             // 7. Update booking status to CANCELED
             booking.setStatus(Constants.BookingStatusEnum.CANCELED);
-            Booking updatedBooking = bookingRepository.save(booking);
+            bookingRepository.save(booking);
             
             log.info("Booking {} refunded successfully. Payment {} status: REFUNDED", 
                     id, refundedPayment.getId());
+            
+            // 8. Fetch booking with all relationships to avoid LazyInitializationException
+            Booking updatedBooking = bookingRepository.findWithDetailById(id)
+                    .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
             
             return updatedBooking;
             
