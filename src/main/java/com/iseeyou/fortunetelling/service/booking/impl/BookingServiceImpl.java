@@ -513,9 +513,7 @@ public class BookingServiceImpl implements BookingService {
             String txnId = payment.getTransactionId();
             // Check for invalid prefixes indicating wrong payment method
             if (txnId.toUpperCase().startsWith("MOMO_") || 
-                txnId.toUpperCase().startsWith("VNPAY_") ||
-                txnId.toUpperCase().startsWith("ZALOPAY_") ||
-                txnId.toUpperCase().startsWith("BANKING_")) {
+                txnId.toUpperCase().startsWith("VNPAY_")) {
                 log.debug("PayPal payment {} has invalid transaction ID with wrong prefix: {}", 
                         payment.getId(), txnId);
                 return true;
@@ -539,8 +537,12 @@ public class BookingServiceImpl implements BookingService {
         StringBuilder message = new StringBuilder();
         message.append("Refund failed for booking ").append(bookingId).append(". ");
         
+        // Get error details as string for checking
+        String errorDetails = e.getDetails() != null ? e.getDetails().toString() : "";
+        String errorMessage = e.getMessage() != null ? e.getMessage() : "";
+        
         // Check for specific PayPal error codes
-        if (e.getDetails() != null && e.getDetails().contains("INVALID_RESOURCE_ID")) {
+        if (errorDetails.contains("INVALID_RESOURCE_ID") || errorMessage.contains("INVALID_RESOURCE_ID")) {
             message.append("The payment transaction could not be found in PayPal system. ");
             message.append("This may occur if: ");
             message.append("(1) The payment was created with a different payment gateway, ");
@@ -548,16 +550,16 @@ public class BookingServiceImpl implements BookingService {
                    .append(payment.getTransactionId()).append("'), ");
             message.append("(3) The payment is too old and no longer available for refund. ");
             message.append("Please contact support for manual refund processing.");
-        } else if (e.getDetails() != null && e.getDetails().contains("TRANSACTION_REFUSED")) {
+        } else if (errorDetails.contains("TRANSACTION_REFUSED") || errorMessage.contains("TRANSACTION_REFUSED")) {
             message.append("The refund was refused by PayPal. ");
             message.append("The transaction may have already been refunded or is not eligible for refund. ");
             message.append("Please contact support.");
-        } else if (e.getDetails() != null && e.getDetails().contains("INSUFFICIENT_FUNDS")) {
+        } else if (errorDetails.contains("INSUFFICIENT_FUNDS") || errorMessage.contains("INSUFFICIENT_FUNDS")) {
             message.append("Insufficient funds in merchant account to process refund. ");
             message.append("Please contact support immediately.");
         } else {
             // Generic error
-            message.append("PayPal returned an error: ").append(e.getMessage()).append(". ");
+            message.append("PayPal returned an error: ").append(errorMessage).append(". ");
             message.append("Please contact support with this booking ID for assistance.");
         }
         

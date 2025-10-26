@@ -158,9 +158,10 @@ public class ServicePackageController extends AbstractBaseController {
 
     @DeleteMapping("/{id}")
     @Operation(
-            summary = "Delete service package (Soft Delete)",
+            summary = "Delete service package (Soft Delete with Auto Refund)",
             description = "Soft delete a service package. Seer can delete their own packages, Admin can delete any package. " +
-                         "The package will be hidden from all queries but data is preserved for existing bookings and reports.",
+                         "The package will be hidden from all queries but data is preserved for existing bookings and reports. " +
+                         "All incomplete bookings (PENDING, CONFIRMED) will be automatically refunded and canceled.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -211,7 +212,8 @@ public class ServicePackageController extends AbstractBaseController {
     ) {
         servicePackageService.deleteServicePackage(id);
         return responseFactory.successSingle(
-                "Service package deleted successfully (soft delete - data preserved for existing bookings)", 
+                "Service package deleted successfully. All incomplete bookings have been refunded and canceled. " +
+                "Data is preserved for existing bookings and reports (soft delete).", 
                 "Service package deleted successfully"
         );
     }

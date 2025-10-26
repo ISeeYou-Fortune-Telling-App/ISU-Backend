@@ -18,12 +18,14 @@ import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRe
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.config.CloudinaryConfig;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -41,7 +43,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ServicePackageServiceImpl implements ServicePackageService {
 
@@ -53,6 +54,29 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final BookingRepository bookingRepository;
     private final UserService userService;
     private final ServicePackageMapper servicePackageMapper;
+    private final BookingService bookingService;
+
+    // Constructor with @Lazy for BookingService to prevent circular dependency
+    public ServicePackageServiceImpl(
+            ServicePackageRepository servicePackageRepository,
+            KnowledgeCategoryRepository knowledgeCategoryRepository,
+            CloudinaryConfig cloudinaryConfig,
+            UserRepository userRepository,
+            PackageInteractionRepository interactionRepository,
+            BookingRepository bookingRepository,
+            UserService userService,
+            ServicePackageMapper servicePackageMapper,
+            @Lazy BookingService bookingService) {
+        this.servicePackageRepository = servicePackageRepository;
+        this.knowledgeCategoryRepository = knowledgeCategoryRepository;
+        this.cloudinaryConfig = cloudinaryConfig;
+        this.userRepository = userRepository;
+        this.interactionRepository = interactionRepository;
+        this.bookingRepository = bookingRepository;
+        this.userService = userService;
+        this.servicePackageMapper = servicePackageMapper;
+        this.bookingService = bookingService;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -299,20 +323,62 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             );
         }
         
-        // 4. Check if package has active bookings
-        long activeBookingsCount = bookingRepository.countBySeer(servicePackage.getSeer());
-        if (activeBookingsCount > 0) {
-            log.warn("Service package {} has {} active bookings, but soft delete will proceed", 
-                    id, activeBookingsCount);
-            // Soft delete allows us to keep the data for these bookings
+        // 4. Find all bookings for this service package that are not completed
+        List<Booking> incompleteBookings = servicePackage.getBookings().stream()
+                .filter(booking -> !booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED))
+                .collect(Collectors.toList());
+        
+        log.info("Found {} incomplete bookings for service package {}", incompleteBookings.size(), id);
+        
+        // 5. Refund incomplete bookings
+        int successfulRefunds = 0;
+        int failedRefunds = 0;
+        List<String> refundErrors = new java.util.ArrayList<>();
+        
+        for (Booking booking : incompleteBookings) {
+            try {
+                log.info("Processing refund for booking {} (status: {})", booking.getId(), booking.getStatus());
+                
+                // Check if booking is already canceled or failed
+                if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
+                    booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                    log.info("Booking {} already in terminal state {}, skipping refund", 
+                            booking.getId(), booking.getStatus());
+                    continue;
+                }
+                
+                // Try to refund the booking
+                bookingService.refundBooking(booking.getId());
+                successfulRefunds++;
+                log.info("Successfully refunded booking {}", booking.getId());
+                
+            } catch (Exception e) {
+                failedRefunds++;
+                String errorMsg = String.format("Failed to refund booking %s: %s", 
+                        booking.getId(), e.getMessage());
+                log.error(errorMsg, e);
+                refundErrors.add(errorMsg);
+                
+                // Continue with other bookings even if one fails
+                // We still want to delete the package
+            }
         }
         
-        // 5. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
+        log.info("Refund summary for service package {}: {} successful, {} failed out of {} incomplete bookings",
+                id, successfulRefunds, failedRefunds, incompleteBookings.size());
+        
+        // Log any refund errors
+        if (!refundErrors.isEmpty()) {
+            log.warn("Refund errors for service package {}: {}", id, String.join("; ", refundErrors));
+        }
+        
+        // 6. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
         // which sets deleted_at = NOW()
         servicePackageRepository.delete(servicePackage);
         
-        log.info("Service package {} soft deleted successfully by user {} (role: {})", 
-                id, currentUser.getId(), currentUser.getRole());
+        log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
+                "Refunded {} bookings, {} failed", 
+                id, currentUser.getId(), currentUser.getRole(), successfulRefunds, failedRefunds);
     }
 
     // ============ Interaction methods (merged from PackageInteractionService) ============
