@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test</title>
+</head>
+<body>
+    <h1>Socket.IO Connection Test</h1>
+    <div id="status">Testing...</div>
+    <div id="logs"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const statusDiv = document.getElementById('status');
+
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += `<p>${new Date().toLocaleTimeString()}: ${message}</p>`;
+        }
+
+        // Load Socket.IO
+        (function() {
+            log('Loading Socket.IO library...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/2.5.0/socket.io.min.js';
+
+            script.onload = function() {
+                log('✅ Socket.IO library loaded successfully');
+                log('Socket.IO version: ' + (typeof io !== 'undefined' ? 'Loaded' : 'Not loaded'));
+
+                // Test connection
+                setTimeout(() => {
+                    testConnection();
+                }, 500);
+            };
+
+            script.onerror = function() {
+                log('❌ Failed to load from cdn.socket.io, trying cdnjs...');
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.min.js';
+
+                fallbackScript.onload = function() {
+                    log('✅ Socket.IO library loaded from fallback CDN');
+                    setTimeout(() => {
+                        testConnection();
+                    }, 500);
+                };
+
+                fallbackScript.onerror = function() {
+                    log('❌ Failed to load Socket.IO library from all CDNs');
+                    statusDiv.innerHTML = '❌ FAILED - Could not load Socket.IO';
+                    statusDiv.style.color = 'red';
+                };
+
+                document.head.appendChild(fallbackScript);
+            };
+
+            document.head.appendChild(script);
+        })();
+
+        function testConnection() {
+            if (typeof io === 'undefined') {
+                log('❌ io is still undefined!');
+                statusDiv.innerHTML = '❌ FAILED';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            log('Attempting to connect to http://localhost:8081/chat...');
+
+            try {
+                const socket = io('http://localhost:8081/chat', {
+                    transports: ['websocket'],
+                    query: {
+                        userId: 'test-user-123'
+                    },
+                    timeout: 5000
+                });
+
+                socket.on('connect', () => {
+                    log('✅ Connected successfully!');
+                    log('Socket ID: ' + socket.id);
+                    statusDiv.innerHTML = '✅ SUCCESS - Socket.IO working!';
+                    statusDiv.style.color = 'green';
+                });
+
+                socket.on('connect_error', (error) => {
+                    log('❌ Connection error: ' + error.message);
+                    statusDiv.innerHTML = '⚠️ Library OK, but server not available';
+                    statusDiv.style.color = 'orange';
+                });
+
+                socket.on('connect_timeout', () => {
+                    log('❌ Connection timeout');
+                    statusDiv.innerHTML = '⚠️ Library OK, but connection timeout';
+                    statusDiv.style.color = 'orange';
+                });
+
+                socket.on('connect_success', (data) => {
+                    log('✅ Received connect_success: ' + JSON.stringify(data));
+                });
+
+            } catch (error) {
+                log('❌ Error creating socket: ' + error.message);
+                statusDiv.innerHTML = '❌ FAILED - ' + error.message;
+                statusDiv.style.color = 'red';
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        #status {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        #logs {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #logs p {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+    </style>
+</body>
+</html>
+

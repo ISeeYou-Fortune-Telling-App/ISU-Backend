@@ -15,8 +15,8 @@ import java.util.UUID;
 
 public interface ConversationRepository extends JpaRepository<Conversation, UUID> {
     Optional<Conversation> findByBookingId(UUID bookingId);
-    Page<Conversation> findByBooking_ServicePackage_Seer(UUID seerId, Pageable pageable);
-    Page<Conversation> findByBooking_Customer(UUID customerId, Pageable pageable);
+    Page<Conversation> findByBooking_ServicePackage_Seer_Id(UUID seerId, Pageable pageable);
+    Page<Conversation> findByBooking_Customer_Id(UUID customerId, Pageable pageable);
 
     // Find conversation with all related entities loaded (avoid lazy loading issues)
     @Query("SELECT c FROM Conversation c " +

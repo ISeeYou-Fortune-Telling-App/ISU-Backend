@@ -3,13 +3,11 @@ package com.iseeyou.fortunetelling.service.dummydata.domain;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.entity.booking.BookingReview;
-import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.repository.booking.BookingPaymentRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
-import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -29,7 +27,6 @@ import java.util.UUID;
 public class Bookings {
 
     private final BookingRepository bookingRepository;
-    private final ConversationRepository conversationRepository;
     private final BookingPaymentRepository bookingPaymentRepository;
     private final BookingReviewRepository bookingReviewRepository;
     private final ServicePackageRepository servicePackageRepository;
@@ -56,8 +53,6 @@ public class Bookings {
         // Create booking payments
         createBookingPayments(createdBookings);
 
-        // Create conversations for confirmed bookings
-        createConversations(createdBookings);
 
         // Create booking reviews
         createBookingReviews(createdBookings, customers);
@@ -279,141 +274,5 @@ public class Bookings {
 //            case BANK_TRANSFER -> "{\"bankCode\":\"VCB\",\"accountNumber\":\"****1234\"}";
             default -> null;
         };
-    }
-
-
-    @Transactional
-    protected void createConversations(List<Booking> bookings) {
-        log.info("Bắt đầu tạo conversations cho các bookings đã confirmed...");
-
-        // Filter confirmed bookings
-        List<Booking> confirmedBookings = bookings.stream()
-                .filter(booking -> booking.getStatus() == Constants.BookingStatusEnum.CONFIRMED)
-                .toList();
-
-        int conversationCount = 0;
-
-        for (Booking booking : confirmedBookings) {
-            try {
-                Conversation conversation = new Conversation();
-                conversation.setBooking(booking);
-                conversation.setType(Constants.ConversationTypeEnum.BOOKING_SESSION);
-
-                // Session times based on booking scheduled time
-                LocalDateTime sessionStart = booking.getScheduledTime();
-                Integer duration = 60; // Default 60 minutes
-                conversation.setSessionStartTime(sessionStart);
-                conversation.setSessionEndTime(sessionStart.plusMinutes(duration));
-                conversation.setSessionDurationMinutes(duration);
-
-                // Generate different scenarios based on when the session is scheduled
-                LocalDateTime now = LocalDateTime.now();
-
-                // Determine conversation scenario
-                int scenarioRoll = random.nextInt(100);
-
-                if (sessionStart.isAfter(now)) {
-                    // Future sessions - all active, no one joined yet
-                    conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-                    conversation.setCustomerJoinedAt(null);
-                    conversation.setSeerJoinedAt(null);
-                    log.debug("Created future conversation for booking {}", booking.getId());
-
-                } else if (sessionStart.isBefore(now.minusMinutes(11))) {
-                    // Past sessions (more than 11 minutes ago) - various scenarios
-                    createPastConversationScenario(conversation, sessionStart, scenarioRoll);
-
-                } else {
-                    // Recent sessions (within 11 minutes) - test late join scenarios
-                    createRecentConversationScenario(conversation, sessionStart, scenarioRoll);
-                }
-
-                // Warning notification sent (random)
-                conversation.setWarningNotificationSent(random.nextBoolean());
-
-                conversationRepository.save(conversation);
-                conversationCount++;
-
-            } catch (Exception e) {
-                log.error("Error creating conversation for booking {}: {}", booking.getId(), e.getMessage());
-            }
-        }
-
-        log.info("Đã tạo {} conversations cho các bookings đã confirmed", conversationCount);
-    }
-
-    private void createPastConversationScenario(Conversation conversation, LocalDateTime sessionStart, int scenarioRoll) {
-        if (scenarioRoll < 60) {
-            // 60% - Both joined on time, session ended normally
-            conversation.setStatus(Constants.ConversationStatusEnum.ENDED);
-            conversation.setCustomerJoinedAt(sessionStart.plusMinutes(random.nextInt(5)));
-            conversation.setSeerJoinedAt(sessionStart.plusMinutes(random.nextInt(5)));
-
-        } else if (scenarioRoll < 75) {
-            // 15% - Customer late >10min - CANCELLED
-            conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
-            conversation.setSeerJoinedAt(sessionStart.plusMinutes(1));
-            conversation.setCustomerJoinedAt(null);
-            conversation.setCanceledBy("CUSTOMER");
-
-        } else if (scenarioRoll < 85) {
-            // 10% - Seer late >10min - CANCELLED
-            conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
-            conversation.setCustomerJoinedAt(sessionStart.plusMinutes(1));
-            conversation.setSeerJoinedAt(null);
-            conversation.setCanceledBy("SEER");
-
-        } else if (scenarioRoll < 90) {
-            // 5% - Both late >10min - CANCELLED
-            conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
-            conversation.setCustomerJoinedAt(null);
-            conversation.setSeerJoinedAt(null);
-            conversation.setCanceledBy("BOTH");
-
-        } else {
-            // 10% - Both joined but within 10 minutes, session ended
-            conversation.setStatus(Constants.ConversationStatusEnum.ENDED);
-            conversation.setCustomerJoinedAt(sessionStart.plusMinutes(5 + random.nextInt(5)));
-            conversation.setSeerJoinedAt(sessionStart.plusMinutes(5 + random.nextInt(5)));
-        }
-    }
-
-    private void createRecentConversationScenario(Conversation conversation, LocalDateTime sessionStart, int scenarioRoll) {
-        // Recent sessions - create test cases for scheduler to detect
-        if (scenarioRoll < 30) {
-            // 30% - Both joined, active session
-            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-            conversation.setCustomerJoinedAt(sessionStart.plusMinutes(random.nextInt(5)));
-            conversation.setSeerJoinedAt(sessionStart.plusMinutes(random.nextInt(5)));
-
-        } else if (scenarioRoll < 50) {
-            // 20% - Customer hasn't joined yet (will be cancelled if >10min)
-            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-            conversation.setSeerJoinedAt(sessionStart.plusMinutes(1));
-            conversation.setCustomerJoinedAt(null);
-
-        } else if (scenarioRoll < 70) {
-            // 20% - Seer hasn't joined yet (will be cancelled if >10min)
-            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-            conversation.setCustomerJoinedAt(sessionStart.plusMinutes(1));
-            conversation.setSeerJoinedAt(null);
-
-        } else if (scenarioRoll < 80) {
-            // 10% - Both haven't joined yet (will be cancelled if >10min)
-            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-            conversation.setCustomerJoinedAt(null);
-            conversation.setSeerJoinedAt(null);
-
-        } else {
-            // 20% - One joined late but within 10 minutes
-            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
-            if (random.nextBoolean()) {
-                conversation.setCustomerJoinedAt(sessionStart.plusMinutes(6 + random.nextInt(4)));
-                conversation.setSeerJoinedAt(sessionStart.plusMinutes(1));
-            } else {
-                conversation.setCustomerJoinedAt(sessionStart.plusMinutes(1));
-                conversation.setSeerJoinedAt(sessionStart.plusMinutes(6 + random.nextInt(4)));
-            }
-        }
     }
 }

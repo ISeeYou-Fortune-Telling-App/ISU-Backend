@@ -319,6 +319,24 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum MessageStatusEnum {
+        UNREAD("SENT"),
+        READ("READ"),
+        DELETED("DELETED"),
+        REMOVED("REMOVED");
+
+        private final String value;
+
+        public static MessageStatusEnum get(final String name) {
+            return Stream.of(MessageStatusEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid message type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum InteractionTypeEnum {
         LIKE("LIKE"),
         DISLIKE("DISLIKE");

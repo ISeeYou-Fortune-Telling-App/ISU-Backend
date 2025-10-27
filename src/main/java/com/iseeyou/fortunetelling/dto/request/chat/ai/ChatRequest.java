@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.dto.request.ai;
+package com.iseeyou.fortunetelling.dto.request.chat.ai;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

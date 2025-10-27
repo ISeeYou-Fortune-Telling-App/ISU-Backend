@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversations - ISeeYou Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f7f7f7;
+            border-radius: 5px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+            max-width: 400px;
+            margin: 100px auto;
+        }
+
+        .login-container h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-btn:hover {
+            background: #5568d3;
+        }
+
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .conversations-list {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .conversation-item:hover {
+            background: #f7f7f7;
+        }
+
+        .conversation-item:last-child {
+            border-bottom: none;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 5px;
+        }
+
+        .partner-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .last-message-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .last-message {
+            color: #666;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin-left: 10px;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-ended {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .unread-badge {
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .pagination span {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <!-- Load Socket.IO from CDN with fallback -->
+    <script>
+        // Try to load Socket.IO from primary CDN
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/2.5.0/socket.io.min.js';
+            script.onload = function() {
+                console.log('✅ Socket.IO library loaded successfully');
+            };
+            script.onerror = function() {
+                console.warn('⚠️ Failed to load from cdn.socket.io, trying cdnjs...');
+                // Fallback to cdnjs
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.min.js';
+                fallbackScript.onload = function() {
+                    console.log('✅ Socket.IO library loaded from fallback CDN');
+                };
+                fallbackScript.onerror = function() {
+                    console.error('❌ Failed to load Socket.IO library from all CDNs');
+                    console.warn('💡 Real-time features will not be available');
+                };
+                document.head.appendChild(fallbackScript);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <h2>🔮 ISeeYou Chat</h2>
+        <div id="loginError" class="error" style="display: none;"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="jwtToken">JWT Access Token</label>
+                <textarea
+                    id="jwtToken"
+                    placeholder="Paste your JWT token here (eyJhbGc...)"
+                    required
+                    style="min-height: 120px; font-family: monospace; font-size: 12px; resize: vertical;"
+                ></textarea>
+            </div>
+            <button type="submit" class="login-btn" id="loginBtn">Đăng nhập với JWT</button>
+        </form>
+        <p style="margin-top: 15px; font-size: 13px; color: #666; text-align: center;">
+            💡 Lấy JWT token từ API /api/auth/login
+        </p>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="appScreen" style="display: none;">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <h1>💬 Conversations</h1>
+                <div class="user-info">
+                    <span id="currentUserInfo">Loading...</span>
+                    <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div id="errorDisplay" class="error" style="display: none;"></div>
+
+            <!-- Conversations List -->
+            <div id="conversationsList" class="conversations-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Đang tải conversations...</p>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="pagination" style="display: none;">
+                <button id="prevBtn" onclick="loadPreviousPage()">← Trước</button>
+                <span id="pageInfo">Page 1 of 1</span>
+                <button id="nextBtn" onclick="loadNextPage()">Sau →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:8080';
+
+        // State
+        let currentUser = null;
+        let accessToken = null;
+        let conversations = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let socket = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            setupLoginForm();
+        });
+
+        function checkAuth() {
+            const savedToken = localStorage.getItem('accessToken');
+            const savedUser = localStorage.getItem('currentUser');
+
+            if (savedToken && savedUser) {
+                accessToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                showApp();
+                loadConversations();
+            }
+        }
+
+        function setupLoginForm() {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await login();
+            });
+        }
+
+        async function login() {
+             const jwtToken = document.getElementById('jwtToken').value.trim();
+            const loginBtn = document.getElementById('loginBtn');
+            const loginError = document.getElementById('loginError');
+
+            if (!jwtToken) {
+                loginError.textContent = 'Vui lòng nhập JWT token';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Đang xác thực...';
+            loginError.style.display = 'none';
+
+            try {
+                // Set token
+                accessToken = jwtToken;
+
+                // Decode JWT to get user info (basic decode, no verification)
+                const payload = parseJWT(jwtToken);
+                console.log('JWT Payload:', payload);
+
+                if (!payload) {
+                    throw new Error('JWT token không hợp lệ');
+                }
+
+                // Verify token by making API call
+                const apiUrl = `${API_BASE_URL}/chat/conversations?page=1&limit=1`;
+                console.log('Calling API:', apiUrl);
+
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('JWT token đã hết hạn hoặc không hợp lệ');
+                    }
+                    throw new Error('Không thể xác thực token');
+                }
+
+                // Extract user info from JWT payload
+                currentUser = {
+                    id: payload.sub || payload.userId || payload.id,
+                    username: payload.username || payload.sub,
+                    fullName: payload.fullName || payload.name || 'User',
+                    role: payload.role || payload.authorities?.[0] || 'USER',
+                    email: payload.email
+                };
+
+                // Save to localStorage
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+                showApp();
+                loadConversations();
+
+            } catch (error) {
+                loginError.textContent = error.message;
+                loginError.style.display = 'block';
+                accessToken = null;
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Đăng nhập với JWT';
+            }
+        }
+
+        function parseJWT(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error('Error parsing JWT:', e);
+                return null;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('currentUser');
+            accessToken = null;
+            currentUser = null;
+            showLogin();
+        }
+
+        function showLogin() {
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('appScreen').style.display = 'none';
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            document.getElementById('currentUserInfo').textContent =
+                `${currentUser.fullName || currentUser.username} (${currentUser.role})`;
+
+            // Initialize Socket.IO for real-time updates
+            initializeSocket();
+        }
+
+        function initializeSocket() {
+            if (socket) {
+                return; // Already connected
+            }
+
+            // Check if Socket.IO library is loaded
+            if (typeof io === 'undefined') {
+                console.error('❌ Socket.IO library not loaded!');
+                console.warn('💡 Retrying in 1 second...');
+                setTimeout(initializeSocket, 1000);
+                return;
+            }
+
+            console.log('Initializing Socket.IO for conversations...');
+            console.log('User ID:', currentUser.id);
+            console.log('Attempting to connect to: http://localhost:8081/chat');
+
+            // Set timeout to detect if connection hangs
+            const connectionTimeout = setTimeout(() => {
+                console.warn('⚠️ Socket connection timeout (10s) - running without real-time updates');
+                console.warn('Conversations list will still work but won\'t update automatically');
+            }, 10000);
+
+            try {
+                socket = io('http://localhost:8081/chat', {
+                    transports: ['websocket'],
+                    query: {
+                        userId: currentUser.id
+                    },
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 3,
+                    timeout: 5000
+                });
+
+                socket.on('connect', () => {
+                    clearTimeout(connectionTimeout);
+                    console.log('✅ Socket connected for conversations');
+                    console.log('Socket ID:', socket.id);
+
+                    // Join all user's conversations for real-time updates
+                    if (conversations && conversations.length > 0) {
+                        console.log(`Joining ${conversations.length} conversations...`);
+                        conversations.forEach(conv => {
+                            socket.emit('join_conversation', conv.conversationId);
+                        });
+                    }
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('❌ Socket disconnected. Reason:', reason);
+                });
+
+                socket.on('connect_error', (error) => {
+                    clearTimeout(connectionTimeout);
+                    console.error('❌ Socket connection error:', error);
+                    console.error('Error message:', error.message);
+                    console.error('Error type:', error.type);
+                    console.warn('💡 Tip: Make sure backend Socket.IO server is running on port 8081');
+                });
+
+                socket.on('connect_timeout', () => {
+                    clearTimeout(connectionTimeout);
+                    console.error('❌ Socket connection timeout');
+                });
+
+                socket.on('error', (error) => {
+                    console.error('❌ Socket error:', error);
+                });
+
+                socket.on('connect_success', (data) => {
+                    console.log('✅ Received connect_success from server:', data);
+                });
+
+                // Listen for new messages in any conversation
+                socket.on('receive_message', (message) => {
+                    console.log('📨 New message received in conversation:', message.conversationId);
+                    updateConversationWithNewMessage(message);
+                });
+
+                // Listen for session ended events
+                socket.on('session_ended', (data) => {
+                    console.log('Session ended:', data.conversationId);
+                    loadConversations(currentPage);
+                });
+
+            } catch (error) {
+                clearTimeout(connectionTimeout);
+                console.error('❌ Failed to initialize Socket.IO:', error);
+                console.warn('💡 App will continue without real-time updates');
+            }
+        }
+
+        function updateConversationWithNewMessage(message) {
+            // Find the conversation in current list
+            const convIndex = conversations.findIndex(c => c.conversationId === message.conversationId);
+
+            if (convIndex !== -1) {
+                // Update existing conversation
+                const conv = conversations[convIndex];
+                conv.lastMessageContent = message.textContent;
+                conv.lastMessageTime = message.createdAt;
+
+                // Update unread count if message is not from current user
+                if (!message.sentByMe) {
+                    if (currentUser.role === 'CUSTOMER') {
+                        conv.customerUnreadCount = (conv.customerUnreadCount || 0) + 1;
+                    } else {
+                        conv.seerUnreadCount = (conv.seerUnreadCount || 0) + 1;
+                    }
+                }
+
+                // Move conversation to top
+                conversations.splice(convIndex, 1);
+                conversations.unshift(conv);
+
+                // Re-render conversations list
+                displayConversations(conversations);
+            } else {
+                // New conversation - reload the list
+                loadConversations(currentPage);
+            }
+        }
+
+        async function loadConversations(page = 1) {
+            const conversationsList = document.getElementById('conversationsList');
+            const errorDisplay = document.getElementById('errorDisplay');
+            const pagination = document.getElementById('pagination');
+
+            conversationsList.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Đang tải conversations...</p>
+                </div>
+            `;
+            errorDisplay.style.display = 'none';
+
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/chat/conversations?page=${page}&limit=10&sortType=desc&sortBy=createdAt`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`Không thể tải conversations (${response.status})`);
+                }
+
+                const result = await response.json();
+                console.log('API Response:', result);
+
+                // Safety checks for response structure
+                if (!result || !result.data) {
+                    throw new Error('Response không đúng format');
+                }
+
+                // PageResponse structure: { data: [...], paging: {...} }
+                conversations = result.data || [];
+                currentPage = result.paging?.page || 1;
+                totalPages = result.paging?.totalPages || 1;
+
+                displayConversations(conversations);
+                updatePagination();
+
+                // Join all conversations via Socket.IO for real-time updates
+                if (socket && socket.connected) {
+                    conversations.forEach(conv => {
+                        socket.emit('join_conversation', conv.conversationId);
+                    });
+                }
+
+            } catch (error) {
+                console.error('Load conversations error:', error);
+                errorDisplay.textContent = error.message;
+                errorDisplay.style.display = 'block';
+                conversationsList.innerHTML = '';
+            }
+        }
+
+        function displayConversations(conversations) {
+            const conversationsList = document.getElementById('conversationsList');
+
+            // Safety check
+            if (!conversations || !Array.isArray(conversations)) {
+                console.error('Invalid conversations data:', conversations);
+                conversationsList.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 60px; margin-bottom: 20px;">⚠️</div>
+                        <p>Lỗi: Dữ liệu không hợp lệ</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (conversations.length === 0) {
+                conversationsList.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 60px; margin-bottom: 20px;">💬</div>
+                        <p>Chưa có conversation nào</p>
+                    </div>
+                `;
+                return;
+            }
+
+            conversationsList.innerHTML = conversations.map(conv => {
+                const isCustomer = currentUser.role === 'CUSTOMER';
+                const partnerName = isCustomer ? conv.seerName : conv.customerName;
+                const partnerAvatar = isCustomer ? conv.seerAvatarUrl : conv.customerAvatarUrl;
+                const unreadCount = isCustomer ? conv.customerUnreadCount : conv.seerUnreadCount;
+                const initials = partnerName ? partnerName.substring(0, 2).toUpperCase() : '??';
+
+                return `
+                    <div class="conversation-item" onclick="openConversation('${conv.conversationId}')">
+                        <div class="avatar">
+                            ${partnerAvatar ? `<img src="${partnerAvatar}" alt="${partnerName}">` : initials}
+                        </div>
+                        <div class="conversation-info">
+                            <div class="conversation-header">
+                                <span class="partner-name">${partnerName || 'Unknown'}</span>
+                                <span class="last-message-time">${formatTime(conv.lastMessageTime || conv.createdAt)}</span>
+                            </div>
+                            <div class="last-message">
+                                ${conv.lastMessageContent || 'No messages yet'}
+                            </div>
+                        </div>
+                        <div class="conversation-meta">
+                            <span class="status-badge status-${conv.status.toLowerCase()}">
+                                ${conv.status}
+                            </span>
+                            ${unreadCount > 0 ? `<div class="unread-badge">${unreadCount}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const pageInfo = document.getElementById('pageInfo');
+
+            if (totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        function loadPreviousPage() {
+            if (currentPage > 1) {
+                loadConversations(currentPage - 1);
+            }
+        }
+
+        function loadNextPage() {
+            if (currentPage < totalPages) {
+                loadConversations(currentPage + 1);
+            }
+        }
+
+        function openConversation(conversationId) {
+            // Save conversation ID to localStorage
+            localStorage.setItem('currentConversationId', conversationId);
+            // Navigate to chat page
+            window.location.href = 'chat-room.html';
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(hours / 24);
+
+            if (days > 7) {
+                return date.toLocaleDateString('vi-VN');
+            } else if (days > 0) {
+                return `${days} ngày trước`;
+            } else if (hours > 0) {
+                return `${hours} giờ trước`;
+            } else {
+                const minutes = Math.floor(diff / (1000 * 60));
+                return minutes > 0 ? `${minutes} phút trước` : 'Vừa xong';
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,6 +1,5 @@
-package com.iseeyou.fortunetelling.dto.request.message;
+package com.iseeyou.fortunetelling.dto.request.chat;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,7 +14,6 @@ public class ChatMessageRequest {
     @NotNull(message = "Conversation ID is required")
     private UUID conversationId;
 
-    @NotBlank(message = "Message content is required")
     private String textContent;
 
     private String imageUrl;

@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room - ISeeYou Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .partner-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .partner-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .partner-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .partner-details h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .partner-details p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .session-info {
+            text-align: right;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.2);
+            margin-bottom: 3px;
+        }
+
+        /* Messages Area */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-received {
+            justify-content: flex-start;
+        }
+
+        .message-sent {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .message-received .message-avatar {
+            margin-right: 10px;
+        }
+
+        .message-sent .message-avatar {
+            margin-left: 10px;
+            order: 2;
+        }
+
+        .message-content {
+            max-width: 60%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-sent .message-content {
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            padding: 10px 15px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message-received .message-bubble {
+            background: white;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-sent .message-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-text {
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .message-image {
+            max-width: 300px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 3px;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .message-sent .message-meta {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .status-icon {
+            font-size: 14px;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        .date-divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .date-divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .date-divider span {
+            background: #f9f9f9;
+            padding: 5px 15px;
+            color: #999;
+            font-size: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: #f5f5f5;
+            border-radius: 25px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            resize: none;
+            max-height: 100px;
+            font-family: inherit;
+        }
+
+        .attach-btn {
+            background: none;
+            border: none;
+            color: #667eea;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            margin: 15px 20px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 18px;
+            width: fit-content;
+            margin-bottom: 15px;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Scrollbar */
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Load More Button */
+        .load-more-btn {
+            display: block;
+            margin: 10px auto 20px;
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .load-more-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Load Socket.IO from CDN with fallback -->
+    <script>
+        // Try to load Socket.IO from primary CDN
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/2.5.0/socket.io.min.js';
+            script.onload = function() {
+                console.log('✅ Socket.IO library loaded successfully');
+            };
+            script.onerror = function() {
+                console.warn('⚠️ Failed to load from cdn.socket.io, trying cdnjs...');
+                // Fallback to cdnjs
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.min.js';
+                fallbackScript.onload = function() {
+                    console.log('✅ Socket.IO library loaded from fallback CDN');
+                };
+                fallbackScript.onerror = function() {
+                    console.error('❌ Failed to load Socket.IO library from all CDNs');
+                    console.warn('💡 Real-time features will not be available');
+                };
+                document.head.appendChild(fallbackScript);
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <div class="chat-container">
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Đang tải conversation...</p>
+        </div>
+
+        <!-- Chat Header -->
+        <div class="chat-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="goBack()">←</button>
+                <div class="partner-info">
+                    <div class="partner-avatar" id="partnerAvatar">??</div>
+                    <div class="partner-details">
+                        <h3 id="partnerName">Loading...</h3>
+                        <p id="partnerRole">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="session-info">
+                <div class="status-badge" id="sessionStatus">LOADING</div>
+                <div id="sessionTime">-</div>
+            </div>
+        </div>
+
+        <!-- Error Display -->
+        <div id="errorDisplay" class="error-message" style="display: none;"></div>
+
+        <!-- Messages Container -->
+        <div class="messages-container" id="messagesContainer">
+            <button class="load-more-btn" id="loadMoreBtn" style="display: none;" onclick="loadMoreMessages()">
+                Tải thêm tin nhắn cũ
+            </button>
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <button class="attach-btn" title="Đính kèm file">📎</button>
+                <textarea
+                    class="message-input"
+                    id="messageInput"
+                    placeholder="Nhập tin nhắn..."
+                    rows="1"
+                    onkeypress="handleKeyPress(event)"
+                ></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                ➤
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:8080';
+
+        // State
+        let socket = null;
+        let currentUser = null;
+        let accessToken = null;
+        let conversationId = null;
+        let conversation = null;
+        let messages = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let isLoadingMessages = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check auth
+            accessToken = localStorage.getItem('accessToken');
+            const savedUser = localStorage.getItem('currentUser');
+            conversationId = localStorage.getItem('currentConversationId');
+
+            if (!accessToken || !savedUser || !conversationId) {
+                alert('Vui lòng đăng nhập lại');
+                window.location.href = 'conversations.html';
+                return;
+            }
+
+            currentUser = JSON.parse(savedUser);
+
+            // Load conversation and messages
+            await loadConversation();
+            await loadMessages();
+
+            // Initialize Socket.IO
+            initializeSocket();
+
+            // Mark messages as read
+            await markMessagesAsRead();
+
+            // Auto-resize textarea
+            setupTextareaAutoResize();
+        });
+
+        async function loadConversation() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Không thể tải conversation');
+                }
+
+                const result = await response.json();
+                conversation = result.data;
+
+                displayConversationHeader(conversation);
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function displayConversationHeader(conv) {
+            const isCustomer = currentUser.role === 'CUSTOMER';
+            const partnerName = isCustomer ? conv.seerName : conv.customerName;
+            const partnerAvatar = isCustomer ? conv.seerAvatarUrl : conv.customerAvatarUrl;
+            const partnerRole = isCustomer ? 'Seer' : 'Customer';
+
+            document.getElementById('partnerName').textContent = partnerName || 'Unknown';
+            document.getElementById('partnerRole').textContent = partnerRole;
+            document.getElementById('sessionStatus').textContent = conv.status;
+            document.getElementById('sessionStatus').className = `status-badge status-${conv.status.toLowerCase()}`;
+
+            const partnerAvatarEl = document.getElementById('partnerAvatar');
+            if (partnerAvatar) {
+                partnerAvatarEl.innerHTML = `<img src="${partnerAvatar}" alt="${partnerName}">`;
+            } else {
+                partnerAvatarEl.textContent = partnerName ? partnerName.substring(0, 2).toUpperCase() : '??';
+            }
+
+            // Session time
+            const startTime = new Date(conv.sessionStartTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            const endTime = new Date(conv.sessionEndTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('sessionTime').textContent = `${startTime} - ${endTime}`;
+        }
+
+        async function loadMessages(page = 1) {
+            if (isLoadingMessages) return;
+            isLoadingMessages = true;
+
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/chat/conversations/${conversationId}/messages?page=${page}&limit=50&sortType=desc&sortBy=createdAt`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Không thể tải messages');
+                }
+
+                const result = await response.json();
+                console.log('Messages API Response:', result);
+
+                // PageResponse structure: { data: [...], paging: {...} }
+                const newMessages = result.data || [];
+
+                currentPage = result.paging?.page || 1;
+                totalPages = result.paging?.totalPages || 1;
+
+                if (page === 1) {
+                    // First load - replace all messages
+                    messages = newMessages.reverse();
+                    displayMessages(messages);
+                    scrollToBottom();
+                } else {
+                    // Load more - prepend old messages
+                    const oldScrollHeight = document.getElementById('messagesContainer').scrollHeight;
+                    messages = [...newMessages.reverse(), ...messages];
+                    displayMessages(messages);
+
+                    // Maintain scroll position
+                    const newScrollHeight = document.getElementById('messagesContainer').scrollHeight;
+                    document.getElementById('messagesContainer').scrollTop = newScrollHeight - oldScrollHeight;
+                }
+
+                // Show/hide load more button
+                const loadMoreBtn = document.getElementById('loadMoreBtn');
+                loadMoreBtn.style.display = currentPage < totalPages ? 'block' : 'none';
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                isLoadingMessages = false;
+            }
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const typingIndicator = document.getElementById('typingIndicator');
+
+            // Keep load more button and typing indicator
+            container.innerHTML = '';
+            container.appendChild(loadMoreBtn);
+
+            let lastDate = null;
+
+            messages.forEach(msg => {
+                // Add date divider if needed
+                const msgDate = new Date(msg.createdAt).toLocaleDateString('vi-VN');
+                if (msgDate !== lastDate) {
+                    const divider = document.createElement('div');
+                    divider.className = 'date-divider';
+                    divider.innerHTML = `<span>${msgDate}</span>`;
+                    container.appendChild(divider);
+                    lastDate = msgDate;
+                }
+
+                container.appendChild(createMessageElement(msg));
+            });
+
+            container.appendChild(typingIndicator);
+        }
+
+        function createMessageElement(msg) {
+            // Compare senderId with current user ID to determine if message is sent by me
+            const isMine = msg.senderId === currentUser.id;
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isMine ? 'message-sent' : 'message-received'}`;
+            messageDiv.dataset.messageId = msg.id;
+
+            const isCustomer = currentUser.role === 'CUSTOMER';
+            const partnerName = isCustomer ? msg.seerName : msg.customerName;
+            const partnerAvatar = isCustomer ? msg.seerAvatar : msg.customerAvatar;
+            const senderName = isMine ? 'Me' : partnerName;
+            const initials = senderName ? senderName.substring(0, 2).toUpperCase() : '??';
+
+            messageDiv.innerHTML = `
+                ${!isMine ? `
+                    <div class="message-avatar">
+                        ${partnerAvatar ? `<img src="${partnerAvatar}" alt="${senderName}">` : initials}
+                    </div>
+                ` : ''}
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p class="message-text">${escapeHtml(msg.textContent || '')}</p>
+                        ${msg.imageUrl ? `<img src="${msg.imageUrl}" class="message-image" alt="Image">` : ''}
+                        ${msg.videoUrl ? `<video src="${msg.videoUrl}" class="message-video" controls></video>` : ''}
+                    </div>
+                    <div class="message-meta">
+                        <span>${formatTime(msg.createdAt)}</span>
+                        ${isMine ? `<span class="status-icon">${getStatusIcon(msg.status)}</span>` : ''}
+                    </div>
+                </div>
+                ${isMine ? `
+                    <div class="message-avatar">
+                        ${currentUser.avatarUrl ? `<img src="${currentUser.avatarUrl}" alt="Me">` : 'ME'}
+                    </div>
+                ` : ''}
+            `;
+
+            return messageDiv;
+        }
+
+        function appendMessage(msg) {
+            // Check for duplicate message (avoid showing twice)
+            const existingMessage = messages.find(m => m.id === msg.id);
+            if (existingMessage) {
+                console.log('Duplicate message detected, skipping:', msg.id);
+                return;
+            }
+
+            const container = document.getElementById('messagesContainer');
+            const typingIndicator = document.getElementById('typingIndicator');
+
+            container.insertBefore(createMessageElement(msg), typingIndicator);
+            messages.push(msg);
+            scrollToBottom();
+        }
+
+        function initializeSocket() {
+            // Check if Socket.IO library is loaded
+            if (typeof io === 'undefined') {
+                console.error('❌ Socket.IO library not loaded!');
+                console.warn('💡 Retrying in 1 second...');
+                setTimeout(initializeSocket, 1000);
+                return;
+            }
+
+            console.log('Initializing Socket.IO connection...');
+            console.log('User ID:', currentUser.id);
+            console.log('Access Token:', accessToken ? 'Present' : 'Missing');
+
+            // Connect to Socket.IO server at base URL, namespace will be /chat
+            socket = io('http://localhost:8081/chat', {
+                transports: ['websocket'],
+                query: {
+                    userId: currentUser.id
+                },
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+                timeout: 10000
+            });
+
+            socket.on('connect', () => {
+                console.log('✅ Socket connected successfully!');
+                console.log('Socket ID:', socket.id);
+                joinConversation();
+            });
+
+            socket.on('disconnect', (reason) => {
+                console.log('❌ Socket disconnected. Reason:', reason);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('❌ Socket connection error:', error);
+                console.error('Error message:', error.message);
+                console.error('Error type:', error.type);
+                showError('Lỗi kết nối real-time. Bạn vẫn có thể chat nhưng tin nhắn sẽ không real-time.');
+            });
+
+            socket.on('connect_timeout', () => {
+                console.error('❌ Socket connection timeout');
+            });
+
+            socket.on('error', (error) => {
+                console.error('❌ Socket error:', error);
+            });
+
+            socket.on('connect_success', (data) => {
+                console.log('✅ Received connect_success:', data);
+            });
+
+            socket.on('receive_message', (message) => {
+                console.log('📨 New message received:', message);
+                console.log('Message senderId:', message.senderId, 'Current userId:', currentUser.id);
+
+                // Check if message already exists (prevent duplicates)
+                const existingMessage = document.querySelector(`[data-message-id="${message.id}"]`);
+                if (existingMessage) {
+                    console.log('Message already exists, skipping:', message.id);
+                    return;
+                }
+
+                appendMessage(message);
+
+                // Mark as read if message is from other person
+                if (message.senderId !== currentUser.id) {
+                    markMessagesAsRead();
+                }
+            });
+
+            socket.on('session_ended', (data) => {
+                console.log('Session ended:', data);
+                alert('Phiên chat đã kết thúc');
+                loadConversation(); // Refresh conversation status
+            });
+        }
+
+        function joinConversation() {
+            if (!socket || !socket.connected) {
+                console.error('Socket not connected');
+                return;
+            }
+
+            socket.emit('join_conversation', conversationId, (response) => {
+                console.log('Joined conversation:', response);
+            });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+
+            try {
+                if (socket && socket.connected) {
+                    // Clear input immediately for better UX
+                    input.value = '';
+                    input.style.height = 'auto';
+
+                    // Send via Socket.IO - server will broadcast to all participants including sender
+                    socket.emit('send_message', {
+                        conversationId: conversationId,
+                        textContent: text
+                    }, (response) => {
+                        if (response === 'success') {
+                            console.log('Message sent via socket successfully');
+                        } else {
+                            console.error('Failed to send message:', response);
+                            showError('Không thể gửi tin nhắn');
+                        }
+                    });
+                } else {
+                    // Fallback to REST API
+                    const response = await fetch(`${API_BASE_URL}/chat/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            conversationId: conversationId,
+                            textContent: text
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Không thể gửi tin nhắn');
+                    }
+
+                    const result = await response.json();
+                    appendMessage(result.data);
+                    input.value = '';
+                    input.style.height = 'auto';
+                }
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function markMessagesAsRead() {
+            try {
+                await fetch(`${API_BASE_URL}/chat/conversations/${conversationId}/mark-read`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                console.log('Messages marked as read');
+            } catch (error) {
+                console.error('Error marking messages as read:', error);
+            }
+        }
+
+        function loadMoreMessages() {
+            if (currentPage < totalPages) {
+                loadMessages(currentPage + 1);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function setupTextareaAutoResize() {
+            const textarea = document.getElementById('messageInput');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        }
+
+        function goBack() {
+            window.location.href = 'conversations.html';
+        }
+
+        function showError(message) {
+            const errorDisplay = document.getElementById('errorDisplay');
+            errorDisplay.textContent = message;
+            errorDisplay.style.display = 'block';
+            setTimeout(() => {
+                errorDisplay.style.display = 'none';
+            }, 5000);
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'UNREAD':
+                    return '✓';
+                case 'READ':
+                    return '✓✓';
+                default:
+                    return '';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>
+

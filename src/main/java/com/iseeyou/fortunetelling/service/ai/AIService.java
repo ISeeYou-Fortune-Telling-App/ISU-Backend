@@ -1,9 +1,9 @@
 package com.iseeyou.fortunetelling.service.ai;
 
-import com.iseeyou.fortunetelling.dto.request.ai.ChatRequest;
-import com.iseeyou.fortunetelling.dto.request.ai.ImageAnalysisRequest;
-import com.iseeyou.fortunetelling.dto.response.ai.ChatResponse;
-import com.iseeyou.fortunetelling.dto.response.ai.ImageAnalysisResponse;
+import com.iseeyou.fortunetelling.dto.request.chat.ai.ChatRequest;
+import com.iseeyou.fortunetelling.dto.request.chat.ai.ImageAnalysisRequest;
+import com.iseeyou.fortunetelling.dto.response.chat.ai.ChatResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.ai.ImageAnalysisResponse;
 import reactor.core.publisher.Flux;
 
 public interface AIService {

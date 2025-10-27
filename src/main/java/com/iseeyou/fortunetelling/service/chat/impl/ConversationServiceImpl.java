@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
-import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
@@ -9,6 +9,7 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ConversationMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
+import com.iseeyou.fortunetelling.repository.chat.MessageRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -32,13 +33,14 @@ public class ConversationServiceImpl implements ConversationService {
 
     private final MessageSourceService messageSourceService;
     private final ConversationRepository conversationRepository;
+    private final MessageRepository messageRepository;
+    private final ConversationMapper conversationMapper;
     private final BookingRepository bookingRepository;
     private final UserService userService;
-    private final ConversationMapper conversationMapper;
 
     @Override
     @Transactional
-    public ChatSessionResponse createChatSession(UUID bookingId) {
+    public ConversationResponse createChatSession(UUID bookingId) {
         // 1. Kiểm tra booking tồn tại và trạng thái của nó
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
@@ -53,7 +55,7 @@ public class ConversationServiceImpl implements ConversationService {
         Optional<Conversation> existingConversation = conversationRepository.findByBookingId(bookingId);
         if (existingConversation.isPresent()) {
             log.warn("Chat session already exists for booking: {}", bookingId);
-            return conversationMapper.mapTo(existingConversation.get(), ChatSessionResponse.class);
+            return conversationMapper.mapTo(existingConversation.get(), ConversationResponse.class);
         }
 
         // 3. Tính toán thời gian phiên
@@ -81,30 +83,38 @@ public class ConversationServiceImpl implements ConversationService {
         savedConversation.getMessages().add(initiationMessage);
         conversationRepository.save(savedConversation);
 
-        return conversationMapper.mapTo(savedConversation, ChatSessionResponse.class);
+        return conversationMapper.mapTo(savedConversation, ConversationResponse.class);
     }
 
     @Override
     @Transactional
-    public ChatSessionResponse getChatSessionByBookingId(UUID bookingId) {
+    public ConversationResponse getConversation(UUID conversationId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException("Conversation not found with id: " + conversationId));
+        return conversationMapper.mapTo(conversation, ConversationResponse.class);
+    }
+
+    @Override
+    @Transactional
+    public ConversationResponse getChatSessionByBookingId(UUID bookingId) {
         Conversation conversation = conversationRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> new NotFoundException("Chat session not found for booking: " + bookingId));
-        return conversationMapper.mapTo(conversation, ChatSessionResponse.class);
+        return conversationMapper.mapTo(conversation, ConversationResponse.class);
     }
 
     @Override
     @Transactional
-    public Page<ChatSessionResponse> getMyChatSessions(Pageable pageable) {
+    public Page<ConversationResponse> getMyChatSessions(Pageable pageable) {
         User currentUser = userService.getUser();
         Page<Conversation> conversations;
 
         if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            conversations = conversationRepository.findByBooking_ServicePackage_Seer(currentUser.getId(), pageable);
+            conversations = conversationRepository.findByBooking_ServicePackage_Seer_Id(currentUser.getId(), pageable);
         } else {
-            conversations = conversationRepository.findByBooking_Customer(currentUser.getId(), pageable);
+            conversations = conversationRepository.findByBooking_Customer_Id(currentUser.getId(), pageable);
         }
 
-        return conversations.map(conv -> conversationMapper.mapTo(conv, ChatSessionResponse.class));
+        return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
     }
 
     @Override
@@ -186,18 +196,19 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
+    @Transactional
     public void extendSession(UUID conversationId, Integer additionalMinutes) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
-        // Extend session
+        // Extend session end time
         LocalDateTime newEndTime = conversation.getSessionEndTime().plusMinutes(additionalMinutes);
         conversation.setSessionEndTime(newEndTime);
         conversation.setExtendedMinutes(conversation.getExtendedMinutes() + additionalMinutes);
-        conversation.setWarningNotificationSent(false); // Reset warning flag
         conversationRepository.save(conversation);
 
-        log.info("Session extended by {} minutes: conversation={}", additionalMinutes, conversationId);
+        log.info("Session extended: conversation={}, additionalMinutes={}, newEndTime={}",
+                conversationId, additionalMinutes, newEndTime);
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {
@@ -210,12 +221,11 @@ public class ConversationServiceImpl implements ConversationService {
 
         return Message.builder()
                 .conversation(conversation)
-                .sender(booking.getServicePackage().getSeer()) // Hệ thống gửi từ Seer
+                .sender(booking.getServicePackage().getSeer())
                 .textContent(messageContent)
                 .messageType("SYSTEM")
-                .isRead(false)
-                .isDeleted(false)
-                .isRemoved(false)
+                .status(Constants.MessageStatusEnum.UNREAD)
+                .deletedBy(null)
                 .build();
     }
 }

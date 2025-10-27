@@ -1,24 +1,25 @@
 package com.iseeyou.fortunetelling.service.chat;
 
-import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.ConversationResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
 public interface ConversationService {
-    ChatSessionResponse createChatSession(UUID bookingId);
-    ChatSessionResponse getChatSessionByBookingId(UUID bookingId);
-    Page<ChatSessionResponse> getMyChatSessions(Pageable pageable);
+    ConversationResponse createChatSession(UUID bookingId);
+    ConversationResponse getConversation(UUID conversationId);
+    ConversationResponse getChatSessionByBookingId(UUID bookingId);
+    Page<ConversationResponse> getMyChatSessions(Pageable pageable);
     void endChatSession(UUID conversationId);
 
     // Auto-cancel late sessions
     void cancelLateSession(UUID conversationId);
 
-    //Warning & auto-end
+    // Warning & auto-end
     void sendWarningNotification(UUID conversationId);
-    void autoEndSession(UUID conversationId); // auto end if 10 mins late (system)
+    void autoEndSession(UUID conversationId);
 
-    //Extend session
+    // Extend session
     void extendSession(UUID conversationId, Integer additionalMinutes);
 }

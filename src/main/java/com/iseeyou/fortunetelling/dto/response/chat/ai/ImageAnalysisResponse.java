@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.dto.response.ai;
+package com.iseeyou.fortunetelling.dto.response.chat.ai;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

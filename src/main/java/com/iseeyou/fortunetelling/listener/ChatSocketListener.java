@@ -3,8 +3,8 @@ package com.iseeyou.fortunetelling.listener;
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iseeyou.fortunetelling.dto.request.message.ChatMessageRequest;
-import com.iseeyou.fortunetelling.dto.response.ChatMessageResponse;
+import com.iseeyou.fortunetelling.dto.request.chat.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.response.chat.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
@@ -119,34 +119,35 @@ public class ChatSocketListener {
         });
 
         // Send message event
-        namespace.addEventListener("send_message", String.class, (client, messageJson, ackRequest) -> {
+        namespace.addEventListener("send_message", ChatMessageRequest.class, (client, request, ackRequest) -> {
             try {
-                // Parse JSON to ChatMessageRequest
-                ObjectMapper objectMapper = new ObjectMapper();
-                ChatMessageRequest request = objectMapper.readValue(messageJson, ChatMessageRequest.class);
-
                 String userId = client.get("userId");
+                log.info("User {} sending message to conversation {}", userId, request.getConversationId());
 
-                // Get user by ID (not from SecurityContext - Socket.IO doesn't have it)
+                // Get user by ID (Socket.IO doesn't have SecurityContext)
                 User currentUser = userService.findById(UUID.fromString(userId));
 
-                // Verify sender matches the user in socket session
-                if (!currentUser.getId().toString().equals(userId)) {
-                    ackRequest.sendAckData("error", messageSourceService.get("chat.unauthorized"));
+                if (currentUser == null) {
+                    log.error("User not found: {}", userId);
+                    ackRequest.sendAckData("error", "User not found");
                     return;
                 }
 
-                // Save message to DB (pass sender as parameter)
+                // Save message to DB with sender
                 ChatMessageResponse message = messageService.sendMessage(request.getConversationId(), request, currentUser);
 
-                // Broadcast to conversation room
+                log.info("Message saved successfully: {}", message.getId());
+
+                // Broadcast to ALL participants in conversation room (including sender)
                 com.corundumstudio.socketio.BroadcastOperations roomOps = namespace.getRoomOperations(request.getConversationId().toString());
                 if (roomOps != null) {
                     roomOps.sendEvent("receive_message", message);
+                    log.info("Message broadcasted to room: {}", request.getConversationId());
                 }
 
-                log.info("Message sent in conversation {}: {}", request.getConversationId(), message.getId());
-                ackRequest.sendAckData("success", message);
+                // Send success acknowledgment
+                ackRequest.sendAckData("success");
+
             } catch (Exception e) {
                 log.error("Error sending message", e);
                 ackRequest.sendAckData("error", e.getMessage());

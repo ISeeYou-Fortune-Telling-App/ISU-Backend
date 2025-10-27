@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.entity.chat;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.user.User;
+import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,25 +31,23 @@ public class Message extends AbstractBaseEntity {
     @Column(name = "message_type", length = 50)
     private String messageType;
 
-    @Column(name = "is_read", nullable = false)
+    @Column(name = "status", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private Boolean isRead = false;
+    private Constants.MessageStatusEnum status = Constants.MessageStatusEnum.UNREAD;
 
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
-
-    @Column(name = "is_removed", nullable = false)
-    @Builder.Default
-    private Boolean isRemoved = false;
+    @Column(name = "deleted_by", length = 20)
+    @Enumerated(EnumType.STRING)
+    private Constants.RoleEnum deletedBy;
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "conversation_id", nullable = false)
     private Conversation conversation;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "sender_id")
     private User sender;
 }
