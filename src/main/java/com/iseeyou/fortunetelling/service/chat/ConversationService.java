@@ -16,6 +16,9 @@ public interface ConversationService {
     // Auto-cancel late sessions
     void cancelLateSession(UUID conversationId);
 
+    // Activate WAITING conversation when session_start_time arrives
+    void activateWaitingConversation(UUID conversationId);
+
     // Warning & auto-end
     void sendWarningNotification(UUID conversationId);
     void autoEndSession(UUID conversationId);

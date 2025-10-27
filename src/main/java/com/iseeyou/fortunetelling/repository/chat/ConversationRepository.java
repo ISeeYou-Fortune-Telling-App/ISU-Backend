@@ -27,11 +27,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
            "WHERE c.id = :conversationId")
     Optional<Conversation> findByIdWithDetails(@Param("conversationId") UUID conversationId);
 
-    // Find late sessions (customer hoặc seer chưa join sau 10 phút)
+    // Find late sessions (customer hoặc seer chưa join sau 10 phút từ session_start_time)
     @Query("SELECT conv FROM Conversation conv WHERE " +
             "conv.status = :status AND " +
             "(conv.customerJoinedAt IS NULL OR conv.seerJoinedAt IS NULL) AND " +
-            "conv.sessionStartTime < :cutoffTime")
+            "conv.sessionStartTime <= :cutoffTime")
     List<Conversation> findLateSessions(
             @Param("status") Constants.ConversationStatusEnum status,
             @Param("cutoffTime") LocalDateTime cutoffTime
@@ -55,6 +55,15 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "conv.sessionEndTime <= :now")
     List<Conversation> findExpiredSessions(
             @Param("status") Constants.ConversationStatusEnum status,
+            @Param("now") LocalDateTime now
+    );
+
+    // Find WAITING conversations that should be activated
+    @Query("SELECT conv FROM Conversation conv WHERE " +
+            "conv.status = :waitingStatus AND " +
+            "conv.sessionStartTime <= :now")
+    List<Conversation> findWaitingConversationsToActivate(
+            @Param("waitingStatus") Constants.ConversationStatusEnum waitingStatus,
             @Param("now") LocalDateTime now
     );
 }

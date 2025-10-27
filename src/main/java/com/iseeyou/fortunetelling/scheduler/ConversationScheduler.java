@@ -29,9 +29,49 @@ public class ConversationScheduler {
     public void checkSessions() {
         log.debug("Running scheduled session checks...");
 
+        checkAndActivateWaitingConversations();
         checkAndCancelLateSessions();
         checkAndNotifyEndingSessions();
         checkAndAutoEndExpiredSessions();
+    }
+
+    private void checkAndActivateWaitingConversations() {
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Conversation> waitingConversations = conversationRepository.findWaitingConversationsToActivate(
+                Constants.ConversationStatusEnum.WAITING,
+                now
+        );
+
+        if (waitingConversations.isEmpty()) {
+            return;
+        }
+
+        log.info("Found {} WAITING conversations to activate", waitingConversations.size());
+
+        for (Conversation conversation : waitingConversations) {
+            try {
+                // Activate conversation
+                conversationService.activateWaitingConversation(conversation.getId());
+
+                // Notify qua Socket.IO
+                SocketIONamespace namespace = socketIOServer.getNamespace("/chat");
+                namespace.getRoomOperations(conversation.getId().toString())
+                        .sendEvent("session_activated", Map.of(
+                                "conversationId", conversation.getId().toString(),
+                                "sessionStartTime", conversation.getSessionStartTime().toString(),
+                                "sessionEndTime", conversation.getSessionEndTime().toString(),
+                                "message", messageSourceService.get("chat.session.activated"),
+                                "timestamp", LocalDateTime.now().toString()
+                        ));
+
+                log.info("Activated WAITING conversation: conversationId={}, sessionStartTime={}",
+                        conversation.getId(), conversation.getSessionStartTime());
+            } catch (Exception e) {
+                log.error("Error activating WAITING conversation: conversationId={}",
+                        conversation.getId(), e);
+            }
+        }
     }
 
     private void checkAndCancelLateSessions() {

@@ -287,6 +287,7 @@ public final class Constants {
     @Getter
     @AllArgsConstructor
     public enum ConversationStatusEnum {
+        WAITING("WAITING"),
         ACTIVE("ACTIVE"),
         ENDED("ENDED"),
         CANCELLED("CANCELLED");

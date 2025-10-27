@@ -59,8 +59,26 @@ public class ConversationServiceImpl implements ConversationService {
         }
 
         // 3. Tính toán thời gian phiên
-        LocalDateTime sessionStartTime = LocalDateTime.now();
+        LocalDateTime scheduledTime = booking.getScheduledTime();
+        LocalDateTime now = LocalDateTime.now();
         Integer sessionDurationMinutes = booking.getServicePackage().getDurationMinutes();
+
+        // Xác định sessionStartTime và status
+        LocalDateTime sessionStartTime;
+        Constants.ConversationStatusEnum initialStatus;
+
+        if (scheduledTime != null && scheduledTime.isAfter(now)) {
+            // Booking có scheduled time trong tương lai -> tạo conversation WAITING
+            sessionStartTime = scheduledTime;
+            initialStatus = Constants.ConversationStatusEnum.WAITING;
+            log.info("Creating WAITING conversation for future booking at: {}", scheduledTime);
+        } else {
+            // Booking không có scheduled time hoặc đã đến giờ -> tạo conversation ACTIVE ngay
+            sessionStartTime = now;
+            initialStatus = Constants.ConversationStatusEnum.ACTIVE;
+            log.info("Creating ACTIVE conversation for immediate booking");
+        }
+
         LocalDateTime sessionEndTime = sessionStartTime.plusMinutes(sessionDurationMinutes);
 
         // 4. Tạo phiên chat mới
@@ -70,7 +88,7 @@ public class ConversationServiceImpl implements ConversationService {
                 .sessionStartTime(sessionStartTime)
                 .sessionEndTime(sessionEndTime)
                 .sessionDurationMinutes(sessionDurationMinutes)
-                .status(Constants.ConversationStatusEnum.ACTIVE)
+                .status(initialStatus)
                 .messages(new HashSet<>())
                 .build();
 
@@ -160,6 +178,27 @@ public class ConversationServiceImpl implements ConversationService {
 
         log.info("Session canceled due to late join: conversation={}, booking={}, canceledBy={}",
                 conversationId, booking.getId(), canceledBy);
+    }
+
+    @Override
+    @Transactional
+    public void activateWaitingConversation(UUID conversationId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException("Conversation not found"));
+
+        // Validate current status is WAITING
+        if (!conversation.getStatus().equals(Constants.ConversationStatusEnum.WAITING)) {
+            log.warn("Cannot activate conversation {} - current status is not WAITING: {}",
+                    conversationId, conversation.getStatus());
+            return;
+        }
+
+        // Activate conversation
+        conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
+        conversationRepository.save(conversation);
+
+        log.info("Conversation activated: conversationId={}, sessionStartTime={}",
+                conversationId, conversation.getSessionStartTime());
     }
 
     @Override
