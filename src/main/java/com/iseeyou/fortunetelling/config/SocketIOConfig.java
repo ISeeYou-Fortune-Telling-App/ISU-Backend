@@ -24,7 +24,6 @@ public class SocketIOConfig {
         config.setOrigin("*");
         config.setMaxHttpContentLength(1024 * 1024 * 100); // 100MB max file
 
-        SocketIOServer server = new SocketIOServer(config);
-        return server;
+        return new SocketIOServer(config);
     }
 }

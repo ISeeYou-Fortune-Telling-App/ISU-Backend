@@ -1,5 +1,6 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.chat;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
@@ -47,8 +48,11 @@ public class Conversation extends AbstractBaseEntity {
     @Column(name = "customer_joined_at")
     private LocalDateTime customerJoinedAt;  // Track khi customer join
 
-    @Column(name = "cancel_reason", length = 500)
-    private String cancelReason;  // Lý do hủy
+    @Column(name = "seer_joined_at")
+    private LocalDateTime seerJoinedAt;  // Track khi seer join
+
+    @Column(name = "canceled_by", length = 500)
+    private String canceledBy;  // CUSTOMER/SEER
 
     @Column(name = "warning_notification_sent")
     @Builder.Default

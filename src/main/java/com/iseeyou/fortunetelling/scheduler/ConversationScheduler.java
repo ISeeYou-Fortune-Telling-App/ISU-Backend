@@ -2,10 +2,10 @@ package com.iseeyou.fortunetelling.scheduler;
 
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
-import com.iseeyou.fortunetelling.entity.Conversation;
-import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
+import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
-import com.iseeyou.fortunetelling.service.converstation.ConversationService;
+import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +50,19 @@ public class ConversationScheduler {
 
         for (Conversation conversation : lateSessions) {
             try {
+                // Determine who is late
+                boolean customerLate = conversation.getCustomerJoinedAt() == null;
+                boolean seerLate = conversation.getSeerJoinedAt() == null;
+
+                String reason;
+                if (customerLate && seerLate) {
+                    reason = "Both customer and seer late >10 minutes";
+                } else if (customerLate) {
+                    reason = "Customer late >10 minutes";
+                } else {
+                    reason = "Seer late >10 minutes";
+                }
+
                 // Cancel conversation & booking
                 conversationService.cancelLateSession(conversation.getId());
 
@@ -58,12 +71,13 @@ public class ConversationScheduler {
                 namespace.getRoomOperations(conversation.getId().toString())
                         .sendEvent("session_canceled", Map.of(
                                 "conversationId", conversation.getId().toString(),
-                                "reason", "Customer late >10 minutes",
+                                "reason", reason,
+                                "canceledBy", customerLate && seerLate ? "BOTH" : (customerLate ? "CUSTOMER" : "SEER"),
                                 "message", messageSourceService.get("chat.session.canceled.late"),
                                 "timestamp", LocalDateTime.now().toString()
                         ));
 
-                log.info("Canceled late session: conversationId={}", conversation.getId());
+                log.info("Canceled late session: conversationId={}, reason={}", conversation.getId(), reason);
             } catch (Exception e) {
                 log.error("Error canceling late session: conversationId={}",
                         conversation.getId(), e);

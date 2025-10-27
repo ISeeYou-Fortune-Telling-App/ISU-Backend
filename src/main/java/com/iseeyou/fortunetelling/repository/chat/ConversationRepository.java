@@ -1,7 +1,6 @@
-package com.iseeyou.fortunetelling.repository.converstation;
+package com.iseeyou.fortunetelling.repository.chat;
 
-import com.iseeyou.fortunetelling.entity.Conversation;
-import com.iseeyou.fortunetelling.entity.user.User;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,10 +18,19 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Page<Conversation> findByBooking_ServicePackage_Seer(UUID seerId, Pageable pageable);
     Page<Conversation> findByBooking_Customer(UUID customerId, Pageable pageable);
 
-    // Find late sessions (customer chưa join sau 10 phút)
+    // Find conversation with all related entities loaded (avoid lazy loading issues)
+    @Query("SELECT c FROM Conversation c " +
+           "LEFT JOIN FETCH c.booking b " +
+           "LEFT JOIN FETCH b.customer " +
+           "LEFT JOIN FETCH b.servicePackage sp " +
+           "LEFT JOIN FETCH sp.seer " +
+           "WHERE c.id = :conversationId")
+    Optional<Conversation> findByIdWithDetails(@Param("conversationId") UUID conversationId);
+
+    // Find late sessions (customer hoặc seer chưa join sau 10 phút)
     @Query("SELECT conv FROM Conversation conv WHERE " +
             "conv.status = :status AND " +
-            "conv.customerJoinedAt IS NULL AND " +
+            "(conv.customerJoinedAt IS NULL OR conv.seerJoinedAt IS NULL) AND " +
             "conv.sessionStartTime < :cutoffTime")
     List<Conversation> findLateSessions(
             @Param("status") Constants.ConversationStatusEnum status,

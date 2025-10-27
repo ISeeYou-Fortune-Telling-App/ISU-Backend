@@ -1,16 +1,16 @@
-package com.iseeyou.fortunetelling.handler.socket;
+package com.iseeyou.fortunetelling.listener;
 
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iseeyou.fortunetelling.dto.request.message.ChatMessageRequest;
 import com.iseeyou.fortunetelling.dto.response.ChatMessageResponse;
-import com.iseeyou.fortunetelling.entity.Conversation;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
-import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
+import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
-import com.iseeyou.fortunetelling.service.message.MessageService;
+import com.iseeyou.fortunetelling.service.chat.MessageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class ChatSocketHandler {
+public class ChatSocketListener {
     private final MessageService messageService;
     private final ConversationRepository conversationRepository;
     private final UserService userService;
@@ -51,8 +51,8 @@ public class ChatSocketHandler {
                 UUID convId = UUID.fromString(conversationId);
                 String userId = client.get("userId");
 
-                // Verify user is participant
-                Conversation conversation = conversationRepository.findById(convId)
+                // Verify user is participant - use JOIN FETCH to avoid lazy loading
+                Conversation conversation = conversationRepository.findByIdWithDetails(convId)
                         .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
                 boolean isParticipant = conversation.getBooking().getCustomer().getId().toString().equals(userId) ||
@@ -69,10 +69,16 @@ public class ChatSocketHandler {
 
                 // Track customer join time
                 boolean isCustomer = conversation.getBooking().getCustomer().getId().toString().equals(userId);
+                boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().toString().equals(userId);
+
                 if (isCustomer && conversation.getCustomerJoinedAt() == null) {
                     conversation.setCustomerJoinedAt(LocalDateTime.now());
                     conversationRepository.save(conversation);
-                    log.info("Customer joined on time for conversation: {}", conversationId);
+                    log.info("Customer joined for conversation: {}", conversationId);
+                } else if (isSeer && conversation.getSeerJoinedAt() == null) {
+                    conversation.setSeerJoinedAt(LocalDateTime.now());
+                    conversationRepository.save(conversation);
+                    log.info("Seer joined for conversation: {}", conversationId);
                 }
 
                 // Notify others in room
@@ -120,16 +126,18 @@ public class ChatSocketHandler {
                 ChatMessageRequest request = objectMapper.readValue(messageJson, ChatMessageRequest.class);
 
                 String userId = client.get("userId");
-                User currentUser = userService.getUser();
 
-                // Verify sender
+                // Get user by ID (not from SecurityContext - Socket.IO doesn't have it)
+                User currentUser = userService.findById(UUID.fromString(userId));
+
+                // Verify sender matches the user in socket session
                 if (!currentUser.getId().toString().equals(userId)) {
                     ackRequest.sendAckData("error", messageSourceService.get("chat.unauthorized"));
                     return;
                 }
 
-                // Save message to DB
-                ChatMessageResponse message = messageService.sendMessage(request.getConversationId(), request);
+                // Save message to DB (pass sender as parameter)
+                ChatMessageResponse message = messageService.sendMessage(request.getConversationId(), request, currentUser);
 
                 // Broadcast to conversation room
                 com.corundumstudio.socketio.BroadcastOperations roomOps = namespace.getRoomOperations(request.getConversationId().toString());
@@ -145,14 +153,14 @@ public class ChatSocketHandler {
             }
         });
 
-        // Mark message as read
-        namespace.addEventListener("mark_read", String.class, (client, messageId, ackRequest) -> {
+        // Mark messages as read (all unread messages in conversation, except those sent by me)
+        namespace.addEventListener("mark_read", String.class, (client, conversationId, ackRequest) -> {
             try {
-                messageService.markMessageAsRead(UUID.fromString(messageId));
-                log.info("Message {} marked as read", messageId);
+                messageService.markMessagesAsRead(UUID.fromString(conversationId));
+                log.info("Marked unread messages as read in conversation {}", conversationId);
                 ackRequest.sendAckData("success");
             } catch (Exception e) {
-                log.error("Error marking message as read", e);
+                log.error("Error marking messages as read", e);
                 ackRequest.sendAckData("error", e.getMessage());
             }
         });

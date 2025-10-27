@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.service.converstation;
+package com.iseeyou.fortunetelling.service.chat;
 
 import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
 import org.springframework.data.domain.Page;

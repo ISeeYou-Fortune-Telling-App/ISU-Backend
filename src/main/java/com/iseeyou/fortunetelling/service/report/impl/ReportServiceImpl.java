@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.report.impl;
 
-import com.iseeyou.fortunetelling.entity.Conversation;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportEvidence;
@@ -9,7 +9,7 @@ import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
-import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
+import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportEvidenceRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportTypeRepository;

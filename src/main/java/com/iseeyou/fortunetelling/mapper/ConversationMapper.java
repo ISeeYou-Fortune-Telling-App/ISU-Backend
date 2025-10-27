@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.mapper;
 
 import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
-import com.iseeyou.fortunetelling.entity.Conversation;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;

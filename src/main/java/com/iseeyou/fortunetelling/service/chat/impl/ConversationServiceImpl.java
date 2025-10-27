@@ -1,16 +1,16 @@
-package com.iseeyou.fortunetelling.service.converstation.impl;
+package com.iseeyou.fortunetelling.service.chat.impl;
 
 import com.iseeyou.fortunetelling.dto.response.converstation.ChatSessionResponse;
-import com.iseeyou.fortunetelling.entity.Conversation;
-import com.iseeyou.fortunetelling.entity.Message;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
+import com.iseeyou.fortunetelling.entity.chat.Conversation;
+import com.iseeyou.fortunetelling.entity.chat.Message;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ConversationMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
-import com.iseeyou.fortunetelling.repository.converstation.ConversationRepository;
+import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
-import com.iseeyou.fortunetelling.service.converstation.ConversationService;
+import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class converstationServiceImpl implements ConversationService {
+public class ConversationServiceImpl implements ConversationService {
 
     private final MessageSourceService messageSourceService;
     private final ConversationRepository conversationRepository;
@@ -125,9 +125,22 @@ public class converstationServiceImpl implements ConversationService {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
+        // Determine who is late
+        boolean customerLate = conversation.getCustomerJoinedAt() == null;
+        boolean seerLate = conversation.getSeerJoinedAt() == null;
+
+        String canceledBy;
+        if (customerLate && seerLate) {
+            canceledBy = "BOTH";
+        } else if (customerLate) {
+            canceledBy = "CUSTOMER";
+        } else {
+            canceledBy = "SEER";
+        }
+
         // Cancel conversation
         conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
-        conversation.setCancelReason("Customer late >10 minutes");
+        conversation.setCanceledBy(canceledBy);
         conversationRepository.save(conversation);
 
         // Cancel booking
@@ -135,8 +148,8 @@ public class converstationServiceImpl implements ConversationService {
         booking.setStatus(Constants.BookingStatusEnum.CANCELED);
         bookingRepository.save(booking);
 
-        log.info("Session canceled due to customer late: conversation={}, booking={}",
-                conversationId, booking.getId());
+        log.info("Session canceled due to late join: conversation={}, booking={}, canceledBy={}",
+                conversationId, booking.getId(), canceledBy);
     }
 
     @Override

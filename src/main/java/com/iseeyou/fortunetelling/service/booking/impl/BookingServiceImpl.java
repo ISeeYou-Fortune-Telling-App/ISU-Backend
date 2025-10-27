@@ -10,7 +10,7 @@ import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.booking.BookingReviewRepository;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
-import com.iseeyou.fortunetelling.service.converstation.ConversationService;
+import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -127,7 +127,11 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Error creating payment", e);
         }
 
-        return bookingRepository.save(newBooking);
+        newBooking = bookingRepository.save(newBooking);
+
+        // TODO: Create conversation
+
+        return newBooking;
     }
 
     @Override
@@ -154,6 +158,8 @@ public class BookingServiceImpl implements BookingService {
     public Booking updateBooking(Booking booking) {
         Booking existingBooking = bookingRepository.findById(booking.getId())
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + booking.getId()));
+
+        // TODO: Check if changed to other time => update conversation
 
         // check if status changed to CONFIRMED
         boolean statusChangedToConfirmed = !existingBooking.getStatus().equals(booking.getStatus()) &&

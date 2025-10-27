@@ -1,5 +1,6 @@
-package com.iseeyou.fortunetelling.entity;
+package com.iseeyou.fortunetelling.entity.chat;
 
+import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 @AttributeOverrides({
         @AttributeOverride(name = "id", column = @Column(name = "message_id", nullable = false)),
 })
-public class Message extends AbstractBaseEntity{
+public class Message extends AbstractBaseEntity {
     @Column(name = "text_content", columnDefinition = "text")
     private String textContent;
 
