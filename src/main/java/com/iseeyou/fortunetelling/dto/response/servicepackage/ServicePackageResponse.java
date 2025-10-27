@@ -22,7 +22,7 @@ public class ServicePackageResponse {
     private String imageUrl;
     private Integer durationMinutes;
     private Double price;
-    private Constants.ServiceCategoryEnum category;
+    private List<CategoryInfo> categories; // Đổi từ single category sang list categories
     private Constants.PackageStatusEnum status;
     private String rejectionReason;
     private Long likeCount;
@@ -42,6 +42,16 @@ public class ServicePackageResponse {
         private String avatarUrl;
         private Double avgRating;
         private Integer totalRates;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CategoryInfo {
+        private UUID id;
+        private String name;
+        private String description;
     }
 
     @Data

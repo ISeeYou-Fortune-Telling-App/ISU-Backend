@@ -88,7 +88,7 @@ public final class Constants {
     @AllArgsConstructor
     public enum PackageStatusEnum {
         AVAILABLE("AVAILABLE"),
-        CLOSED("CLOSED"),
+        REJECTED("REJECTED"),
         HAVE_REPORT("HAVE_REPORT"),
         HIDDEN("HIDDEN");
 

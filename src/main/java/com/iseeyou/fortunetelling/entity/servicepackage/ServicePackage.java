@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.entity.servicepackage;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -65,21 +66,26 @@ public class ServicePackage extends AbstractBaseEntity {
     private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<PackageCategory> packageCategories = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seer_id")
+    @JsonIgnore
     private User seer;
 
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<PackageInteraction> packageInteractions = new HashSet<>();
 
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<ServiceReview> serviceReviews = new HashSet<>();
 
     // No cascade delete for bookings - preserve booking history for reports even when package is deleted
     // Bookings contain critical payment and transaction data that must be retained
     @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY)
     @Builder.Default
+    @JsonIgnore
     private Set<Booking> bookings = new HashSet<>();
 }

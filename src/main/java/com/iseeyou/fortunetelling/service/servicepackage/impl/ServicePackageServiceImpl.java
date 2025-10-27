@@ -157,15 +157,33 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
-    public ServicePackage createOrUpdatePackage(String seerId, ServicePackageUpsertRequest request) {
-        ServicePackage servicePackage;
-        User seer = userRepository.findById(UUID.fromString(seerId))
-                .orElseThrow(() -> new NotFoundException("Seer not found with id: " + seerId));
+    public ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request) {
+        // Create new package (no ID provided)
+        return createOrUpdatePackageInternal(null, request);
+    }
 
-        if (StringUtils.hasText(request.getPackageId())) {
-            Optional<ServicePackage> optional = servicePackageRepository.findById(UUID.fromString(request.getPackageId()));
+    @Override
+    @Transactional
+    public ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request) {
+        // Update existing package (ID provided)
+        return createOrUpdatePackageInternal(id, request);
+    }
+
+    private ServicePackage createOrUpdatePackageInternal(String packageId, ServicePackageUpsertRequest request) {
+        ServicePackage servicePackage;
+        User seer = userService.getUser(); // Get current user from JWT
+
+        if (StringUtils.hasText(packageId)) {
+            // Update existing package
+            Optional<ServicePackage> optional = servicePackageRepository.findById(UUID.fromString(packageId));
             servicePackage = optional.orElseThrow(() -> new NotFoundException("Service package not found"));
+            
+            // Verify that the current user owns this package
+            if (!servicePackage.getSeer().getId().equals(seer.getId())) {
+                throw new IllegalArgumentException("You can only update your own service packages");
+            }
         } else {
+            // Create new package
             servicePackage = new ServicePackage();
             servicePackage.setStatus(Constants.PackageStatusEnum.HIDDEN); // trạng thái chờ duyệt
             servicePackage.setRejectionReason(null);
@@ -181,35 +199,39 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         servicePackage.setDurationMinutes(request.getDurationMinutes());
         servicePackage.setPrice(request.getPrice());
 
-        // Handle category assignment
-        if (request.getCategory() != null) {
+        // Handle multiple categories assignment
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             // Clear existing categories if updating
             servicePackage.getPackageCategories().clear();
 
-            // Find or create the knowledge category
-            KnowledgeCategory knowledgeCategory = knowledgeCategoryRepository
-                    .findByName(request.getCategory().getValue())
-                    .orElseGet(() -> {
-                        KnowledgeCategory newCategory = KnowledgeCategory.builder()
-                                .name(request.getCategory().getValue())
-                                .description("Auto-generated category for " + request.getCategory().getValue())
-                                .build();
-                        return knowledgeCategoryRepository.save(newCategory);
-                    });
+            // Add all categories from the list
+            for (String categoryIdStr : request.getCategoryIds()) {
+                UUID categoryId = UUID.fromString(categoryIdStr);
 
-            // Create package category relationship
-            PackageCategory packageCategory = PackageCategory.builder()
-                    .servicePackage(servicePackage)
-                    .knowledgeCategory(knowledgeCategory)
-                    .build();
+                // Find the knowledge category by ID
+                KnowledgeCategory knowledgeCategory = knowledgeCategoryRepository
+                        .findById(categoryId)
+                        .orElseThrow(() -> new NotFoundException("Category not found with id: " + categoryIdStr));
 
-            servicePackage.getPackageCategories().add(packageCategory);
+                // Create package category relationship
+                PackageCategory packageCategory = PackageCategory.builder()
+                        .servicePackage(servicePackage)
+                        .knowledgeCategory(knowledgeCategory)
+                        .build();
+
+                servicePackage.getPackageCategories().add(packageCategory);
+            }
+
+            log.info("Added {} categories to service package", request.getCategoryIds().size());
         }
 
+        // Handle optional image upload - only update if new image is provided
         if (request.getImage() != null && !request.getImage().isEmpty()) {
             String imageUrl = cloudinaryConfig.uploadImage(request.getImage());
             servicePackage.setImageUrl(imageUrl);
         }
+        // If updating and no new image is provided, keep the existing imageUrl
+        
         return servicePackageRepository.save(servicePackage);
     }
 
@@ -467,7 +489,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return response;
     }
 
-    @Transactional
     private void updatePackageCounts(UUID packageId) {
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
@@ -538,5 +559,50 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             
             return response;
         });
+    }
+
+    // ============ Admin methods ============
+
+    @Override
+    @Transactional
+    public ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason) {
+        log.info("Admin confirming service package {} with status: {}", packageId, status);
+
+        ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(packageId))
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + packageId));
+
+        // Validate status transition
+        if (status == Constants.PackageStatusEnum.REJECTED &&
+            (rejectionReason == null || rejectionReason.trim().isEmpty())) {
+            throw new IllegalArgumentException("Rejection reason is required when rejecting a service package");
+        }
+
+        // Update status and rejection reason
+        servicePackage.setStatus(status);
+
+        if (status == Constants.PackageStatusEnum.REJECTED) {
+            servicePackage.setRejectionReason(rejectionReason);
+            log.info("Service package {} rejected with reason: {}", packageId, rejectionReason);
+        } else {
+            // Clear rejection reason if status is not REJECTED
+            servicePackage.setRejectionReason(null);
+            log.info("Service package {} status changed to: {}", packageId, status);
+        }
+
+        return servicePackageRepository.save(servicePackage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackageResponse> getAllHiddenPackages(Pageable pageable) {
+        log.info("Fetching all hidden service packages");
+
+        Specification<ServicePackage> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.HIDDEN);
+
+        Page<ServicePackage> hiddenPackages = servicePackageRepository.findAll(spec, pageable);
+
+        // Enrich with interactions and review statistics
+        return enrichWithInteractions(hiddenPackages);
     }
 }

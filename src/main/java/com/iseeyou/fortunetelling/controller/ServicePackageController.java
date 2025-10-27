@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.PackageInteractionRequest;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageConfirmRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
@@ -128,35 +129,46 @@ public class ServicePackageController extends AbstractBaseController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Create new service package",
-        description = "Create a new service package with full info, image upload, price, duration. Status is HIDDEN (pending approval)",
+        description = "Create a new service package with multiple categories, optional image upload, price, duration. " +
+                     "Status is HIDDEN (pending approval). SeerId is automatically extracted from JWT. " +
+                     "Provide categoryIds as a list of knowledge category IDs.",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
     @PreAuthorize("hasAuthority('SEER')")
-    public ResponseEntity<SingleResponse<ServicePackage>> createServicePackage(
-            @RequestParam("seerId") String seerId,
-            @ModelAttribute ServicePackageUpsertRequest request
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> createServicePackage(
+            @Valid @ModelAttribute ServicePackageUpsertRequest request
     ) {
-        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(seerId, request);
-        return responseFactory.successSingle(servicePackage, "Service package created successfully");
+        log.info("=== START: Creating service package with title: {}, categories: {}",
+                request.getPackageTitle(), request.getCategoryIds());
+
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(request);
+
+        log.info("=== Service package created with ID: {}", servicePackage.getId());
+
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+
+        log.info("=== END: Mapped to response, returning...");
+
+        return responseFactory.successSingle(response, "Service package created successfully");
     }
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Update service package",
-        description = "Update an existing service package. Status remains HIDDEN if not approved.",
+        description = "Update an existing service package with multiple categories. " +
+                     "Status remains HIDDEN if not approved. SeerId is automatically extracted from JWT. " +
+                     "Provide categoryIds as a list of knowledge category IDs.",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
     @PreAuthorize("hasAuthority('SEER')")
-    public ResponseEntity<SingleResponse<ServicePackage>> updateServicePackage(
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> updateServicePackage(
             @Parameter(description = "Service Package ID", required = true)
             @RequestParam String id,
-            @ModelAttribute ServicePackageUpsertRequest request
+            @Valid @ModelAttribute ServicePackageUpsertRequest request
     ) {
-        request.setPackageId(id);
-        // Lấy seerId từ service package hiện tại thay vì từ request param
-        ServicePackage existingPackage = servicePackageService.findById(id);
-        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeer().getId().toString(), request);
-        return responseFactory.successSingle(servicePackage, "Service package updated successfully");
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(id, request);
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+        return responseFactory.successSingle(response, "Service package updated successfully");
     }
 
     @DeleteMapping("/{id}")
@@ -362,5 +374,119 @@ public class ServicePackageController extends AbstractBaseController {
     ) {
         ServicePackageResponse response = servicePackageService.getPackageWithInteractions(packageId);
         return responseFactory.successSingle(response, "Service package with interactions retrieved successfully");
+    }
+
+    // ============ Admin Endpoints ============
+
+    @PutMapping("/{packageId}/confirm")
+    @Operation(
+            summary = "Admin confirm/reject service package",
+            description = "Admin endpoint to approve, reject, or change status of a service package. " +
+                         "Status can be: AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN. " +
+                         "If status is REJECTED, rejectionReason is required.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Service package status updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ServicePackageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid request - rejection reason required for REJECTED status",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> confirmServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable String packageId,
+            @Parameter(description = "Confirmation request with status and optional rejection reason", required = true)
+            @RequestBody @Valid ServicePackageConfirmRequest request
+    ) {
+        log.info("Admin confirming service package {} with status: {}", packageId, request.getStatus());
+
+        // Validate request
+        if (!request.isValid()) {
+            throw new IllegalArgumentException("Rejection reason is required when status is REJECTED");
+        }
+
+        ServicePackage servicePackage = servicePackageService.confirmServicePackage(
+                packageId,
+                request.getStatus(),
+                request.getRejectionReason()
+        );
+
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+
+        String message = request.getStatus() == Constants.PackageStatusEnum.REJECTED
+                ? "Service package rejected successfully"
+                : "Service package status updated to " + request.getStatus();
+
+        return responseFactory.successSingle(response, message);
+    }
+
+    @GetMapping("/admin/hidden")
+    @Operation(
+            summary = "Get all hidden service packages (Admin only)",
+            description = "Admin endpoint to retrieve all service packages with HIDDEN status (pending approval)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Hidden service packages retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<PageResponse<ServicePackageResponse>> getAllHiddenPackages(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        log.info("Admin fetching hidden service packages");
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServicePackageResponse> response = servicePackageService.getAllHiddenPackages(pageable);
+        return responseFactory.successPage(response, "Hidden service packages retrieved successfully");
     }
 }
