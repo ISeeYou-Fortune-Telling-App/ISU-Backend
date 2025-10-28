@@ -1,6 +1,17 @@
-# 🚀 Frontend Chat Integration Guide
+# 🚀 Chat Integration Guide - Customer & Seer
 
-## 📋 Mục lục
+## 📋 Tổng quan
+
+Hướng dẫn tích hợp chat system cho **Customer** và **Seer**. Document này bao gồm:
+- Socket.IO setup và configuration
+- REST API endpoints
+- Real-time messaging
+- Code examples (React, Vue.js)
+- Testing guide
+
+**Note:** Nếu bạn là Admin, vui lòng xem file `ADMIN_CHAT_GUIDE.md`
+
+---
 1. [Tổng quan](#tổng-quan)
 2. [Socket.IO Setup](#socketio-setup)
 3. [REST API Endpoints](#rest-api-endpoints)

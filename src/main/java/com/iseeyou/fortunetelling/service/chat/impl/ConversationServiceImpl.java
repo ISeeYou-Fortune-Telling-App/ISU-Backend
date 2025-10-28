@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
-import com.iseeyou.fortunetelling.dto.response.chat.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
@@ -106,6 +106,67 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     @Transactional
+    public ConversationResponse createAdminConversation(UUID targetUserId, String initialMessage) {
+        // 1. Get current admin user
+        User admin = userService.getUser();
+
+        // Verify user is admin
+        if (!admin.getRole().equals(Constants.RoleEnum.ADMIN)) {
+            throw new IllegalStateException("Only admin can create admin conversations");
+        }
+
+        // 2. Get target user (customer or seer)
+        User targetUser = userService.findById(targetUserId);
+        if (targetUser == null) {
+            throw new NotFoundException("Target user not found with id: " + targetUserId);
+        }
+
+        // 3. Check if admin conversation already exists with this user
+        Optional<Conversation> existingConversation = conversationRepository
+                .findAdminConversationByAdminAndTarget(admin.getId(), targetUserId);
+
+        if (existingConversation.isPresent()) {
+            log.info("Admin conversation already exists between admin {} and user {}",
+                    admin.getId(), targetUserId);
+            return conversationMapper.mapTo(existingConversation.get(), ConversationResponse.class);
+        }
+
+        // 4. Create admin conversation
+        Conversation conversation = Conversation.builder()
+                .booking(null)  // No booking for admin chat
+                .type(Constants.ConversationTypeEnum.ADMIN_CHAT)
+                .admin(admin)
+                .targetUser(targetUser)
+                .sessionStartTime(LocalDateTime.now())
+                .sessionEndTime(null)  // No end time for admin chat
+                .sessionDurationMinutes(null)  // No duration limit
+                .status(Constants.ConversationStatusEnum.ACTIVE)
+                .messages(new HashSet<>())
+                .build();
+
+        Conversation savedConversation = conversationRepository.save(conversation);
+        log.info("Admin conversation created successfully between admin: {} and user: {} ({})",
+                admin.getId(), targetUser.getId(), targetUser.getRole());
+
+        // 5. Create initial message if provided
+        if (initialMessage != null && !initialMessage.trim().isEmpty()) {
+            Message message = Message.builder()
+                    .conversation(savedConversation)
+                    .sender(admin)
+                    .textContent(initialMessage)
+                    .messageType("SYSTEM")
+                    .status(Constants.MessageStatusEnum.UNREAD)
+                    .build();
+
+            savedConversation.getMessages().add(message);
+            conversationRepository.save(savedConversation);
+        }
+
+        return conversationMapper.mapTo(savedConversation, ConversationResponse.class);
+    }
+
+    @Override
+    @Transactional
     public ConversationResponse getConversation(UUID conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found with id: " + conversationId));
@@ -126,10 +187,18 @@ public class ConversationServiceImpl implements ConversationService {
         User currentUser = userService.getUser();
         Page<Conversation> conversations;
 
-        if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            conversations = conversationRepository.findByBooking_ServicePackage_Seer_Id(currentUser.getId(), pageable);
+        if (currentUser.getRole().equals(Constants.RoleEnum.ADMIN)) {
+            // Admin: get all admin conversations where admin is the creator
+            conversations = conversationRepository.findAdminConversationsByAdmin(currentUser.getId(), pageable);
+            log.info("Admin {} retrieved {} admin conversations", currentUser.getId(), conversations.getTotalElements());
+        } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
+            // Seer: get ALL conversations (booking conversations + admin conversations as target)
+            conversations = conversationRepository.findAllConversationsBySeer(currentUser.getId(), pageable);
+            log.info("Seer {} retrieved {} total conversations", currentUser.getId(), conversations.getTotalElements());
         } else {
-            conversations = conversationRepository.findByBooking_Customer_Id(currentUser.getId(), pageable);
+            // Customer: get ALL conversations (booking conversations + admin conversations as target)
+            conversations = conversationRepository.findAllConversationsByCustomer(currentUser.getId(), pageable);
+            log.info("Customer {} retrieved {} total conversations", currentUser.getId(), conversations.getTotalElements());
         }
 
         return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));

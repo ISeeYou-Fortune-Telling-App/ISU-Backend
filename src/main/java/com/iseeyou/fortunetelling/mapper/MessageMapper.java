@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.mapper;
 
-import com.iseeyou.fortunetelling.dto.response.chat.ChatMessageResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Message;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.extern.slf4j.Slf4j;
@@ -27,25 +27,42 @@ public class MessageMapper extends BaseMapper {
                     destination.setId(source.getId());
                     destination.setConversationId(source.getConversation().getId());
 
-                    // Map customer info from conversation booking
-                    if (source.getConversation() != null &&
-                        source.getConversation().getBooking() != null &&
-                        source.getConversation().getBooking().getCustomer() != null) {
-                        var customer = source.getConversation().getBooking().getCustomer();
-                        destination.setCustomerId(customer.getId());
-                        destination.setCustomerName(customer.getFullName());
-                        destination.setCustomerAvatar(customer.getAvatarUrl());
-                    }
+                    // Check conversation type to determine how to map customer/seer info
+                    if (source.getConversation().getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+                        // Admin chat: map admin and target user
+                        if (source.getConversation().getAdmin() != null) {
+                            var admin = source.getConversation().getAdmin();
+                            destination.setSeerId(admin.getId());
+                            destination.setSeerName(admin.getFullName());
+                            destination.setSeerAvatar(admin.getAvatarUrl());
+                        }
 
-                    // Map seer info from conversation booking service package
-                    if (source.getConversation() != null &&
-                        source.getConversation().getBooking() != null &&
-                        source.getConversation().getBooking().getServicePackage() != null &&
-                        source.getConversation().getBooking().getServicePackage().getSeer() != null) {
-                        var seer = source.getConversation().getBooking().getServicePackage().getSeer();
-                        destination.setSeerId(seer.getId());
-                        destination.setSeerName(seer.getFullName());
-                        destination.setSeerAvatar(seer.getAvatarUrl());
+                        if (source.getConversation().getTargetUser() != null) {
+                            var targetUser = source.getConversation().getTargetUser();
+                            destination.setCustomerId(targetUser.getId());
+                            destination.setCustomerName(targetUser.getFullName());
+                            destination.setCustomerAvatar(targetUser.getAvatarUrl());
+                        }
+                    } else {
+                        // Booking session: map customer and seer from booking
+                        if (source.getConversation() != null &&
+                            source.getConversation().getBooking() != null &&
+                            source.getConversation().getBooking().getCustomer() != null) {
+                            var customer = source.getConversation().getBooking().getCustomer();
+                            destination.setCustomerId(customer.getId());
+                            destination.setCustomerName(customer.getFullName());
+                            destination.setCustomerAvatar(customer.getAvatarUrl());
+                        }
+
+                        if (source.getConversation() != null &&
+                            source.getConversation().getBooking() != null &&
+                            source.getConversation().getBooking().getServicePackage() != null &&
+                            source.getConversation().getBooking().getServicePackage().getSeer() != null) {
+                            var seer = source.getConversation().getBooking().getServicePackage().getSeer();
+                            destination.setSeerId(seer.getId());
+                            destination.setSeerName(seer.getFullName());
+                            destination.setSeerAvatar(seer.getAvatarUrl());
+                        }
                     }
 
                     destination.setTextContent(source.getTextContent());

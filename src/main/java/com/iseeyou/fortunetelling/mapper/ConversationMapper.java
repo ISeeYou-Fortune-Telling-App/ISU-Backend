@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.mapper;
 
-import com.iseeyou.fortunetelling.dto.response.chat.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -37,22 +37,46 @@ public class ConversationMapper extends BaseMapper{
                     // Map conversation ID
                     destination.setConversationId(source.getId());
 
-                    // Map seer information
-                    if (source.getBooking() != null &&
-                            source.getBooking().getServicePackage() != null &&
-                            source.getBooking().getServicePackage().getSeer() != null) {
-                        User seer = source.getBooking().getServicePackage().getSeer();
-                        destination.setSeerId(seer.getId());
-                        destination.setSeerName(seer.getFullName());
-                        destination.setSeerAvatarUrl(seer.getAvatarUrl());
-                    }
+                    // For ADMIN_CHAT: map admin and target user
+                    if (source.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+                        // Admin info
+                        if (source.getAdmin() != null) {
+                            destination.setSeerId(source.getAdmin().getId());
+                            destination.setSeerName(source.getAdmin().getFullName());
+                            destination.setSeerAvatarUrl(source.getAdmin().getAvatarUrl());
+                        }
 
-                    // Map customer information
-                    if (source.getBooking() != null && source.getBooking().getCustomer() != null) {
-                        User customer = source.getBooking().getCustomer();
-                        destination.setCustomerId(customer.getId());
-                        destination.setCustomerName(customer.getFullName());
-                        destination.setCustomerAvatarUrl(customer.getAvatarUrl());
+                        // Target user info (customer or seer role)
+                        if (source.getTargetUser() != null) {
+                            User targetUser = source.getTargetUser();
+                            if (targetUser.getRole() == Constants.RoleEnum.CUSTOMER) {
+                                destination.setCustomerId(targetUser.getId());
+                                destination.setCustomerName(targetUser.getFullName());
+                                destination.setCustomerAvatarUrl(targetUser.getAvatarUrl());
+                            } else {
+                                // Target is seer, put in customer fields (admin already in seer fields)
+                                destination.setCustomerId(targetUser.getId());
+                                destination.setCustomerName(targetUser.getFullName());
+                                destination.setCustomerAvatarUrl(targetUser.getAvatarUrl());
+                            }
+                        }
+                    } else {
+                        // For BOOKING_SESSION: map seer and customer from booking
+                        if (source.getBooking() != null &&
+                                source.getBooking().getServicePackage() != null &&
+                                source.getBooking().getServicePackage().getSeer() != null) {
+                            User seer = source.getBooking().getServicePackage().getSeer();
+                            destination.setSeerId(seer.getId());
+                            destination.setSeerName(seer.getFullName());
+                            destination.setSeerAvatarUrl(seer.getAvatarUrl());
+                        }
+
+                        if (source.getBooking() != null && source.getBooking().getCustomer() != null) {
+                            User customer = source.getBooking().getCustomer();
+                            destination.setCustomerId(customer.getId());
+                            destination.setCustomerName(customer.getFullName());
+                            destination.setCustomerAvatarUrl(customer.getAvatarUrl());
+                        }
                     }
 
                     // Map session times
@@ -78,20 +102,38 @@ public class ConversationMapper extends BaseMapper{
                                 Constants.MessageStatusEnum.UNREAD
                         );
 
-                        User seer = source.getBooking().getServicePackage().getSeer();
-                        User customer = source.getBooking().getCustomer();
+                        if (source.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+                            // For admin chat
+                            if (source.getAdmin() != null && source.getTargetUser() != null) {
+                                // Count unread for admin (messages from target user)
+                                long adminUnreadCount = unreadMessages.stream()
+                                        .filter(msg -> msg.getSender().getId().equals(source.getTargetUser().getId()))
+                                        .count();
+                                destination.setSeerUnreadCount((int) adminUnreadCount);
 
-                        // Count unread for seer (messages sent by customer that seer hasn't read)
-                        long seerUnreadCount = unreadMessages.stream()
-                                .filter(msg -> msg.getSender().getId().equals(customer.getId()))
-                                .count();
-                        destination.setSeerUnreadCount((int) seerUnreadCount);
+                                // Count unread for target user (messages from admin)
+                                long targetUnreadCount = unreadMessages.stream()
+                                        .filter(msg -> msg.getSender().getId().equals(source.getAdmin().getId()))
+                                        .count();
+                                destination.setCustomerUnreadCount((int) targetUnreadCount);
+                            }
+                        } else if (source.getBooking() != null) {
+                            // For booking session
+                            User seer = source.getBooking().getServicePackage().getSeer();
+                            User customer = source.getBooking().getCustomer();
 
-                        // Count unread for customer (messages sent by seer that customer hasn't read)
-                        long customerUnreadCount = unreadMessages.stream()
-                                .filter(msg -> msg.getSender().getId().equals(seer.getId()))
-                                .count();
-                        destination.setCustomerUnreadCount((int) customerUnreadCount);
+                            // Count unread for seer (messages sent by customer that seer hasn't read)
+                            long seerUnreadCount = unreadMessages.stream()
+                                    .filter(msg -> msg.getSender().getId().equals(customer.getId()))
+                                    .count();
+                            destination.setSeerUnreadCount((int) seerUnreadCount);
+
+                            // Count unread for customer (messages sent by seer that customer hasn't read)
+                            long customerUnreadCount = unreadMessages.stream()
+                                    .filter(msg -> msg.getSender().getId().equals(seer.getId()))
+                                    .count();
+                            destination.setCustomerUnreadCount((int) customerUnreadCount);
+                        }
 
                     } catch (Exception e) {
                         log.warn("Error calculating unread counts for conversation {}: {}", source.getId(), e.getMessage());

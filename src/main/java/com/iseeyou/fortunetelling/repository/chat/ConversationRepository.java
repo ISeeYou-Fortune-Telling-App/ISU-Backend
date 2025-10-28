@@ -66,4 +66,53 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("waitingStatus") Constants.ConversationStatusEnum waitingStatus,
             @Param("now") LocalDateTime now
     );
+
+    // Find admin conversation between admin and target user
+    @Query("SELECT c FROM Conversation c WHERE " +
+            "c.type = 'ADMIN_CHAT' AND " +
+            "c.admin.id = :adminId AND " +
+            "c.targetUser.id = :targetUserId")
+    Optional<Conversation> findAdminConversationByAdminAndTarget(
+            @Param("adminId") UUID adminId,
+            @Param("targetUserId") UUID targetUserId
+    );
+
+    // Find all admin conversations for admin
+    @Query("SELECT c FROM Conversation c WHERE " +
+            "c.type = 'ADMIN_CHAT' AND " +
+            "c.admin.id = :adminId")
+    Page<Conversation> findAdminConversationsByAdmin(
+            @Param("adminId") UUID adminId,
+            Pageable pageable
+    );
+
+    // Find all admin conversations for target user (customer or seer)
+    @Query("SELECT c FROM Conversation c WHERE " +
+            "c.type = 'ADMIN_CHAT' AND " +
+            "c.targetUser.id = :targetUserId")
+    Page<Conversation> findAdminConversationsByTargetUser(
+            @Param("targetUserId") UUID targetUserId,
+            Pageable pageable
+    );
+
+    // Find all conversations for a customer (booking conversations + admin conversations as target)
+    @Query("SELECT c FROM Conversation c " +
+            "LEFT JOIN c.booking b " +
+            "WHERE (b.customer.id = :customerId) OR " +
+            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :customerId)")
+    Page<Conversation> findAllConversationsByCustomer(
+            @Param("customerId") UUID customerId,
+            Pageable pageable
+    );
+
+    // Find all conversations for a seer (booking conversations + admin conversations as target)
+    @Query("SELECT c FROM Conversation c " +
+            "LEFT JOIN c.booking b " +
+            "LEFT JOIN b.servicePackage sp " +
+            "WHERE (sp.seer.id = :seerId) OR " +
+            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :seerId)")
+    Page<Conversation> findAllConversationsBySeer(
+            @Param("seerId") UUID seerId,
+            Pageable pageable
+    );
 }

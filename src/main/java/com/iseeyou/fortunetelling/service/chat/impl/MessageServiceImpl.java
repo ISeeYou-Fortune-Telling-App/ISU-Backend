@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
 import com.iseeyou.fortunetelling.dto.request.chat.ChatMessageRequest;
-import com.iseeyou.fortunetelling.dto.response.chat.ChatMessageResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -48,19 +48,29 @@ public class MessageServiceImpl implements MessageService {
         Conversation conversation = conversationRepository.findByIdWithDetails(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found with id: " + conversationId));
 
-        log.debug("Conversation found: {}, Status: {}", conversationId, conversation.getStatus());
+        log.debug("Conversation found: {}, Type: {}, Status: {}",
+                conversationId, conversation.getType(), conversation.getStatus());
 
-        // Validate user is participant (Seer or Customer)
-        boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(sender.getId());
-        boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().equals(sender.getId());
-        boolean isParticipant = isCustomer || isSeer;
+        // Validate user is participant
+        boolean isParticipant = false;
+
+        if (conversation.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+            // Admin chat: check if user is admin or target user
+            isParticipant = (conversation.getAdmin() != null && conversation.getAdmin().getId().equals(sender.getId())) ||
+                          (conversation.getTargetUser() != null && conversation.getTargetUser().getId().equals(sender.getId()));
+        } else if (conversation.getBooking() != null) {
+            // Booking session: check if user is customer or seer
+            boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(sender.getId());
+            boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().equals(sender.getId());
+            isParticipant = isCustomer || isSeer;
+        }
 
         if (!isParticipant) {
             log.error("User {} is not a participant in conversation {}", sender.getId(), conversationId);
             throw new IllegalStateException("User is not a participant in this conversation");
         }
 
-        log.debug("User {} is participant (isCustomer: {}, isSeer: {})", sender.getId(), isCustomer, isSeer);
+        log.debug("User {} is participant in conversation {}", sender.getId(), conversationId);
 
         // Validate conversation is active
         if (!conversation.getStatus().equals(Constants.ConversationStatusEnum.ACTIVE)) {
@@ -99,16 +109,33 @@ public class MessageServiceImpl implements MessageService {
                 .orElseThrow(() -> new NotFoundException("Conversation not found with id: " + conversationId));
 
         // Validate user is participant
-        boolean isParticipant = conversation.getBooking().getCustomer().getId().equals(currentUser.getId()) ||
-                conversation.getBooking().getServicePackage().getSeer().getId().equals(currentUser.getId());
+        boolean isParticipant = false;
+        Constants.RoleEnum userRole = null;
+
+        if (conversation.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+            // Admin chat: check if user is admin or target user
+            boolean isAdmin = conversation.getAdmin() != null &&
+                            conversation.getAdmin().getId().equals(currentUser.getId());
+            boolean isTarget = conversation.getTargetUser() != null &&
+                             conversation.getTargetUser().getId().equals(currentUser.getId());
+
+            isParticipant = isAdmin || isTarget;
+
+            // For admin chat, use actual user role for filtering deleted messages
+            userRole = currentUser.getRole();
+        } else if (conversation.getBooking() != null) {
+            // Booking session: check if user is customer or seer
+            boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(currentUser.getId());
+            boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().equals(currentUser.getId());
+
+            isParticipant = isCustomer || isSeer;
+            userRole = isCustomer ? Constants.RoleEnum.CUSTOMER : Constants.RoleEnum.SEER;
+        }
 
         if (!isParticipant) {
             throw new IllegalStateException("User is not a participant in this conversation");
         }
 
-        // Determine user role to filter deleted messages
-        boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(currentUser.getId());
-        Constants.RoleEnum userRole = isCustomer ? Constants.RoleEnum.CUSTOMER : Constants.RoleEnum.SEER;
 
         // Get visible messages (excluding those deleted by current user)
         Page<Message> messages = messageRepository.findVisibleMessages(conversationId, userRole, pageable);
@@ -159,16 +186,31 @@ public class MessageServiceImpl implements MessageService {
 
         // Verify user is in conversation
         Conversation conversation = message.getConversation();
-        boolean isParticipant = conversation.getBooking().getCustomer().getId().equals(currentUser.getId()) ||
-                conversation.getBooking().getServicePackage().getSeer().getId().equals(currentUser.getId());
+        boolean isParticipant = false;
+        Constants.RoleEnum userRole = null;
+
+        if (conversation.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
+            // Admin chat: check if user is admin or target user
+            boolean isAdmin = conversation.getAdmin() != null &&
+                            conversation.getAdmin().getId().equals(currentUser.getId());
+            boolean isTarget = conversation.getTargetUser() != null &&
+                             conversation.getTargetUser().getId().equals(currentUser.getId());
+
+            isParticipant = isAdmin || isTarget;
+            userRole = currentUser.getRole(); // Use actual user role
+        } else if (conversation.getBooking() != null) {
+            // Booking session: check if user is customer or seer
+            boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(currentUser.getId());
+            boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().equals(currentUser.getId());
+
+            isParticipant = isCustomer || isSeer;
+            userRole = isCustomer ? Constants.RoleEnum.CUSTOMER : Constants.RoleEnum.SEER;
+        }
 
         if (!isParticipant) {
             throw new IllegalStateException("User is not a participant in this conversation");
         }
 
-        // Determine role of current user
-        boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(currentUser.getId());
-        Constants.RoleEnum userRole = isCustomer ? Constants.RoleEnum.CUSTOMER : Constants.RoleEnum.SEER;
 
         // Check if already deleted by this user
         if (message.getDeletedBy() != null) {

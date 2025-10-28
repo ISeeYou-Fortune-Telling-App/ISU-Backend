@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.entity.chat;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,13 +21,24 @@ import java.util.Set;
         @AttributeOverride(name = "id", column = @Column(name = "conversation_id", nullable = false)),
 })
 public class Conversation extends AbstractBaseEntity {
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "booking_id", nullable = false)
+    // Booking - optional (null for admin chats)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
     private Booking booking;
 
     @Column(name = "type", length = 50, nullable = false)
     @Enumerated(EnumType.STRING)
     private Constants.ConversationTypeEnum type;
+
+    // For admin chat: admin user
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id")
+    private User admin;
+
+    // For admin chat: customer or seer
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_user_id")
+    private User targetUser;
 
     @Column(name = "session_start_time")
     private LocalDateTime sessionStartTime;

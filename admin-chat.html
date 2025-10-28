@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Chat - ISeeYou</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        /* Left Panel - Admin Controls */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .admin-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        /* Create Conversation Form */
+        .create-conversation {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4caf50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Conversations List */
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .conversation-item {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .conversation-item:hover {
+            background: #f5f5f5;
+        }
+
+        .conversation-item.active {
+            background: #e8eaf6;
+            border-color: #667eea;
+        }
+
+        .conv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .conv-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .conv-time {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .conv-preview {
+            font-size: 13px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conv-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .conv-badge.admin-chat {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .conv-badge.booking {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        /* Right Panel - Chat */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: white;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .chat-details h3 {
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .chat-details p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-sent {
+            justify-content: flex-end;
+        }
+
+        .message-received {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 60%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message-sent .message-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-received .message-bubble {
+            background: white;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-meta {
+            font-size: 11px;
+            margin-top: 3px;
+            opacity: 0.7;
+        }
+
+        .system-message {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: #f5f5f5;
+            border-radius: 25px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .message-input:disabled {
+            cursor: not-allowed;
+        }
+
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            max-width: 300px;
+            animation: slideInRight 0.3s;
+            z-index: 1000;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .notification.success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f44336;
+        }
+
+        .notification.info {
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel -->
+        <div class="panel left-panel">
+            <div class="panel-header">
+                👤 Admin Panel
+                <div class="admin-badge">ADMINISTRATOR</div>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="connection-status">
+                <div class="status-dot disconnected" id="statusDot"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+
+            <!-- Create Conversation Form -->
+            <div class="create-conversation">
+                <h4 style="margin-bottom: 15px; color: #333;">Create New Conversation</h4>
+                <form id="createConvForm">
+                    <div class="form-group">
+                        <label for="targetUserId">Target User ID *</label>
+                        <input type="text" id="targetUserId" placeholder="UUID of customer or seer" required>
+                        <small>Enter the UUID of the user you want to chat with</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="initialMessage">Initial Message (optional)</label>
+                        <textarea id="initialMessage" placeholder="Type your first message..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="createBtn">
+                        Create Conversation
+                    </button>
+                </form>
+            </div>
+
+            <!-- Conversations List -->
+            <div style="padding: 15px 20px; background: #f9f9f9; border-bottom: 1px solid #e0e0e0;">
+                <h4 style="color: #333; font-size: 14px;">My Conversations</h4>
+            </div>
+            <div class="conversations-list" id="conversationsList">
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <div class="empty-state-icon">💬</div>
+                    <p>No conversations yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="panel right-panel">
+            <div class="chat-header">
+                <div class="chat-user-info">
+                    <div class="chat-avatar" id="chatAvatar">?</div>
+                    <div class="chat-details">
+                        <h3 id="chatUserName">Select a conversation</h3>
+                        <p id="chatUserRole">-</p>
+                    </div>
+                </div>
+                <div id="conversationType"></div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <p>Select a conversation to start chatting</p>
+                    <p style="font-size: 12px; margin-top: 10px;">or create a new one</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <input
+                        type="text"
+                        class="message-input"
+                        id="messageInput"
+                        placeholder="Type a message..."
+                        disabled
+                    >
+                </div>
+                <button class="send-btn" id="sendBtn" disabled>➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8080';
+        const SOCKET_URL = 'http://localhost:8081';
+
+        // Admin credentials - CHANGE THESE
+        const ADMIN_USER_ID = '16c0964d-7bd2-47a7-bb02-66c9e31ba1db'; // Replace with actual admin UUID
+        const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxNmMwOTY0ZC03YmQyLTQ3YTctYmIwMi02NmM5ZTMxYmExZGIiLCJpYXQiOjE3NjE2MzQxNDUsImV4cCI6MTc2MTY0NDk0NX0.fnqCzGXCKbDvHOVaNnmwbj95Q28OkR6GL9HU3b21LPo'; // Replace with actual admin JWT token
+
+        let socket = null;
+        let currentConversationId = null;
+        let conversations = [];
+
+        // DOM Elements
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const createConvForm = document.getElementById('createConvForm');
+        const createBtn = document.getElementById('createBtn');
+        const conversationsList = document.getElementById('conversationsList');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatAvatar = document.getElementById('chatAvatar');
+        const chatUserName = document.getElementById('chatUserName');
+        const chatUserRole = document.getElementById('chatUserRole');
+        const conversationType = document.getElementById('conversationType');
+
+        // Load Socket.IO library (v2.5.0 to match backend)
+        function loadSocketIO() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.socket.io/2.5.0/socket.io.min.js';
+
+                script.onload = function() {
+                    console.log('✅ Socket.IO v2.5.0 loaded successfully');
+                    resolve();
+                };
+
+                script.onerror = function() {
+                    console.warn('⚠️ Failed to load from cdn.socket.io, trying cdnjs...');
+                    const fallbackScript = document.createElement('script');
+                    fallbackScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.min.js';
+
+                    fallbackScript.onload = function() {
+                        console.log('✅ Socket.IO v2.5.0 loaded from fallback CDN');
+                        resolve();
+                    };
+
+                    fallbackScript.onerror = function() {
+                        console.error('❌ Failed to load Socket.IO library from all CDNs');
+                        reject(new Error('Failed to load Socket.IO'));
+                    };
+
+                    document.head.appendChild(fallbackScript);
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        // Initialize Socket.IO
+        async function initSocket() {
+            if (!ADMIN_USER_ID || ADMIN_USER_ID === 'your-admin-user-id') {
+                showNotification('Please set ADMIN_USER_ID in the code', 'error');
+                return;
+            }
+
+            // Load Socket.IO library first
+            try {
+                await loadSocketIO();
+            } catch (error) {
+                showNotification('Failed to load Socket.IO library', 'error');
+                return;
+            }
+
+            socket = io(`${SOCKET_URL}/chat`, {
+                query: { userId: ADMIN_USER_ID },
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                console.log('✅ Connected to Socket.IO');
+                updateConnectionStatus(true);
+                showNotification('Connected to chat server', 'success');
+                loadConversations();
+            });
+
+            socket.on('disconnect', () => {
+                console.log('❌ Disconnected from Socket.IO');
+                updateConnectionStatus(false);
+                showNotification('Disconnected from chat server', 'error');
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                updateConnectionStatus(false);
+                showNotification('Connection error: ' + error.message, 'error');
+            });
+
+            socket.on('connect_success', (data) => {
+                console.log('Server welcome:', data);
+            });
+
+            socket.on('receive_message', (message) => {
+                console.log('📩 New message:', message);
+
+                // Add message to current conversation
+                if (message.conversationId === currentConversationId) {
+                    displayMessage(message);
+                    scrollToBottom();
+
+                    // Mark as read if not sent by me
+                    if (message.senderId !== ADMIN_USER_ID) {
+                        socket.emit('mark_read', currentConversationId);
+                    }
+                }
+
+                // Update conversation list
+                updateConversationPreview(message);
+            });
+
+            socket.on('user_joined', (data) => {
+                console.log('👤 User joined:', data);
+                addSystemMessage(`User ${data.userId} joined the conversation`);
+            });
+
+            socket.on('user_left', (data) => {
+                console.log('👋 User left:', data);
+                addSystemMessage(`User ${data.userId} left the conversation`);
+            });
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusDot.classList.remove('disconnected');
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusDot.classList.remove('connected');
+                statusDot.classList.add('disconnected');
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // Create conversation
+        createConvForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const targetUserId = document.getElementById('targetUserId').value.trim();
+            const initialMessage = document.getElementById('initialMessage').value.trim();
+
+            if (!targetUserId) {
+                showNotification('Please enter target user ID', 'error');
+                return;
+            }
+
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/conversations`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ADMIN_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        targetUserId: targetUserId,
+                        initialMessage: initialMessage || null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.statusCode === 200) {
+                    console.log('✅ Conversation created:', result.data);
+                    showNotification('Conversation created successfully', 'success');
+
+                    // Clear form
+                    createConvForm.reset();
+
+                    // Reload conversations
+                    await loadConversations();
+
+                    // Auto-select new conversation
+                    selectConversation(result.data.conversationId);
+                } else {
+                    showNotification(result.message || 'Failed to create conversation', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating conversation:', error);
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Conversation';
+            }
+        });
+
+        // Load conversations
+        async function loadConversations() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/conversations?page=1&limit=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${ADMIN_TOKEN}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.statusCode === 200 && result.data) {
+                    conversations = result.data.content || [];
+                    renderConversations();
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+            }
+        }
+
+        // Render conversations list
+        function renderConversations() {
+            if (conversations.length === 0) {
+                conversationsList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-state-icon">💬</div>
+                        <p>No conversations yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            conversationsList.innerHTML = conversations.map(conv => `
+                <div class="conversation-item ${conv.conversationId === currentConversationId ? 'active' : ''}"
+                     onclick="selectConversation('${conv.conversationId}')">
+                    <div class="conv-header">
+                        <div class="conv-name">${conv.customerName || 'Unknown User'}</div>
+                        <div class="conv-time">${formatTime(conv.lastMessageTime)}</div>
+                    </div>
+                    <div class="conv-preview">${conv.lastMessageContent || 'No messages'}</div>
+                    <span class="conv-badge admin-chat">ADMIN CHAT</span>
+                </div>
+            `).join('');
+        }
+
+        // Select conversation
+        async function selectConversation(conversationId) {
+            currentConversationId = conversationId;
+
+            const conv = conversations.find(c => c.conversationId === conversationId);
+            if (!conv) return;
+
+            // Update UI
+            chatUserName.textContent = conv.customerName || 'Unknown User';
+            chatUserRole.textContent = 'Admin Conversation';
+            chatAvatar.textContent = (conv.customerName || 'U')[0].toUpperCase();
+            conversationType.innerHTML = '<span class="conv-badge admin-chat">ADMIN CHAT</span>';
+
+            // Enable input
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+
+            // Join conversation via Socket.IO
+            socket.emit('join_conversation', conversationId, (response) => {
+                console.log('Join response:', response);
+            });
+
+            // Load messages
+            await loadMessages(conversationId);
+
+            // Re-render conversations to update active state
+            renderConversations();
+        }
+
+        // Load messages
+        async function loadMessages(conversationId) {
+            try {
+                const response = await fetch(
+                    `${API_BASE}/chat/messages/conversation/${conversationId}?page=1&limit=100`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${ADMIN_TOKEN}`
+                        }
+                    }
+                );
+
+                const result = await response.json();
+
+                if (result.statusCode === 200 && result.data) {
+                    messagesContainer.innerHTML = '';
+                    result.data.content.forEach(message => {
+                        displayMessage(message);
+                    });
+                    scrollToBottom();
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Display message
+        function displayMessage(message) {
+            const isSentByMe = message.senderId === ADMIN_USER_ID;
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'}`;
+
+            messageDiv.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-text">${escapeHtml(message.textContent || '')}</div>
+                    <div class="message-meta">${formatTime(message.createdAt)}</div>
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        // Add system message
+        function addSystemMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        // Send message
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !currentConversationId) return;
+
+            const message = {
+                conversationId: currentConversationId,
+                textContent: text
+            };
+
+            socket.emit('send_message', message, (response) => {
+                if (response === 'success') {
+                    messageInput.value = '';
+                } else {
+                    showNotification('Failed to send message', 'error');
+                }
+            });
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Helper functions
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function formatTime(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateConversationPreview(message) {
+            const conv = conversations.find(c => c.conversationId === message.conversationId);
+            if (conv) {
+                conv.lastMessageContent = message.textContent;
+                conv.lastMessageTime = message.createdAt;
+                renderConversations();
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('🚀 Admin Chat initialized');
+            console.log('Admin User ID:', ADMIN_USER_ID);
+            await initSocket();
+        });
+    </script>
+</body>
+</html>
+

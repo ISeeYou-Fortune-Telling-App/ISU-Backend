@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.dto.response.chat;
+package com.iseeyou.fortunetelling.dto.response.chat.session;
 
 import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
 import com.iseeyou.fortunetelling.util.Constants;

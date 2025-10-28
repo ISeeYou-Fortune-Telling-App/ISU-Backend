@@ -2,9 +2,8 @@ package com.iseeyou.fortunetelling.listener;
 
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iseeyou.fortunetelling.dto.request.chat.ChatMessageRequest;
-import com.iseeyou.fortunetelling.dto.response.chat.ChatMessageResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
@@ -12,6 +11,7 @@ import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.chat.MessageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
+import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -55,8 +55,18 @@ public class ChatSocketListener {
                 Conversation conversation = conversationRepository.findByIdWithDetails(convId)
                         .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
-                boolean isParticipant = conversation.getBooking().getCustomer().getId().toString().equals(userId) ||
-                        conversation.getBooking().getServicePackage().getSeer().getId().toString().equals(userId);
+                boolean isParticipant = false;
+
+                // Check if admin chat
+                if (conversation.getType().equals(Constants.ConversationTypeEnum.ADMIN_CHAT)) {
+                    // For admin chat: verify user is admin or target user
+                    isParticipant = (conversation.getAdmin() != null && conversation.getAdmin().getId().toString().equals(userId)) ||
+                                  (conversation.getTargetUser() != null && conversation.getTargetUser().getId().toString().equals(userId));
+                } else if (conversation.getBooking() != null) {
+                    // For booking session: verify user is customer or seer
+                    isParticipant = conversation.getBooking().getCustomer().getId().toString().equals(userId) ||
+                                  conversation.getBooking().getServicePackage().getSeer().getId().toString().equals(userId);
+                }
 
                 if (!isParticipant) {
                     ackRequest.sendAckData("error", messageSourceService.get("chat.unauthorized"));
@@ -67,18 +77,20 @@ public class ChatSocketListener {
                 client.joinRoom(conversationId);
                 log.info("User {} joined conversation {}", userId, conversationId);
 
-                // Track customer join time
-                boolean isCustomer = conversation.getBooking().getCustomer().getId().toString().equals(userId);
-                boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().toString().equals(userId);
+                // Track join time only for booking sessions
+                if (conversation.getBooking() != null) {
+                    boolean isCustomer = conversation.getBooking().getCustomer().getId().toString().equals(userId);
+                    boolean isSeer = conversation.getBooking().getServicePackage().getSeer().getId().toString().equals(userId);
 
-                if (isCustomer && conversation.getCustomerJoinedAt() == null) {
-                    conversation.setCustomerJoinedAt(LocalDateTime.now());
-                    conversationRepository.save(conversation);
-                    log.info("Customer joined for conversation: {}", conversationId);
-                } else if (isSeer && conversation.getSeerJoinedAt() == null) {
-                    conversation.setSeerJoinedAt(LocalDateTime.now());
-                    conversationRepository.save(conversation);
-                    log.info("Seer joined for conversation: {}", conversationId);
+                    if (isCustomer && conversation.getCustomerJoinedAt() == null) {
+                        conversation.setCustomerJoinedAt(LocalDateTime.now());
+                        conversationRepository.save(conversation);
+                        log.info("Customer joined for conversation: {}", conversationId);
+                    } else if (isSeer && conversation.getSeerJoinedAt() == null) {
+                        conversation.setSeerJoinedAt(LocalDateTime.now());
+                        conversationRepository.save(conversation);
+                        log.info("Seer joined for conversation: {}", conversationId);
+                    }
                 }
 
                 // Notify others in room
