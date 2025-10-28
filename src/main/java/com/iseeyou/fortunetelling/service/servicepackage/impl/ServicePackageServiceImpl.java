@@ -14,6 +14,7 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageSpecification;
 import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
@@ -86,33 +87,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Override
     @Transactional(readOnly = true)
     public Page<ServicePackage> findAllAvailable(Pageable pageable) {
-        Specification<ServicePackage> spec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.AVAILABLE);
+        Specification<ServicePackage> spec = ServicePackageSpecification.availableOnly();
         return servicePackageRepository.findAll(spec, pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ServicePackage> findAvailableWithFilters(Double minPrice, Double maxPrice, Pageable pageable) {
-        Specification<ServicePackage> spec = (root, query, criteriaBuilder) -> {
-            var predicates = criteriaBuilder.conjunction();
-
-            // Status filter
-            predicates = criteriaBuilder.and(predicates,
-                    criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.AVAILABLE));
-
-            // Price filters
-            if (minPrice != null) {
-                predicates = criteriaBuilder.and(predicates,
-                        criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
-            }
-            if (maxPrice != null) {
-                predicates = criteriaBuilder.and(predicates,
-                        criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
-            }
-
-            return predicates;
-        };
+    public Page<ServicePackage> findAvailableWithFilters(String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration, Pageable pageable) {
+        Specification<ServicePackage> spec = ServicePackageSpecification.withFilters(
+                name, categoryIds, minPrice, maxPrice, minDuration, maxDuration);
         return servicePackageRepository.findAll(spec, pageable);
     }
 
@@ -507,15 +490,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable, Double minPrice, Double maxPrice) {
-        Page<ServicePackage> servicePackages;
-        
-        if (minPrice != null || maxPrice != null) {
-            servicePackages = findAvailableWithFilters(minPrice, maxPrice, pageable);
-        } else {
-            servicePackages = findAllAvailable(pageable);
-        }
-        
+    public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable, String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration) {
+        Page<ServicePackage> servicePackages = findAvailableWithFilters(name, categoryIds, minPrice, maxPrice, minDuration, maxDuration, pageable);
         return enrichWithInteractions(servicePackages);
     }
 

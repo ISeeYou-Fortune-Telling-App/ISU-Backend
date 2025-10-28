@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +46,10 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
            "JOIN sp.packageCategories pc " +
            "WHERE pc.knowledgeCategory.id = :categoryId")
     Page<ServicePackage> findByCategoryId(@Param("categoryId") UUID categoryId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
+    @Query("SELECT DISTINCT sp FROM ServicePackage sp " +
+           "JOIN sp.packageCategories pc " +
+           "WHERE pc.knowledgeCategory.id IN :categoryIds")
+    Page<ServicePackage> findByCategoryIds(@Param("categoryIds") List<UUID> categoryIds, Pageable pageable);
 }

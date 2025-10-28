@@ -57,14 +57,23 @@ public class PublicController extends AbstractBaseController {
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field (createdAt, price, packageTitle)")
             @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Search by package name")
+            @RequestParam(required = false) String name,
+            @Parameter(description = "Filter by category IDs (comma-separated)")
+            @RequestParam(required = false) String categoryIds,
             @Parameter(description = "Minimum price filter")
             @RequestParam(required = false) Double minPrice,
             @Parameter(description = "Maximum price filter")
-            @RequestParam(required = false) Double maxPrice
+            @RequestParam(required = false) Double maxPrice,
+            @Parameter(description = "Minimum duration in minutes")
+            @RequestParam(required = false) Integer minDuration,
+            @Parameter(description = "Maximum duration in minutes")
+            @RequestParam(required = false) Integer maxDuration
     ) {
         log.info("Public API: Get all service packages - page: {}, limit: {}", page, limit);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ServicePackageResponse> response = servicePackageService.getAllPackagesWithInteractions(pageable, minPrice, maxPrice);
+        Page<ServicePackageResponse> response = servicePackageService.getAllPackagesWithInteractions(
+                pageable, name, categoryIds, minPrice, maxPrice, minDuration, maxDuration);
         return responseFactory.successPage(response, "Service packages retrieved successfully");
     }
 
@@ -151,4 +160,3 @@ public class PublicController extends AbstractBaseController {
 
 
 }
-

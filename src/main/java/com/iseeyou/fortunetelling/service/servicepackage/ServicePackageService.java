@@ -9,12 +9,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface ServicePackageService {
     Page<ServicePackage> findAllAvailable(Pageable pageable);
-    Page<ServicePackage> findAvailableWithFilters(Double minPrice, Double maxPrice, Pageable pageable);
+    Page<ServicePackage> findAvailableWithFilters(String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration, Pageable pageable);
     Page<ServicePackage> findAvailableByCategoryWithFilters(Constants.ServiceCategoryEnum category, Double minPrice, Double maxPrice, Pageable pageable);
     ServicePackage findById(String id);
     ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request);
@@ -27,16 +26,8 @@ public interface ServicePackageService {
     ServicePackageResponse toggleInteraction(UUID packageId, Constants.InteractionTypeEnum interactionType);
     ServicePackageResponse getPackageWithInteractions(UUID packageId);
     
-    // Method to get all packages with interactions - Enhanced with search and filters
-    Page<ServicePackageResponse> getAllPackagesWithInteractions(
-            Pageable pageable,
-            String searchKeyword,
-            List<String> categoryIds,
-            Double minPrice,
-            Double maxPrice,
-            Integer minDuration,
-            Integer maxDuration
-    );
+    // Method to get all packages with interactions - updated to support new filters
+    Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable, String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration);
     Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice);
 
     // Admin methods
