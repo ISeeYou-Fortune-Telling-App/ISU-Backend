@@ -42,48 +42,6 @@ public class ServicePackageController extends AbstractBaseController {
     private final ServicePackageService servicePackageService;
     private final ServicePackageMapper servicePackageMapper;
 
-    @GetMapping
-    @Operation(
-            summary = "Get all available service packages with filters",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Successful operation",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<PageResponse<ServicePackageResponse>> getAllServicePackages(
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort direction (asc/desc)")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @Parameter(description = "Minimum price filter")
-            @RequestParam(required = false) Double minPrice,
-            @Parameter(description = "Maximum price filter")
-            @RequestParam(required = false) Double maxPrice
-    ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ServicePackageResponse> response = servicePackageService.getAllPackagesWithInteractions(pageable, minPrice, maxPrice);
-        return responseFactory.successPage(response, "Service packages retrieved successfully");
-    }
-
     @GetMapping("/detail")
     @Operation(
             summary = "Get service package detail with seer information",

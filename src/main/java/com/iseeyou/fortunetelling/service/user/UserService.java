@@ -5,6 +5,7 @@ import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
+import com.iseeyou.fortunetelling.dto.response.account.SimpleSeerCardResponse;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface UserService {
@@ -24,6 +26,10 @@ public interface UserService {
     JwtUserDetails getPrincipal(Authentication authentication);
 
     Page<User> findAll(Pageable pageable);
+
+    Page<SimpleSeerCardResponse> getSimpleSeerCardsWithFilter(Pageable pageable,
+                                                              String searchText,
+                                                              List<UUID> seerSpecialityIds);
 
     User findById(UUID id);
 

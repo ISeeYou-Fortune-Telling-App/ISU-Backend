@@ -61,4 +61,17 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Page<User> findByStatus(Constants.StatusProfileEnum status, Pageable pageable);
 
     Page<User> findByRoleAndStatus(Constants.RoleEnum role, Constants.StatusProfileEnum status, Pageable pageable);
+
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        LEFT JOIN u.seerProfile sp
+        LEFT JOIN u.seerSpecialities ss
+        WHERE u.role = :role
+        AND (:searchText IS NULL OR :searchText = '' OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :searchText, '%')))
+        AND (:seerSpecialityIds IS NULL OR ss.knowledgeCategory.id IN :seerSpecialityIds)
+        """)
+    Page<User> findSeersWithFilters(@Param("role") Constants.RoleEnum role,
+                                     @Param("searchText") String searchText,
+                                     @Param("seerSpecialityIds") List<UUID> seerSpecialityIds,
+                                     Pageable pageable);
 }

@@ -6,12 +6,18 @@ import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateReque
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
+import com.iseeyou.fortunetelling.dto.response.account.SimpleSeerCardResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.entity.user.CustomerProfile;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
+import com.iseeyou.fortunetelling.entity.user.SeerSpeciality;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.UserMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
+import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.user.SeerSpecialityRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
@@ -22,7 +28,6 @@ import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.CalculateZodiac;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -42,6 +47,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -54,6 +60,9 @@ public class UserServiceImpl implements UserService {
     private final CertificateService certificateService;
     private final EmailVerificationService emailVerificationService;
     private final BookingRepository bookingRepository;
+    private final SeerSpecialityRepository seerSpecialityRepository;
+    private final KnowledgeCategoryRepository knowledgeCategoryRepository;
+    private final UserMapper userMapper;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -62,7 +71,10 @@ public class UserServiceImpl implements UserService {
             CloudinaryService cloudinaryService,
             @Lazy CertificateService certificateService,
             EmailVerificationService emailVerificationService,
-            BookingRepository bookingRepository) {
+            BookingRepository bookingRepository,
+            SeerSpecialityRepository seerSpecialityRepository,
+            KnowledgeCategoryRepository knowledgeCategoryRepository,
+            UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
@@ -70,6 +82,9 @@ public class UserServiceImpl implements UserService {
         this.certificateService = certificateService;
         this.emailVerificationService = emailVerificationService;
         this.bookingRepository = bookingRepository;
+        this.seerSpecialityRepository = seerSpecialityRepository;
+        this.knowledgeCategoryRepository = knowledgeCategoryRepository;
+        this.userMapper = userMapper;
     }
 
     public Authentication getAuthentication() {
@@ -97,6 +112,26 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public Page<User> findAll(Pageable pageable) {
         return userRepository.findAll(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SimpleSeerCardResponse> getSimpleSeerCardsWithFilter(Pageable pageable,
+                                                                     String searchText,
+                                                                     List<UUID> seerSpecialityIds) {
+        // Convert empty list to null to avoid JPQL issues
+        List<UUID> specialityIdsFilter = (seerSpecialityIds != null && seerSpecialityIds.isEmpty())
+                ? null
+                : seerSpecialityIds;
+
+        Page<User> seers = userRepository.findSeersWithFilters(
+                Constants.RoleEnum.SEER,
+                searchText,
+                specialityIdsFilter,
+                pageable
+        );
+
+        return userMapper.mapToPage(seers, SimpleSeerCardResponse.class);
     }
 
     @Override
@@ -251,6 +286,21 @@ public class UserServiceImpl implements UserService {
         user.setSeerProfile(seerProfile);
 
         userRepository.save(user);
+
+        // Process specialities if provided
+        if (request.getSpecialityIds() != null && !request.getSpecialityIds().isEmpty()) {
+            for (String categoryId : request.getSpecialityIds()) {
+                KnowledgeCategory category = knowledgeCategoryRepository.findById(UUID.fromString(categoryId))
+                        .orElseThrow(() -> new NotFoundException("Knowledge category not found with id: " + categoryId));
+
+                SeerSpeciality seerSpeciality = SeerSpeciality.builder()
+                        .user(user)
+                        .knowledgeCategory(category)
+                        .build();
+
+                seerSpecialityRepository.save(seerSpeciality);
+            }
+        }
 
         // Process certificates if provided
         if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {

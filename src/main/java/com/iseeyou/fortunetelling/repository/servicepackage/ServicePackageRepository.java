@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +46,27 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
            "JOIN sp.packageCategories pc " +
            "WHERE pc.knowledgeCategory.id = :categoryId")
     Page<ServicePackage> findByCategoryId(@Param("categoryId") UUID categoryId, Pageable pageable);
+
+    @Query("""
+        SELECT DISTINCT sp FROM ServicePackage sp
+        LEFT JOIN sp.packageCategories pc
+        LEFT JOIN sp.seer s
+        LEFT JOIN s.seerSpecialities ss
+        WHERE (:minPrice IS NULL OR sp.price >= :minPrice)
+        AND (:searchText IS NULL OR :searchText = '' OR LOWER(sp.packageTitle) LIKE LOWER(CONCAT('%', :searchText, '%')))
+        AND (:maxPrice IS NULL OR sp.price <= :maxPrice)
+        AND (:minTime = 0 OR sp.durationMinutes >= :minTime)
+        AND (:maxTime = 0 OR sp.durationMinutes <= :maxTime)
+        AND (:packageCategoryIds IS NULL OR pc.knowledgeCategory.id IN :packageCategoryIds)
+        AND (:seerSpecialityIds IS NULL OR ss.knowledgeCategory.id IN :seerSpecialityIds)
+        """)
+    @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
+    Page<ServicePackage> findAllWithFilters(@Param("minPrice") Double minPrice,
+                                            @Param("maxPrice") Double maxPrice,
+                                            @Param("packageCategoryIds") List<UUID> packageCategoryIds,
+                                            @Param("seerSpecialityIds") List<UUID> seerSpecialityIds,
+                                            @Param("minTime") int minTime,
+                                            @Param("maxTime") int maxTime,
+                                            @Param("searchText") String searchText,
+                                            Pageable pageable);
 }

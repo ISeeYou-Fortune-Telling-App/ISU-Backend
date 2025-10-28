@@ -11,8 +11,8 @@ import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class CertificateServiceImpl implements CertificateService {
 
@@ -35,6 +34,19 @@ public class CertificateServiceImpl implements CertificateService {
     private final KnowledgeCategoryService knowledgeCategoryService;
     private final CloudinaryService cloudinaryService;
     private final UserService userService;
+
+    public CertificateServiceImpl(
+            CertificateRepository certificateRepository,
+            CertificateCategoryRepository certificateCategoryRepository,
+            KnowledgeCategoryService knowledgeCategoryService,
+            CloudinaryService cloudinaryService,
+            @Lazy UserService userService) {
+        this.certificateRepository = certificateRepository;
+        this.certificateCategoryRepository = certificateCategoryRepository;
+        this.knowledgeCategoryService = knowledgeCategoryService;
+        this.cloudinaryService = cloudinaryService;
+        this.userService = userService;
+    }
 
     @Override
     @Transactional(readOnly = true)

@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.entity.knowledge;
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
+import com.iseeyou.fortunetelling.entity.user.SeerSpeciality;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,4 +36,8 @@ public class KnowledgeCategory extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PackageCategory> packageCategories = new HashSet<>();
+
+    @OneToMany(mappedBy = "knowledgeCategory", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<SeerSpeciality> seerSpecialities = new HashSet<>();
 }

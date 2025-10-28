@@ -72,6 +72,9 @@ public class User extends AbstractBaseEntity {
     @OneToMany(mappedBy = "seer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<Certificate> certificates;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<SeerSpeciality> seerSpecialities = new HashSet<>();
+
     @OneToMany(mappedBy = "seer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<ServicePackage> servicePackages;
 

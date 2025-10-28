@@ -1,7 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
-import com.iseeyou.fortunetelling.dto.request.chat.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.SuccessResponse;

@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
-import com.iseeyou.fortunetelling.dto.request.chat.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;

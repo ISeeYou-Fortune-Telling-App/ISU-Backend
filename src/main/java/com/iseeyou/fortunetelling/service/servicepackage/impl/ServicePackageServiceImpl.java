@@ -58,31 +58,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<ServicePackage> findAvailableWithFilters(Double minPrice, Double maxPrice, Pageable pageable) {
-        Specification<ServicePackage> spec = (root, query, criteriaBuilder) -> {
-            var predicates = criteriaBuilder.conjunction();
-
-            // Status filter
-            predicates = criteriaBuilder.and(predicates,
-                    criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.AVAILABLE));
-
-            // Price filters
-            if (minPrice != null) {
-                predicates = criteriaBuilder.and(predicates,
-                        criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
-            }
-            if (maxPrice != null) {
-                predicates = criteriaBuilder.and(predicates,
-                        criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
-            }
-
-            return predicates;
-        };
-        return servicePackageRepository.findAll(spec, pageable);
-    }
-
-    @Override
     public Page<ServicePackage> findAvailableByCategoryWithFilters(Constants.ServiceCategoryEnum category, Double minPrice, Double maxPrice, Pageable pageable) {
         Specification<ServicePackage> spec = (root, query, criteriaBuilder) -> {
             var predicates = criteriaBuilder.conjunction();
@@ -330,14 +305,27 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable, Double minPrice, Double maxPrice) {
-        Page<ServicePackage> servicePackages;
-        
-        if (minPrice != null || maxPrice != null) {
-            servicePackages = findAvailableWithFilters(minPrice, maxPrice, pageable);
-        } else {
-            servicePackages = findAllAvailable(pageable);
-        }
+    public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable,
+                                                                       String searchText,
+                                                                       Double minPrice, Double maxPrice,
+                                                                       List<UUID> packageCategoryIds,
+                                                                       List<UUID> seerSpecialityIds,
+                                                                       int minTime, int maxTime) {
+        // Convert empty lists to null to avoid JPQL issues
+        List<UUID> categoryIdsFilter = (packageCategoryIds != null && packageCategoryIds.isEmpty())
+                ? null
+                : packageCategoryIds;
+        List<UUID> specialityIdsFilter = (seerSpecialityIds != null && seerSpecialityIds.isEmpty())
+                ? null
+                : seerSpecialityIds;
+
+        Page<ServicePackage> servicePackages = servicePackageRepository.findAllWithFilters(
+                minPrice, maxPrice,
+                categoryIdsFilter,
+                specialityIdsFilter,
+                minTime, maxTime,
+                searchText,
+                pageable);
         
         return enrichWithInteractions(servicePackages);
     }

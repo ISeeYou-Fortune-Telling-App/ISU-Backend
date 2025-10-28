@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.dto.request.chat;
+package com.iseeyou.fortunetelling.dto.request.chat.session;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

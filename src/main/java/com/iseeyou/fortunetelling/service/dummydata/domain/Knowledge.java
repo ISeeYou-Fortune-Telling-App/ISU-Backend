@@ -5,12 +5,14 @@ import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.ItemCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
+import com.iseeyou.fortunetelling.entity.user.SeerSpeciality;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.repository.certificate.CertificateCategoryRepository;
 import com.iseeyou.fortunetelling.repository.certificate.CertificateRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.ItemCategoryRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeItemRepository;
+import com.iseeyou.fortunetelling.repository.user.SeerSpecialityRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -30,15 +32,16 @@ public class Knowledge {
     private final UserRepository userRepository;
     private final KnowledgeItemRepository knowledgeItemRepository;
     private final ItemCategoryRepository itemCategoryRepository;
+    private final SeerSpecialityRepository seerSpecialityRepository;
 
     public void createDummyData() {
         // Tạo các knowledge categories
-        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null, null));
-        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null, null));
-        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null, null));
-        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null, null));
-        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null, null));
-        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null, null));
+        KnowledgeCategory knowledgeCategory1 = knowledgeCategoryRepository.save(new KnowledgeCategory("Cung Hoàng Đạo", "Thông tin về tính cách, tình duyên và sự nghiệp theo 12 cung hoàng đạo", null, null, null, null));
+        KnowledgeCategory knowledgeCategory2 = knowledgeCategoryRepository.save(new KnowledgeCategory("Nhân Tướng Học", "Giải mã tính cách và vận mệnh qua khuôn mặt, dáng người", null, null, null, null));
+        KnowledgeCategory knowledgeCategory3 = knowledgeCategoryRepository.save(new KnowledgeCategory("Ngũ Hành", "Phân tích sự tương sinh, tương khắc của Kim - Mộc - Thủy - Hỏa - Thổ", null, null, null, null));
+        KnowledgeCategory knowledgeCategory4 = knowledgeCategoryRepository.save(new KnowledgeCategory("Chỉ Tay", "Xem vận mệnh, tình duyên và sự nghiệp qua đường chỉ tay", null, null, null, null));
+        KnowledgeCategory knowledgeCategory5 = knowledgeCategoryRepository.save(new KnowledgeCategory("Tarot", "Giải bài tarot để tìm lời khuyên và định hướng cho cuộc sống", null, null, null, null));
+        KnowledgeCategory knowledgeCategory6 = knowledgeCategoryRepository.save(new KnowledgeCategory("Khác", "Các hình thức xem bói và dự đoán khác", null, null, null, null));
 
         log.info("Dummy knowledge categories created successfully.");
 
@@ -52,8 +55,13 @@ public class Knowledge {
                 knowledgeCategory4, knowledgeCategory5, knowledgeCategory6
         );
 
+        // Tạo SeerSpeciality cho các seer
+        createSeerSpecialities(verifiedSeers, allCategories);
+        createSeerSpecialities(unverifiedSeers, allCategories);
+        log.info("Dummy seer specialities created successfully.");
+
         // Tạo knowledge items
-        createKnowledgeItems(allCategories, 30);
+        createKnowledgeItems(allCategories, 100);
         log.info("Dummy knowledge items created successfully.");
 
         // Tạo certificates cho verified seers
@@ -243,6 +251,63 @@ public class Knowledge {
                             .knowledgeCategory(category)
                             .build();
                     certificateCategoryRepository.save(certificateCategory);
+                }
+            }
+        }
+    }
+
+    private void createSeerSpecialities(List<User> seers, List<KnowledgeCategory> allCategories) {
+        // Map để xác định specialities cho từng seer dựa trên email
+        Map<String, List<String>> seerSpecialityMap = new HashMap<>();
+        seerSpecialityMap.put("thayminh@iseeyou.com", Arrays.asList("Tarot"));
+        seerSpecialityMap.put("thayphuong@iseeyou.com", Arrays.asList("Cung Hoàng Đạo"));
+        seerSpecialityMap.put("thaytuan@iseeyou.com", Arrays.asList("Ngũ Hành", "Khác"));
+        seerSpecialityMap.put("colinh@iseeyou.com", Arrays.asList("Chỉ Tay", "Nhân Tướng Học"));
+        seerSpecialityMap.put("thayduc@iseeyou.com", Arrays.asList("Ngũ Hành"));
+        seerSpecialityMap.put("cothuy@iseeyou.com", Arrays.asList("Khác"));
+        seerSpecialityMap.put("thaylong@iseeyou.com", Arrays.asList("Ngũ Hành", "Khác"));
+        seerSpecialityMap.put("cohuong@iseeyou.com", Arrays.asList("Cung Hoàng Đạo"));
+        seerSpecialityMap.put("thaykhai@iseeyou.com", Arrays.asList("Nhân Tướng Học"));
+        seerSpecialityMap.put("cohang@iseeyou.com", Arrays.asList("Tarot", "Khác"));
+
+        for (User seer : seers) {
+            List<String> specialityNames = seerSpecialityMap.get(seer.getEmail());
+
+            if (specialityNames != null && !specialityNames.isEmpty()) {
+                for (String specialityName : specialityNames) {
+                    // Tìm KnowledgeCategory tương ứng
+                    KnowledgeCategory category = allCategories.stream()
+                            .filter(cat -> cat.getName().equals(specialityName))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (category != null) {
+                        SeerSpeciality seerSpeciality = SeerSpeciality.builder()
+                                .user(seer)
+                                .knowledgeCategory(category)
+                                .build();
+
+                        seerSpecialityRepository.save(seerSpeciality);
+                        log.info("Đã tạo chuyên môn '{}' cho seer: {}", specialityName, seer.getFullName());
+                    }
+                }
+            } else {
+                // Nếu không có mapping, tạo ngẫu nhiên 1-3 specialities
+                Random random = new Random();
+                int specialityCount = 1 + random.nextInt(3);
+                Set<KnowledgeCategory> selectedCategories = new HashSet<>();
+
+                while (selectedCategories.size() < specialityCount) {
+                    KnowledgeCategory category = allCategories.get(random.nextInt(allCategories.size()));
+                    if (selectedCategories.add(category)) {
+                        SeerSpeciality seerSpeciality = SeerSpeciality.builder()
+                                .user(seer)
+                                .knowledgeCategory(category)
+                                .build();
+
+                        seerSpecialityRepository.save(seerSpeciality);
+                        log.info("Đã tạo chuyên môn '{}' cho seer: {}", category.getName(), seer.getFullName());
+                    }
                 }
             }
         }

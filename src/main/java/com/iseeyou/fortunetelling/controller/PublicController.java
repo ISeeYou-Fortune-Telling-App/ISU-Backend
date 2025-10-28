@@ -3,10 +3,12 @@ package com.iseeyou.fortunetelling.controller;
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.account.SimpleSeerCardResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +24,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/public")
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 public class PublicController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
+    private final UserService userService;
 
     // ============ SERVICE PACKAGES PUBLIC ENDPOINTS ============
     
@@ -60,12 +66,65 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Minimum price filter")
             @RequestParam(required = false) Double minPrice,
             @Parameter(description = "Maximum price filter")
-            @RequestParam(required = false) Double maxPrice
-    ) {
+            @RequestParam(required = false) Double maxPrice,
+            @Parameter(description = "Find by name service package")
+            @RequestParam(required = false) String searchText,
+            @Parameter(description = "Minimum time (minute) filter")
+            @RequestParam(required = false) int minTime,
+            @Parameter(description = "Maximum time (minute) filter")
+            @RequestParam(required = false) int maxTime,
+            @Parameter(description = "Package category Ids")
+            @RequestParam(required = false) List<UUID> packageCategoryIds,
+            @Parameter(description = "Seer speciality Ids")
+            @RequestParam(required = false) List<UUID> seerSpecialityIds
+            ) {
         log.info("Public API: Get all service packages - page: {}, limit: {}", page, limit);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ServicePackageResponse> response = servicePackageService.getAllPackagesWithInteractions(pageable, minPrice, maxPrice);
-        return responseFactory.successPage(response, "Service packages retrieved successfully");
+        return responseFactory.successPage(servicePackageService.getAllPackagesWithInteractions(
+                pageable,
+                searchText,
+                minPrice, maxPrice,
+                packageCategoryIds,
+                seerSpecialityIds,
+                minTime, maxTime
+        ), "Service packages retrieved successfully");
+    }
+
+    @GetMapping("/seers")
+    @Operation(
+            summary = "Get all available service packages (Public)",
+            description = "Get all available service packages with filters. No authentication required.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<SimpleSeerCardResponse>> getAllSeersWithFilter(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Find by name seer")
+            @RequestParam(required = false) String searchText,
+            @Parameter(description = "Seer speciality Ids")
+            @RequestParam(required = false) List<UUID> seerSpecialityIds
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        return responseFactory.successPage(userService.getSimpleSeerCardsWithFilter(
+                pageable,
+                searchText,
+                seerSpecialityIds
+        ), "Service packages retrieved successfully");
     }
 
     @GetMapping("/service-packages/detail")
