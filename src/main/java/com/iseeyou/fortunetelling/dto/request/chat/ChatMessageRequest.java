@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -16,6 +17,6 @@ public class ChatMessageRequest {
 
     private String textContent;
 
-    private String imageUrl;
-    private String videoUrl;
+    private MultipartFile image;
+    private MultipartFile video;
 }

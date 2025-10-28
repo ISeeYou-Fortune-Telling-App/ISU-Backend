@@ -99,9 +99,9 @@ public class ChatController extends AbstractBaseController {
         return responseFactory.successPage(messages, "Messages retrieved successfully");
     }
 
-    @PostMapping("/messages")
+    @PostMapping(value = "/messages", consumes = {"multipart/form-data"})
     @Operation(summary = "Send message", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
-    public ResponseEntity<SingleResponse<ChatMessageResponse>> sendMessage(@RequestBody @Valid ChatMessageRequest request) {
+    public ResponseEntity<SingleResponse<ChatMessageResponse>> sendMessage(@Valid @ModelAttribute ChatMessageRequest request) {
         ChatMessageResponse message = messageService.sendMessage(request.getConversationId(), request);
         return responseFactory.successSingle(message, "Message sent successfully");
     }

@@ -10,6 +10,7 @@ import com.iseeyou.fortunetelling.mapper.MessageMapper;
 import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.chat.MessageRepository;
 import com.iseeyou.fortunetelling.service.chat.MessageService;
+import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +34,7 @@ public class MessageServiceImpl implements MessageService {
     private final ConversationRepository conversationRepository;
     private final UserService userService;
     private final MessageMapper messageMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -78,13 +81,34 @@ public class MessageServiceImpl implements MessageService {
             throw new IllegalStateException("Cannot send message to inactive conversation");
         }
 
+        // Upload files if present
+        String imageUrl = null;
+        String videoUrl = null;
+
+        try {
+            if (request.getImage() != null && !request.getImage().isEmpty()) {
+                log.info("Uploading image for message in conversation {}", conversationId);
+                imageUrl = cloudinaryService.uploadFile(request.getImage(), "chat/images");
+                log.info("Image uploaded successfully: {}", imageUrl);
+            }
+
+            if (request.getVideo() != null && !request.getVideo().isEmpty()) {
+                log.info("Uploading video for message in conversation {}", conversationId);
+                videoUrl = cloudinaryService.uploadFile(request.getVideo(), "chat/videos");
+                log.info("Video uploaded successfully: {}", videoUrl);
+            }
+        } catch (IOException e) {
+            log.error("Failed to upload files for message in conversation {}", conversationId, e);
+            throw new RuntimeException("Failed to upload files: " + e.getMessage(), e);
+        }
+
         // Create message
         Message message = Message.builder()
                 .conversation(conversation)
                 .sender(sender)
                 .textContent(request.getTextContent())
-                .imageUrl(request.getImageUrl())
-                .videoUrl(request.getVideoUrl())
+                .imageUrl(imageUrl)
+                .videoUrl(videoUrl)
                 .messageType("USER")
                 .status(Constants.MessageStatusEnum.UNREAD)
                 .deletedBy(null)
