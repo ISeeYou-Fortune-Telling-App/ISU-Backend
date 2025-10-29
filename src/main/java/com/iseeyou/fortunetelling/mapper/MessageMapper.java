@@ -46,8 +46,8 @@ public class MessageMapper extends BaseMapper {
                     } else {
                         // Booking session: map customer and seer from booking
                         if (source.getConversation() != null &&
-                            source.getConversation().getBooking() != null &&
-                            source.getConversation().getBooking().getCustomer() != null) {
+                                source.getConversation().getBooking() != null &&
+                                source.getConversation().getBooking().getCustomer() != null) {
                             var customer = source.getConversation().getBooking().getCustomer();
                             destination.setCustomerId(customer.getId());
                             destination.setCustomerName(customer.getFullName());
@@ -55,9 +55,9 @@ public class MessageMapper extends BaseMapper {
                         }
 
                         if (source.getConversation() != null &&
-                            source.getConversation().getBooking() != null &&
-                            source.getConversation().getBooking().getServicePackage() != null &&
-                            source.getConversation().getBooking().getServicePackage().getSeer() != null) {
+                                source.getConversation().getBooking() != null &&
+                                source.getConversation().getBooking().getServicePackage() != null &&
+                                source.getConversation().getBooking().getServicePackage().getSeer() != null) {
                             var seer = source.getConversation().getBooking().getServicePackage().getSeer();
                             destination.setSeerId(seer.getId());
                             destination.setSeerName(seer.getFullName());

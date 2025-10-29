@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.entity.servicepackage;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import jakarta.persistence.*;
@@ -19,6 +20,7 @@ public class PackageCategory extends AbstractBaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "package_id", nullable = false)
+    @JsonIgnore
     private ServicePackage servicePackage;
 
     @ManyToOne(fetch = FetchType.LAZY)

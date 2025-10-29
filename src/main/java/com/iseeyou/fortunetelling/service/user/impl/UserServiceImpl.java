@@ -301,32 +301,23 @@ public class UserServiceImpl implements UserService {
                 seerSpecialityRepository.save(seerSpeciality);
             }
         }
+        // Process certificates if provided as JSON string (multipart field)
+        if (request.getCertificates() != null && !request.getCertificates().isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>> typeRef =
+                        new com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>>() {};
+                List<CertificateCreateRequest> certificateRequests = objectMapper.readValue(request.getCertificates(), typeRef);
 
-        // Process certificates if provided
-        if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {
-            for (CertificateCreateRequest certRequest : request.getCertificates()) {
-                try {
-                    // Create certificate entity from request
-                    Certificate certificate = new Certificate();
-                    certificate.setCertificateName(certRequest.getCertificateName());
-                    certificate.setCertificateDescription(certRequest.getCertificateDescription());
-                    certificate.setIssuedBy(certRequest.getIssuedBy());
-                    certificate.setIssuedAt(certRequest.getIssuedAt());
-                    certificate.setExpirationDate(certRequest.getExpirationDate());
-                    certificate.setSeer(user);
-                    certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
-
-                    // Upload certificate file if provided
-                    if (certRequest.getCertificateFile() != null && !certRequest.getCertificateFile().isEmpty()) {
-                        String imageUrl = cloudinaryService.uploadFile(certRequest.getCertificateFile(), "certificates");
-                        certificate.setCertificateUrl(imageUrl);
+                for (CertificateCreateRequest certRequest : certificateRequests) {
+                    try {
+                        certificateService.create(certRequest);
+                    } catch (IOException e) {
+                        log.error("Failed to create certificate: {}", e.getMessage());
                     }
-
-                    // Create certificate with associated categories
-                    certificateService.create(certificate, certRequest.getCategoryIds());
-                } catch (IOException e) {
-                    log.error("Failed to upload certificate file: {}", e.getMessage());
                 }
+            } catch (Exception ex) {
+                log.error("Failed to parse certificates JSON: {}", ex.getMessage());
             }
         }
 

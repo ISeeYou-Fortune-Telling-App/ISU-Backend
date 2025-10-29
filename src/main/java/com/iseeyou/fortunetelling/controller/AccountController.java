@@ -26,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -234,6 +235,7 @@ public class AccountController extends AbstractBaseController {
             }
     )
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
             @Parameter(description = "Filter by role (GUEST, CUSTOMER, SEER, UNVERIFIED_SEER, ADMIN)", required = false)
             @RequestParam(required = false) String role,
@@ -337,6 +339,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<UserResponse<?>>> updateUserStatus(
             @Parameter(description = "User ID", required = true)
             @PathVariable String id,
@@ -387,6 +390,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<String>> deleteAccount(
             @Parameter(description = "User ID", required = true)
             @PathVariable UUID id
@@ -444,6 +448,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<UserResponse<?>>> updateUserRole(
             @Parameter(description = "User ID", required = true)
             @PathVariable UUID id,
@@ -487,6 +492,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<SingleResponse<AccountStatsResponse>> getAccountStats() {
         AccountStatsResponse stats = userService.getAccountStats();
         return responseFactory.successSingle(stats, "Account statistics retrieved successfully");
@@ -524,6 +530,7 @@ public class AccountController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<UserResponse>> searchUsers(
             @Parameter(description = "Search keyword (name or email)", required = false)
             @RequestParam(required = false) String keyword,

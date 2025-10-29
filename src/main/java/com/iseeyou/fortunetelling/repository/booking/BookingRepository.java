@@ -12,10 +12,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
+
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    Optional<Booking> findWithDetailById(UUID id);
 
     @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer","servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAllByCustomer(User customer, Pageable pageable);
@@ -48,5 +52,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     @EntityGraph(attributePaths = {"servicePackage", "customer", "bookingPayments"})
     @Query("SELECT b FROM Booking b WHERE b.servicePackage.seer = :seer ORDER BY b.scheduledTime DESC")
     List<Booking> findRecentBookingsBySeer(User seer, Pageable pageable);
+
+    // Review related queries
+    @EntityGraph(attributePaths = {"servicePackage", "customer"})
+    @Query("SELECT b FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL ORDER BY b.reviewedAt DESC")
+    Page<Booking> findReviewsByServicePackageId(UUID packageId, Pageable pageable);
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL")
+    Long countReviewsByServicePackageId(UUID packageId);
+
+    @Query("SELECT AVG(b.rating) FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL")
+    Double getAverageRatingByServicePackageId(UUID packageId);
 }
 
