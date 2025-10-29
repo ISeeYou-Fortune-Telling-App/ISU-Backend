@@ -132,6 +132,7 @@ public class AppExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Server cooked!!!");
     }
 
+
     /**
      * Build error response.
      *

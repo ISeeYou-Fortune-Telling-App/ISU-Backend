@@ -3,30 +3,41 @@ package com.iseeyou.fortunetelling.service.servicepackage.impl;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
+import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageSpecification;
 import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
+import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.config.CloudinaryConfig;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
@@ -37,7 +48,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ServicePackageServiceImpl implements ServicePackageService {
 
@@ -46,14 +56,51 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final CloudinaryConfig cloudinaryConfig;
     private final UserRepository userRepository;
     private final PackageInteractionRepository interactionRepository;
+    private final BookingRepository bookingRepository;
     private final UserService userService;
     private final ServicePackageMapper servicePackageMapper;
+    private final BookingService bookingService;
+    private final TransactionTemplate transactionTemplate;
+    private final ServiceReviewRepository serviceReviewRepository;
+
+    // Constructor with @Lazy for BookingService to prevent circular dependency
+    public ServicePackageServiceImpl(
+            ServicePackageRepository servicePackageRepository,
+            KnowledgeCategoryRepository knowledgeCategoryRepository,
+            CloudinaryConfig cloudinaryConfig,
+            UserRepository userRepository,
+            PackageInteractionRepository interactionRepository,
+            BookingRepository bookingRepository,
+            UserService userService,
+            ServicePackageMapper servicePackageMapper,
+            @Lazy BookingService bookingService,
+            TransactionTemplate transactionTemplate,
+            ServiceReviewRepository serviceReviewRepository) {
+        this.servicePackageRepository = servicePackageRepository;
+        this.knowledgeCategoryRepository = knowledgeCategoryRepository;
+        this.cloudinaryConfig = cloudinaryConfig;
+        this.userRepository = userRepository;
+        this.interactionRepository = interactionRepository;
+        this.bookingRepository = bookingRepository;
+        this.userService = userService;
+        this.servicePackageMapper = servicePackageMapper;
+        this.bookingService = bookingService;
+        this.transactionTemplate = transactionTemplate;
+        this.serviceReviewRepository = serviceReviewRepository;
+    }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ServicePackage> findAllAvailable(Pageable pageable) {
-        Specification<ServicePackage> spec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.AVAILABLE);
+        Specification<ServicePackage> spec = ServicePackageSpecification.availableOnly();
+        return servicePackageRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackage> findAvailableWithFilters(String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration, Pageable pageable) {
+        Specification<ServicePackage> spec = ServicePackageSpecification.withFilters(
+                name, categoryIds, minPrice, maxPrice, minDuration, maxDuration);
         return servicePackageRepository.findAll(spec, pageable);
     }
 
@@ -98,15 +145,33 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
-    public ServicePackage createOrUpdatePackage(String seerId, ServicePackageUpsertRequest request) {
-        ServicePackage servicePackage;
-        User seer = userRepository.findById(UUID.fromString(seerId))
-                .orElseThrow(() -> new NotFoundException("Seer not found with id: " + seerId));
+    public ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request) {
+        // Create new package (no ID provided)
+        return createOrUpdatePackageInternal(null, request);
+    }
 
-        if (StringUtils.hasText(request.getPackageId())) {
-            Optional<ServicePackage> optional = servicePackageRepository.findById(UUID.fromString(request.getPackageId()));
+    @Override
+    @Transactional
+    public ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request) {
+        // Update existing package (ID provided)
+        return createOrUpdatePackageInternal(id, request);
+    }
+
+    private ServicePackage createOrUpdatePackageInternal(String packageId, ServicePackageUpsertRequest request) {
+        ServicePackage servicePackage;
+        User seer = userService.getUser(); // Get current user from JWT
+
+        if (StringUtils.hasText(packageId)) {
+            // Update existing package
+            Optional<ServicePackage> optional = servicePackageRepository.findById(UUID.fromString(packageId));
             servicePackage = optional.orElseThrow(() -> new NotFoundException("Service package not found"));
+
+            // Verify that the current user owns this package
+            if (!servicePackage.getSeer().getId().equals(seer.getId())) {
+                throw new IllegalArgumentException("You can only update your own service packages");
+            }
         } else {
+            // Create new package
             servicePackage = new ServicePackage();
             servicePackage.setStatus(Constants.PackageStatusEnum.HIDDEN); // trạng thái chờ duyệt
             servicePackage.setRejectionReason(null);
@@ -122,31 +187,33 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         servicePackage.setDurationMinutes(request.getDurationMinutes());
         servicePackage.setPrice(request.getPrice());
 
-        // Handle category assignment
-        if (request.getCategory() != null) {
+        // Handle multiple categories assignment
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             // Clear existing categories if updating
             servicePackage.getPackageCategories().clear();
 
-            // Find or create the knowledge category
-            KnowledgeCategory knowledgeCategory = knowledgeCategoryRepository
-                    .findByName(request.getCategory().getValue())
-                    .orElseGet(() -> {
-                        KnowledgeCategory newCategory = KnowledgeCategory.builder()
-                                .name(request.getCategory().getValue())
-                                .description("Auto-generated category for " + request.getCategory().getValue())
-                                .build();
-                        return knowledgeCategoryRepository.save(newCategory);
-                    });
+            // Add all categories from the list
+            for (String categoryIdStr : request.getCategoryIds()) {
+                UUID categoryId = UUID.fromString(categoryIdStr);
 
-            // Create package category relationship
-            PackageCategory packageCategory = PackageCategory.builder()
-                    .servicePackage(servicePackage)
-                    .knowledgeCategory(knowledgeCategory)
-                    .build();
+                // Find the knowledge category by ID
+                KnowledgeCategory knowledgeCategory = knowledgeCategoryRepository
+                        .findById(categoryId)
+                        .orElseThrow(() -> new NotFoundException("Category not found with id: " + categoryIdStr));
 
-            servicePackage.getPackageCategories().add(packageCategory);
+                // Create package category relationship
+                PackageCategory packageCategory = PackageCategory.builder()
+                        .servicePackage(servicePackage)
+                        .knowledgeCategory(knowledgeCategory)
+                        .build();
+
+                servicePackage.getPackageCategories().add(packageCategory);
+            }
+
+            log.info("Added {} categories to service package", request.getCategoryIds().size());
         }
 
+        // Handle optional image upload - only update if new image is provided
         if (request.getImage() != null && !request.getImage().isEmpty()) {
             String imageUrl = cloudinaryConfig.uploadImage(request.getImage());
             servicePackage.setImageUrl(imageUrl);
@@ -157,6 +224,101 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Override
     public String uploadImage(MultipartFile image) {
         return cloudinaryConfig.uploadImage(image);
+    }
+
+    // ===== Service review methods (merged) =====
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceReview> getTopLevelReviewsByPackage(java.util.UUID packageId, Pageable pageable) {
+        return serviceReviewRepository.findTopLevelCommentsByPackageId(packageId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceReview getReviewById(java.util.UUID id) {
+        return serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceReview> getReplies(java.util.UUID reviewId, Pageable pageable) {
+        return serviceReviewRepository.findRepliesByParentCommentId(reviewId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public ServiceReview createReview(java.util.UUID packageId, ServiceReview review) {
+        ServicePackage servicePackage = findById(packageId.toString());
+        review.setServicePackage(servicePackage);
+
+        if (review.getUser() == null) {
+            review.setUser(userService.getUser());
+        }
+
+        if (review.getParentReview() != null && review.getParentReview().getId() != null) {
+            java.util.UUID parentId = review.getParentReview().getId();
+            ServiceReview parent = serviceReviewRepository.findById(parentId)
+                    .orElseThrow(() -> new NotFoundException("Parent review not found with id: " + parentId));
+            if (!parent.getServicePackage().getId().equals(servicePackage.getId())) {
+                throw new IllegalArgumentException("Parent review belongs to a different package");
+            }
+            review.setParentReview(parent);
+        }
+
+        ServiceReview saved = serviceReviewRepository.save(review);
+
+        // update comment count on package if top-level
+        if (saved.getParentReview() == null) {
+            servicePackage.setCommentCount(servicePackage.getCommentCount() == null ? 1L : servicePackage.getCommentCount() + 1);
+            servicePackageRepository.save(servicePackage);
+        }
+
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public ServiceReview updateReview(java.util.UUID id, ServiceReview review) {
+        ServiceReview existing = serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+
+        User current = userService.getUser();
+        boolean isOwner = existing.getUser() != null && existing.getUser().getId().equals(current.getId());
+        boolean isAdmin = current.getRole().equals(Constants.RoleEnum.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new IllegalArgumentException("Only the comment owner or admin can update this review");
+        }
+
+        if (review.getComment() != null) existing.setComment(review.getComment());
+
+        return serviceReviewRepository.save(existing);
+    }
+
+    @Override
+    @Transactional
+    public void deleteReview(java.util.UUID id) {
+        ServiceReview existing = serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+
+        User current = userService.getUser();
+        boolean isOwner = existing.getUser() != null && existing.getUser().getId().equals(current.getId());
+        boolean isAdmin = current.getRole().equals(Constants.RoleEnum.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new IllegalArgumentException("Only the comment owner or admin can delete this review");
+        }
+
+        ServicePackage sp = existing.getServicePackage();
+        boolean wasTopLevel = existing.getParentReview() == null;
+
+        serviceReviewRepository.delete(existing);
+
+        if (wasTopLevel && sp != null) {
+            sp.setCommentCount(sp.getCommentCount() == null || sp.getCommentCount() <= 0 ? 0L : sp.getCommentCount() - 1);
+            servicePackageRepository.save(sp);
+        }
     }
 
     @Override
@@ -200,6 +362,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 })
                 .orElse(null);
 
+        // Get review statistics
+        UUID packageId = servicePackage.getId();
+        Long totalReviews = bookingRepository.countReviewsByServicePackageId(packageId);
+        Double avgRating = bookingRepository.getAverageRatingByServicePackageId(packageId);
+
+        // Get reviews (latest 10 reviews by default)
+        Pageable reviewPageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "reviewedAt"));
+        Page<Booking> reviewsPage = bookingRepository.findReviewsByServicePackageId(packageId, reviewPageable);
+
         // Tạo ServicePackageDetailResponse
         return ServicePackageDetailResponse.builder()
                 .packageId(servicePackage.getId().toString())
@@ -213,8 +384,106 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .rejectionReason(servicePackage.getRejectionReason())
                 .createdAt(servicePackage.getCreatedAt())
                 .updatedAt(servicePackage.getUpdatedAt())
+                .avgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                .totalReviews(totalReviews != null ? totalReviews : 0L)
                 .seer(seerInfo)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteServicePackage(String id) {
+        log.info("Starting soft delete process for service package {}", id);
+
+        // 1. Find service package
+        ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+
+        // 2. Check if already deleted
+        if (servicePackage.getDeletedAt() != null) {
+            throw new IllegalArgumentException("Service package is already deleted");
+        }
+
+        // 3. Validate permission - seer can only delete their own packages, admin can delete any
+        User currentUser = userService.getUser();
+        boolean isSeerOwner = servicePackage.getSeer() != null &&
+                              servicePackage.getSeer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
+
+        if (!isSeerOwner && !isAdmin) {
+            throw new IllegalArgumentException(
+                "Access denied: Only the package owner or admin can delete this service package"
+            );
+        }
+
+        // 4. Find all bookings for this service package that are not completed
+        List<Booking> incompleteBookings = servicePackage.getBookings().stream()
+                .filter(booking -> !booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED))
+                .collect(Collectors.toList());
+
+        log.info("Found {} incomplete bookings for service package {}", incompleteBookings.size(), id);
+
+        // 5. Refund incomplete bookings
+        // Use separate transactions for each refund to prevent rollback contamination
+        int successfulRefunds = 0;
+        int failedRefunds = 0;
+        List<String> refundErrors = new java.util.ArrayList<>();
+
+        for (Booking booking : incompleteBookings) {
+            log.info("Processing refund for booking {} (status: {})", booking.getId(), booking.getStatus());
+
+            // Check if booking is already canceled or failed
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
+                booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                log.info("Booking {} already in terminal state {}, skipping refund",
+                        booking.getId(), booking.getStatus());
+                continue;
+            }
+
+            // Try to refund the booking in a separate transaction using TransactionTemplate
+            // This creates a new transaction that won't affect the parent transaction if it fails
+            try {
+                // Create a new TransactionTemplate with REQUIRES_NEW propagation
+                TransactionTemplate newTransactionTemplate = new TransactionTemplate(transactionTemplate.getTransactionManager());
+                newTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+                newTransactionTemplate.execute(status -> {
+                    bookingService.refundBooking(booking.getId());
+                    return null;
+                });
+                successfulRefunds++;
+                log.info("Successfully refunded booking {}", booking.getId());
+            } catch (Exception e) {
+                failedRefunds++;
+                String errorMsg = String.format("Failed to refund booking %s: %s",
+                        booking.getId(), e.getMessage());
+                log.error(errorMsg, e);
+                refundErrors.add(errorMsg);
+
+                // Continue with other bookings even if one fails
+                // We still want to delete the package
+            }
+        }
+
+        log.info("Refund summary for service package {}: {} successful, {} failed out of {} incomplete bookings",
+                id, successfulRefunds, failedRefunds, incompleteBookings.size());
+
+        // Log any refund errors
+        if (!refundErrors.isEmpty()) {
+            log.warn("Refund errors for service package {}: {}", id, String.join("; ", refundErrors));
+        }
+
+        // 6. Perform soft delete - repository.delete() will trigger @SQLDelete annotation
+        // which sets deleted_at = NOW()
+        // IMPORTANT: Bookings and BookingPayments are NOT deleted (no cascade)
+        // They are preserved for reporting and transaction history
+        // Only the ServicePackage is soft-deleted (deleted_at is set)
+        servicePackageRepository.delete(servicePackage);
+
+        log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
+                "Refunded {} bookings, {} failed. " +
+                "All bookings and payments are preserved for historical records.",
+                id, currentUser.getId(), currentUser.getRole(), successfulRefunds, failedRefunds);
     }
 
     // ============ Interaction methods (merged from PackageInteractionService) ============
@@ -286,7 +555,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return response;
     }
 
-    @Transactional
     private void updatePackageCounts(UUID packageId) {
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
@@ -326,7 +594,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 minTime, maxTime,
                 searchText,
                 pageable);
-        
+
         return enrichWithInteractions(servicePackages);
     }
 
@@ -361,7 +629,59 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             
             response.setUserInteractions(userInteractions);
             
+            // Get review statistics from bookings
+            Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
+            Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
+
+            response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
+            response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place
+
             return response;
         });
+    }
+
+    // ============ Admin methods ============
+
+    @Override
+    @Transactional
+    public ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason) {
+        log.info("Admin confirming service package {} with status: {}", packageId, status);
+
+        ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(packageId))
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + packageId));
+
+        // Validate status transition
+        if (status == Constants.PackageStatusEnum.REJECTED &&
+            (rejectionReason == null || rejectionReason.trim().isEmpty())) {
+            throw new IllegalArgumentException("Rejection reason is required when rejecting a service package");
+        }
+
+        // Update status and rejection reason
+        servicePackage.setStatus(status);
+
+        if (status == Constants.PackageStatusEnum.REJECTED) {
+            servicePackage.setRejectionReason(rejectionReason);
+            log.info("Service package {} rejected with reason: {}", packageId, rejectionReason);
+        } else {
+            // Clear rejection reason if status is not REJECTED
+            servicePackage.setRejectionReason(null);
+            log.info("Service package {} status changed to: {}", packageId, status);
+        }
+
+        return servicePackageRepository.save(servicePackage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackageResponse> getAllHiddenPackages(Pageable pageable) {
+        log.info("Fetching all hidden service packages");
+
+        Specification<ServicePackage> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), Constants.PackageStatusEnum.HIDDEN);
+
+        Page<ServicePackage> hiddenPackages = servicePackageRepository.findAll(spec, pageable);
+
+        // Enrich with interactions and review statistics
+        return enrichWithInteractions(hiddenPackages);
     }
 }

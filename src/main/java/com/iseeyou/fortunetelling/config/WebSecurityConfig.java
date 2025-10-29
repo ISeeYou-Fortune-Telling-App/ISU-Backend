@@ -40,6 +40,7 @@ public class WebSecurityConfig {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
 
+
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
@@ -107,6 +108,12 @@ public class WebSecurityConfig {
                         ).permitAll()
                         .requestMatchers("/admin/**").hasAuthority(Constants.RoleEnum.ADMIN.name())
                         .anyRequest().authenticated()
+                )
+                .logout(
+                        logout -> logout
+                        .logoutUrl("/auth/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                 )
                 .build();
     }

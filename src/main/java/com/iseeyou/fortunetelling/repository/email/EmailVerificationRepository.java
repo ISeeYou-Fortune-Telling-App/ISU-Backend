@@ -1,4 +1,4 @@
-package com.iseeyou.fortunetelling.repository;
+package com.iseeyou.fortunetelling.repository.email;
 
 import com.iseeyou.fortunetelling.entity.EmailVerification;
 import org.springframework.data.jpa.repository.JpaRepository;

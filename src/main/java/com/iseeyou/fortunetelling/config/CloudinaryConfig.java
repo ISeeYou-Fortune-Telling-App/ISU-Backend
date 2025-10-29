@@ -31,6 +31,9 @@ public class CloudinaryConfig {
     }
 
     public String uploadImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File cannot be null or empty for image upload");
+        }
         try {
             Cloudinary cloudinary = cloudinary();
             Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());

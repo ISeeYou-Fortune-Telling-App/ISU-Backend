@@ -11,7 +11,6 @@ import com.iseeyou.fortunetelling.dto.response.report.ReportTypeResponse;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportType;
 import com.iseeyou.fortunetelling.mapper.ReportMapper;
-import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.report.ReportService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,12 +27,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
@@ -47,7 +44,6 @@ public class ReportController extends AbstractBaseController {
 
     private final ReportService reportService;
     private final ReportMapper reportMapper;
-    private final CloudinaryService cloudinaryService;
 
     @GetMapping
     @Operation(
@@ -72,6 +68,7 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<ReportResponse>> getAllReports(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
@@ -167,24 +164,11 @@ public class ReportController extends AbstractBaseController {
                     )
             }
     )
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'SEER', 'GUEST', 'ADMIN')")
     public ResponseEntity<SingleResponse<ReportResponse>> createReport(
             @ModelAttribute @Valid ReportCreateRequest request
     ) throws IOException {
-        Report reportToCreate = reportMapper.mapTo(request, Report.class);
-
-        // Handle evidence image uploads
-        Set<String> evidenceUrls = new HashSet<>();
-        if (request.getImageFiles() != null) {
-            for (MultipartFile imageFile : request.getImageFiles()) {
-                if (!imageFile.isEmpty()) {
-                    String imageUrl = cloudinaryService.uploadFile(imageFile, "report-evidence");
-                    evidenceUrls.add(imageUrl);
-                }
-            }
-        }
-
-        // Create report with enum report type
-        Report createdReport = reportService.createReport(reportToCreate, request.getReportType(), evidenceUrls);
+        Report createdReport = reportService.createReport(request);
         ReportResponse response = reportMapper.mapTo(createdReport, ReportResponse.class);
         return responseFactory.successSingle(response, "Report created successfully");
     }
@@ -234,8 +218,7 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Updated report data", required = true)
             @RequestBody @Valid ReportUpdateRequest request
     ) {
-        Report reportToUpdate = reportMapper.mapTo(request, Report.class);
-        Report updatedReport = reportService.updateReport(id, reportToUpdate);
+        Report updatedReport = reportService.updateReport(id, request);
         ReportResponse response = reportMapper.mapTo(updatedReport, ReportResponse.class);
         return responseFactory.successSingle(response, "Report updated successfully");
     }

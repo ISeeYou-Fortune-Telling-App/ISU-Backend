@@ -185,15 +185,6 @@ public class ChatSocketListener {
         });
 
         // Start server
-        socketIOServer.start();
         log.info("Socket.IO server started successfully");
-    }
-
-    @PreDestroy
-    public void destroy() {
-        if (socketIOServer != null) {
-            socketIOServer.stop();
-            log.info("Socket.IO server stopped");
-        }
     }
 }

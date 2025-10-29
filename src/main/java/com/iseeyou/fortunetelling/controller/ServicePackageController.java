@@ -2,14 +2,19 @@ package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.PackageInteractionRequest;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageConfirmRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.ServiceReviewRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServiceReviewResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.mapper.ServiceReviewMapper;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -41,6 +47,7 @@ public class ServicePackageController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
     private final ServicePackageMapper servicePackageMapper;
+    private final ServiceReviewMapper serviceReviewMapper;
 
     @GetMapping("/detail")
     @Operation(
@@ -85,33 +92,108 @@ public class ServicePackageController extends AbstractBaseController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Create new service package",
-        description = "Create a new service package with full info, image upload, price, duration. Status is HIDDEN (pending approval)",
+        description = "Create a new service package with multiple categories, optional image upload, price, duration. " +
+                     "Status is HIDDEN (pending approval). SeerId is automatically extracted from JWT. " +
+                     "Provide categoryIds as a list of knowledge category IDs.",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<SingleResponse<ServicePackage>> createServicePackage(
-            @RequestParam("seerId") String seerId,
-            @ModelAttribute ServicePackageUpsertRequest request
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> createServicePackage(
+            @Valid @ModelAttribute ServicePackageUpsertRequest request
     ) {
-        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(seerId, request);
-        return responseFactory.successSingle(servicePackage, "Service package created successfully");
+        log.info("=== START: Creating service package with title: {}, categories: {}",
+                request.getPackageTitle(), request.getCategoryIds());
+
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(request);
+
+        log.info("=== Service package created with ID: {}", servicePackage.getId());
+
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+
+        log.info("=== END: Mapped to response, returning...");
+
+        return responseFactory.successSingle(response, "Service package created successfully");
     }
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Update service package",
-        description = "Update an existing service package. Status remains HIDDEN if not approved.",
+        description = "Update an existing service package with multiple categories. " +
+                     "Status remains HIDDEN if not approved. SeerId is automatically extracted from JWT. " +
+                     "Provide categoryIds as a list of knowledge category IDs.",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<SingleResponse<ServicePackage>> updateServicePackage(
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> updateServicePackage(
             @Parameter(description = "Service Package ID", required = true)
             @RequestParam String id,
-            @ModelAttribute ServicePackageUpsertRequest request
+            @Valid @ModelAttribute ServicePackageUpsertRequest request
     ) {
-        request.setPackageId(id);
-        // Lấy seerId từ service package hiện tại thay vì từ request param
-        ServicePackage existingPackage = servicePackageService.findById(id);
-        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(existingPackage.getSeer().getId().toString(), request);
-        return responseFactory.successSingle(servicePackage, "Service package updated successfully");
+        ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(id, request);
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+        return responseFactory.successSingle(response, "Service package updated successfully");
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete service package (Soft Delete with Auto Refund)",
+            description = "Soft delete a service package. Seer can delete their own packages, Admin can delete any package. " +
+                         "The package will be hidden from all queries but data is preserved for existing bookings and reports. " +
+                         "All incomplete bookings (PENDING, CONFIRMED) will be automatically refunded and canceled.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Service package deleted successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Service package already deleted or cannot be deleted",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Only package owner or admin can delete",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<String>> deleteServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable String id
+    ) {
+        servicePackageService.deleteServicePackage(id);
+        return responseFactory.successSingle(
+                "Service package deleted successfully. All incomplete bookings have been refunded and canceled. " +
+                "Data is preserved for existing bookings and reports (soft delete).",
+                "Service package deleted successfully"
+        );
     }
 
     @GetMapping("/by-category/{category}")
@@ -255,5 +337,204 @@ public class ServicePackageController extends AbstractBaseController {
     ) {
         ServicePackageResponse response = servicePackageService.getPackageWithInteractions(packageId);
         return responseFactory.successSingle(response, "Service package with interactions retrieved successfully");
+    }
+
+    // ============ Reviews (merged) ============
+    @GetMapping("/{packageId}/reviews")
+    @Operation(summary = "Get top-level reviews for a service package", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<PageResponse<ServiceReviewResponse>> getTopLevelReviews(
+            @Parameter(description = "Service package ID", required = true) @PathVariable UUID packageId,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServiceReview> reviews = servicePackageService.getTopLevelReviewsByPackage(packageId, pageable);
+        Page<ServiceReviewResponse> response = serviceReviewMapper.mapToPage(reviews, ServiceReviewResponse.class);
+        return responseFactory.successPage(response, "Reviews retrieved successfully");
+    }
+
+    @GetMapping("/reviews/{id}")
+    @Operation(summary = "Get review by ID", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> getReviewById(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id
+    ) {
+        ServiceReview review = servicePackageService.getReviewById(id);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(review, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review retrieved successfully");
+    }
+
+    @GetMapping("/reviews/{id}/replies")
+    @Operation(summary = "Get replies for a review", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<PageResponse<ServiceReviewResponse>> getReplies(
+            @Parameter(description = "Parent review ID", required = true) @PathVariable UUID id,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "asc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServiceReview> replies = servicePackageService.getReplies(id, pageable);
+        Page<ServiceReviewResponse> response = serviceReviewMapper.mapToPage(replies, ServiceReviewResponse.class);
+        return responseFactory.successPage(response, "Replies retrieved successfully");
+    }
+
+    @PostMapping(path = "/{packageId}/reviews", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create a review or reply for a service package", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> createReview(
+            @Parameter(description = "Service Package ID", required = true) @PathVariable UUID packageId,
+            @Valid @RequestBody ServiceReviewRequest request
+    ) {
+        ServiceReview entity = new ServiceReview();
+        entity.setComment(request.getComment());
+        if (request.getParentReviewId() != null) {
+            ServiceReview parent = new ServiceReview();
+            parent.setId(request.getParentReviewId());
+            entity.setParentReview(parent);
+        }
+
+        ServiceReview saved = servicePackageService.createReview(packageId, entity);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(saved, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review created successfully");
+    }
+
+    @PutMapping(path = "/reviews/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Update a review", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> updateReview(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id,
+            @Valid @RequestBody ServiceReviewRequest request
+    ) {
+        ServiceReview entity = new ServiceReview();
+        entity.setComment(request.getComment());
+        ServiceReview updated = servicePackageService.updateReview(id, entity);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(updated, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review updated successfully");
+    }
+
+    @DeleteMapping("/reviews/{id}")
+    @Operation(summary = "Delete a review (cascade deletes replies)", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<String>> deleteReview(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id
+    ) {
+        servicePackageService.deleteReview(id);
+        return responseFactory.successSingle("Review deleted successfully", "Review deleted successfully");
+    }
+
+    // ============ Admin Endpoints ============
+
+    @PutMapping("/{packageId}/confirm")
+    @Operation(
+            summary = "Admin confirm/reject service package",
+            description = "Admin endpoint to approve, reject, or change status of a service package. " +
+                         "Status can be: AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN. " +
+                         "If status is REJECTED, rejectionReason is required.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Service package status updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ServicePackageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid request - rejection reason required for REJECTED status",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Service package not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<ServicePackageResponse>> confirmServicePackage(
+            @Parameter(description = "Service Package ID", required = true)
+            @PathVariable String packageId,
+            @Parameter(description = "Confirmation request with status and optional rejection reason", required = true)
+            @RequestBody @Valid ServicePackageConfirmRequest request
+    ) {
+        log.info("Admin confirming service package {} with status: {}", packageId, request.getStatus());
+
+        // Validate request
+        if (!request.isValid()) {
+            throw new IllegalArgumentException("Rejection reason is required when status is REJECTED");
+        }
+
+        ServicePackage servicePackage = servicePackageService.confirmServicePackage(
+                packageId,
+                request.getStatus(),
+                request.getRejectionReason()
+        );
+
+        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
+
+        String message = request.getStatus() == Constants.PackageStatusEnum.REJECTED
+                ? "Service package rejected successfully"
+                : "Service package status updated to " + request.getStatus();
+
+        return responseFactory.successSingle(response, message);
+    }
+
+    @GetMapping("/admin/hidden")
+    @Operation(
+            summary = "Get all hidden service packages (Admin only)",
+            description = "Admin endpoint to retrieve all service packages with HIDDEN status (pending approval)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Hidden service packages retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<PageResponse<ServicePackageResponse>> getAllHiddenPackages(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        log.info("Admin fetching hidden service packages");
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServicePackageResponse> response = servicePackageService.getAllHiddenPackages(pageable);
+        return responseFactory.successPage(response, "Hidden service packages retrieved successfully");
     }
 }

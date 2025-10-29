@@ -22,12 +22,14 @@ public class ServicePackageResponse {
     private String imageUrl;
     private Integer durationMinutes;
     private Double price;
-    private Constants.ServiceCategoryEnum category;
+    private List<CategoryInfo> categories; // Đổi từ single category sang list categories
     private Constants.PackageStatusEnum status;
     private String rejectionReason;
     private Long likeCount;
     private Long dislikeCount;
     private List<UserInteractionInfo> userInteractions; // Array of users who interacted
+    private Double avgRating; // Average rating from booking reviews
+    private Long totalReviews; // Total number of reviews
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,6 +42,16 @@ public class ServicePackageResponse {
         private String avatarUrl;
         private Double avgRating;
         private Integer totalRates;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CategoryInfo {
+        private UUID id;
+        private String name;
+        private String description;
     }
 
     @Data

@@ -1,6 +1,8 @@
 package com.iseeyou.fortunetelling.service.report.impl;
 
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
+import com.iseeyou.fortunetelling.dto.request.report.ReportCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.report.ReportUpdateRequest;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportEvidence;
@@ -8,6 +10,7 @@ import com.iseeyou.fortunetelling.entity.report.ReportType;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
+import com.iseeyou.fortunetelling.mapper.ReportMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.report.ReportEvidenceRepository;
@@ -25,7 +28,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,6 +49,7 @@ public class ReportServiceImpl implements ReportService {
     private final ServicePackageRepository servicePackageRepository;
     private final BookingRepository bookingRepository;
     private final ConversationRepository conversationRepository;
+    private final ReportMapper reportMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -95,8 +102,22 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional
-    public Report createReport(Report report, Constants.ReportTypeEnum reportTypeEnum, Set<String> evidenceUrls) {
-        // Set the reporter to current user
+    public Report createReport(ReportCreateRequest request) throws IOException {
+        // Map DTO to Entity
+        Report report = reportMapper.mapTo(request, Report.class);
+
+        // Handle evidence image uploads
+        Set<String> evidenceUrls = new HashSet<>();
+        if (request.getImageFiles() != null) {
+            for (MultipartFile imageFile : request.getImageFiles()) {
+                if (!imageFile.isEmpty()) {
+                    String imageUrl = cloudinaryService.uploadFile(imageFile, "report-evidence");
+                    evidenceUrls.add(imageUrl);
+                }
+            }
+        }
+
+        // Set business logic fields
         report.setReporter(userService.getUser());
         report.setStatus(Constants.ReportStatusEnum.PENDING);
         report.setActionType(Constants.ReportActionEnum.NO_ACTION);
@@ -106,15 +127,15 @@ public class ReportServiceImpl implements ReportService {
         report.setReportedUser(reportedUser);
 
         // Find report type by enum
-        ReportType reportType = reportTypeRepository.findByName(reportTypeEnum)
-                .orElseThrow(() -> new NotFoundException("ReportType not found with name: " + reportTypeEnum));
+        ReportType reportType = reportTypeRepository.findByName(request.getReportType())
+                .orElseThrow(() -> new NotFoundException("ReportType not found with name: " + request.getReportType()));
         report.setReportType(reportType);
 
         // Save the report first
         Report savedReport = reportRepository.save(report);
 
         // Handle evidence URLs
-        if (evidenceUrls != null && !evidenceUrls.isEmpty()) {
+        if (!evidenceUrls.isEmpty()) {
             for (String evidenceUrl : evidenceUrls) {
                 ReportEvidence evidence = ReportEvidence.builder()
                         .report(savedReport)
@@ -125,7 +146,7 @@ public class ReportServiceImpl implements ReportService {
         }
 
         log.info("Created new report with id: {} for target type: {} with target id: {} reporting user: {} with report type: {}",
-                savedReport.getId(), report.getTargetType(), report.getTargetId(), reportedUser.getId(), reportTypeEnum);
+                savedReport.getId(), report.getTargetType(), report.getTargetId(), reportedUser.getId(), request.getReportType());
 
         return savedReport;
     }
@@ -201,15 +222,23 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional
-    public Report updateReport(UUID id, Report report) {
+    public Report updateReport(UUID id, ReportUpdateRequest request) {
         Report existingReport = reportRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Report not found with id: " + id));
 
-        existingReport.setStatus(report.getStatus());
-        if (report.getStatus() == Constants.ReportStatusEnum.RESOLVED) {
-            existingReport.setNote(report.getNote());
+        // Update fields from request
+        if (request.getStatus() != null) {
+            existingReport.setStatus(request.getStatus());
+            if (request.getStatus() == Constants.ReportStatusEnum.RESOLVED && request.getNote() != null) {
+                existingReport.setNote(request.getNote());
+            }
         }
-        existingReport.setActionType(report.getActionType());
+        if (request.getActionType() != null) {
+            existingReport.setActionType(request.getActionType());
+        }
+        if (request.getNote() != null) {
+            existingReport.setNote(request.getNote());
+        }
 
         log.info("Updated report with id: {}", id);
 

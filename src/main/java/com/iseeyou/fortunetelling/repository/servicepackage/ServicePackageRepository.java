@@ -69,4 +69,10 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
                                             @Param("maxTime") int maxTime,
                                             @Param("searchText") String searchText,
                                             Pageable pageable);
+
+    @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
+    @Query("SELECT DISTINCT sp FROM ServicePackage sp " +
+           "JOIN sp.packageCategories pc " +
+           "WHERE pc.knowledgeCategory.id IN :categoryIds")
+    Page<ServicePackage> findByCategoryIds(@Param("categoryIds") List<UUID> categoryIds, Pageable pageable);
 }

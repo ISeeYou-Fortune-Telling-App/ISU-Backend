@@ -3,13 +3,15 @@ package com.iseeyou.fortunetelling.mapper;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.user.User;
-import com.iseeyou.fortunetelling.util.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.Converter;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -49,26 +51,21 @@ public class ServicePackageMapper extends BaseMapper {
                     return seerInfo;
                 }).map(source.getSeer(), destination.getSeer());
                 
-                // Custom mapping for category - get first category from packageCategories
-                using((Converter<ServicePackage, Constants.ServiceCategoryEnum>) ctx -> {
+                // Custom mapping for categories - map all categories from packageCategories
+                using((Converter<ServicePackage, List<ServicePackageResponse.CategoryInfo>>) ctx -> {
                     ServicePackage pkg = ctx.getSource();
                     if (pkg == null || pkg.getPackageCategories() == null || pkg.getPackageCategories().isEmpty()) {
                         return null;
                     }
                     
                     return pkg.getPackageCategories().stream()
-                            .findFirst()
-                            .map(pc -> {
-                                String categoryName = pc.getKnowledgeCategory().getName();
-                                try {
-                                    return Constants.ServiceCategoryEnum.get(categoryName);
-                                } catch (IllegalArgumentException e) {
-                                    log.warn("Unknown category name: {}", categoryName);
-                                    return null;
-                                }
-                            })
-                            .orElse(null);
-                }).map(source, destination.getCategory());
+                            .map(pc -> ServicePackageResponse.CategoryInfo.builder()
+                                    .id(pc.getKnowledgeCategory().getId())
+                                    .name(pc.getKnowledgeCategory().getName())
+                                    .description(pc.getKnowledgeCategory().getDescription())
+                                    .build())
+                            .collect(Collectors.toList());
+                }).map(source, destination.getCategories());
             }
         });
     }

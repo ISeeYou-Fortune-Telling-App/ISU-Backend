@@ -94,4 +94,5 @@ public class User extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<Report> reportsReceived = new HashSet<>();
+
 }

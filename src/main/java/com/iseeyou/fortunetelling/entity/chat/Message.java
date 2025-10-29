@@ -7,6 +7,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "message")
@@ -50,4 +53,38 @@ public class Message extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id")
     private User sender;
+
+    // Track which users have deleted this message on their side
+    @ElementCollection
+    @CollectionTable(
+            name = "message_deleted_by",
+            joinColumns = @JoinColumn(name = "message_id")
+    )
+    @Column(name = "user_id")
+    private Set<UUID> deletedByUserIds = new HashSet<>();
+
+    // Helper method to check if message is deleted for a specific user
+    public boolean isDeletedForUser(UUID userId) {
+        return deletedByUserIds.contains(userId);
+    }
+
+    @Column(name = "is_recalled", nullable = false)
+    @Builder.Default
+    private Boolean isRecalled = false;
+
+    @Column(name = "recalled_at")
+    private LocalDateTime recalledAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recalled_by")
+    private User recalledBy;
+
+    public boolean isVisibleForUser(UUID userId) {
+        // Nếu recalled → không ai thấy
+        if (isRecalled) {
+            return false;
+        }
+        // Nếu user đã delete for me → không thấy
+        return !deletedByUserIds.contains(userId);
+    }
 }
