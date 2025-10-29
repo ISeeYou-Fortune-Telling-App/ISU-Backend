@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,9 +18,9 @@ public interface ServicePackageService {
     Page<ServicePackage> findAvailableWithFilters(String name, String categoryIds, Double minPrice, Double maxPrice, Integer minDuration, Integer maxDuration, Pageable pageable);
     Page<ServicePackage> findAvailableByCategoryWithFilters(Constants.ServiceCategoryEnum category, Double minPrice, Double maxPrice, Pageable pageable);
     ServicePackage findById(String id);
-    ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request);
-    ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request);
-    String uploadImage(MultipartFile image);
+    ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request) throws IOException;
+    ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request) throws IOException;
+    String uploadImage(MultipartFile image) throws IOException;
     ServicePackageDetailResponse findDetailById(String id);
     void deleteServicePackage(String id);
 

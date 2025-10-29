@@ -29,17 +29,4 @@ public class CloudinaryConfig {
                 "api_secret", apiSecret
         ));
     }
-
-    public String uploadImage(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File cannot be null or empty for image upload");
-        }
-        try {
-            Cloudinary cloudinary = cloudinary();
-            Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
-            return uploadResult.get("secure_url").toString();
-        } catch (IOException e) {
-            throw new RuntimeException("Image upload failed", e);
-        }
-    }
 }

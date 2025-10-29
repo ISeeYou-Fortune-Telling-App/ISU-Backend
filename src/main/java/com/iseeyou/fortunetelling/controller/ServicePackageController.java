@@ -34,6 +34,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
@@ -100,7 +101,7 @@ public class ServicePackageController extends AbstractBaseController {
     @PreAuthorize("hasAuthority('SEER')")
     public ResponseEntity<SingleResponse<ServicePackageResponse>> createServicePackage(
             @Valid @ModelAttribute ServicePackageUpsertRequest request
-    ) {
+    ) throws IOException {
         log.info("=== START: Creating service package with title: {}, categories: {}",
                 request.getPackageTitle(), request.getCategoryIds());
 
@@ -128,7 +129,7 @@ public class ServicePackageController extends AbstractBaseController {
             @Parameter(description = "Service Package ID", required = true)
             @RequestParam String id,
             @Valid @ModelAttribute ServicePackageUpsertRequest request
-    ) {
+    ) throws IOException {
         ServicePackage servicePackage = servicePackageService.createOrUpdatePackage(id, request);
         ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
         return responseFactory.successSingle(response, "Service package updated successfully");

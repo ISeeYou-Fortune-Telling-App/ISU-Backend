@@ -20,6 +20,7 @@ import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRe
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
+import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -41,6 +42,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -53,8 +55,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     private final ServicePackageRepository servicePackageRepository;
     private final KnowledgeCategoryRepository knowledgeCategoryRepository;
-    private final CloudinaryConfig cloudinaryConfig;
-    private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
     private final PackageInteractionRepository interactionRepository;
     private final BookingRepository bookingRepository;
     private final UserService userService;
@@ -67,8 +68,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     public ServicePackageServiceImpl(
             ServicePackageRepository servicePackageRepository,
             KnowledgeCategoryRepository knowledgeCategoryRepository,
-            CloudinaryConfig cloudinaryConfig,
-            UserRepository userRepository,
+            CloudinaryService cloudinaryService,
             PackageInteractionRepository interactionRepository,
             BookingRepository bookingRepository,
             UserService userService,
@@ -78,8 +78,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             ServiceReviewRepository serviceReviewRepository) {
         this.servicePackageRepository = servicePackageRepository;
         this.knowledgeCategoryRepository = knowledgeCategoryRepository;
-        this.cloudinaryConfig = cloudinaryConfig;
-        this.userRepository = userRepository;
+        this.cloudinaryService = cloudinaryService;
         this.interactionRepository = interactionRepository;
         this.bookingRepository = bookingRepository;
         this.userService = userService;
@@ -145,19 +144,19 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
-    public ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request) {
+    public ServicePackage createOrUpdatePackage(ServicePackageUpsertRequest request) throws IOException {
         // Create new package (no ID provided)
         return createOrUpdatePackageInternal(null, request);
     }
 
     @Override
     @Transactional
-    public ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request) {
+    public ServicePackage createOrUpdatePackage(String id, ServicePackageUpsertRequest request) throws IOException {
         // Update existing package (ID provided)
         return createOrUpdatePackageInternal(id, request);
     }
 
-    private ServicePackage createOrUpdatePackageInternal(String packageId, ServicePackageUpsertRequest request) {
+    private ServicePackage createOrUpdatePackageInternal(String packageId, ServicePackageUpsertRequest request) throws IOException {
         ServicePackage servicePackage;
         User seer = userService.getUser(); // Get current user from JWT
 
@@ -215,15 +214,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
         // Handle optional image upload - only update if new image is provided
         if (request.getImage() != null && !request.getImage().isEmpty()) {
-            String imageUrl = cloudinaryConfig.uploadImage(request.getImage());
+            String imageUrl = uploadImage(request.getImage());
             servicePackage.setImageUrl(imageUrl);
         }
         return servicePackageRepository.save(servicePackage);
     }
 
     @Override
-    public String uploadImage(MultipartFile image) {
-        return cloudinaryConfig.uploadImage(image);
+    public String uploadImage(MultipartFile image) throws IOException {
+        return cloudinaryService.uploadFile(image, "service_packages");
     }
 
     // ===== Service review methods (merged) =====
