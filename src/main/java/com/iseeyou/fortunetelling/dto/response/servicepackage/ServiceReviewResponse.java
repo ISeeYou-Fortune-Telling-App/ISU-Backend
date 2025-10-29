@@ -1,20 +1,34 @@
 package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
-import com.iseeyou.fortunetelling.dto.response.AbstractBaseDataResponse;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter
-@Setter
-@SuperBuilder
+@Data
 @NoArgsConstructor
-public class ServiceReviewResponse extends AbstractBaseDataResponse {
-    private String content;
-    private UUID userId;
-    private String userName;
-    private String userAvatarUrl;
+@AllArgsConstructor
+@Builder
+public class ServiceReviewResponse {
+    private UUID reviewId;
+    private String comment;
+    private String createdAt;
+    private String updatedAt;
+
+    private UserInfo user;
+    private UUID parentReviewId;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class UserInfo {
+        private UUID userId;
+        private String fullName;
+        private String avatarUrl;
+    }
 }
+

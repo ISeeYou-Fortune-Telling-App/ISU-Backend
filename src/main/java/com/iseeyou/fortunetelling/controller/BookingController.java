@@ -4,6 +4,7 @@ import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
+import com.iseeyou.fortunetelling.dto.request.booking.BookingSeerConfirmRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
@@ -646,5 +647,49 @@ public class BookingController extends AbstractBaseController {
         Page<BookingPayment> invalidPayments = bookingService.findPaymentsWithInvalidTransactionIds(pageable);
         Page<BookingPaymentResponse> response = bookingMapper.mapToPage(invalidPayments, BookingPaymentResponse.class);
         return responseFactory.successPage(response, "Invalid payments retrieved successfully");
+    }
+
+    @PostMapping("/{id}/seer-confirm")
+    @Operation(
+            summary = "Seer confirm or cancel a booking (Seer only)",
+            description = "Seer can confirm or cancel a booking. If seer cancels, refund will be processed if payment completed.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Booking updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<SingleResponse<BookingResponse>> seerConfirmBooking(
+            @Parameter(description = "Booking ID", required = true)
+            @PathVariable UUID id,
+            @Parameter(description = "Seer action (CONFIRMED or CANCELED)", required = true)
+            @RequestBody @Valid BookingSeerConfirmRequest request
+    ) {
+        Booking updatedBooking = bookingService.seerConfirmBooking(id, request.getStatus());
+        BookingResponse response = bookingMapper.mapTo(updatedBooking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Booking updated successfully");
     }
 }

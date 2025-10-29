@@ -8,6 +8,7 @@ import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
@@ -17,6 +18,7 @@ import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageReposi
 import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageSpecification;
 import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
@@ -59,6 +61,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final ServicePackageMapper servicePackageMapper;
     private final BookingService bookingService;
     private final TransactionTemplate transactionTemplate;
+    private final ServiceReviewRepository serviceReviewRepository;
 
     // Constructor with @Lazy for BookingService to prevent circular dependency
     public ServicePackageServiceImpl(
@@ -71,7 +74,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             UserService userService,
             ServicePackageMapper servicePackageMapper,
             @Lazy BookingService bookingService,
-            TransactionTemplate transactionTemplate) {
+            TransactionTemplate transactionTemplate,
+            ServiceReviewRepository serviceReviewRepository) {
         this.servicePackageRepository = servicePackageRepository;
         this.knowledgeCategoryRepository = knowledgeCategoryRepository;
         this.cloudinaryConfig = cloudinaryConfig;
@@ -82,6 +86,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         this.servicePackageMapper = servicePackageMapper;
         this.bookingService = bookingService;
         this.transactionTemplate = transactionTemplate;
+        this.serviceReviewRepository = serviceReviewRepository;
     }
 
     @Override
@@ -221,6 +226,101 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Override
     public String uploadImage(MultipartFile image) {
         return cloudinaryConfig.uploadImage(image);
+    }
+
+    // ===== Service review methods (merged) =====
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceReview> getTopLevelReviewsByPackage(java.util.UUID packageId, Pageable pageable) {
+        return serviceReviewRepository.findTopLevelCommentsByPackageId(packageId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ServiceReview getReviewById(java.util.UUID id) {
+        return serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceReview> getReplies(java.util.UUID reviewId, Pageable pageable) {
+        return serviceReviewRepository.findRepliesByParentCommentId(reviewId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public ServiceReview createReview(java.util.UUID packageId, ServiceReview review) {
+        ServicePackage servicePackage = findById(packageId.toString());
+        review.setServicePackage(servicePackage);
+
+        if (review.getUser() == null) {
+            review.setUser(userService.getUser());
+        }
+
+        if (review.getParentReview() != null && review.getParentReview().getId() != null) {
+            java.util.UUID parentId = review.getParentReview().getId();
+            ServiceReview parent = serviceReviewRepository.findById(parentId)
+                    .orElseThrow(() -> new NotFoundException("Parent review not found with id: " + parentId));
+            if (!parent.getServicePackage().getId().equals(servicePackage.getId())) {
+                throw new IllegalArgumentException("Parent review belongs to a different package");
+            }
+            review.setParentReview(parent);
+        }
+
+        ServiceReview saved = serviceReviewRepository.save(review);
+
+        // update comment count on package if top-level
+        if (saved.getParentReview() == null) {
+            servicePackage.setCommentCount(servicePackage.getCommentCount() == null ? 1L : servicePackage.getCommentCount() + 1);
+            servicePackageRepository.save(servicePackage);
+        }
+
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public ServiceReview updateReview(java.util.UUID id, ServiceReview review) {
+        ServiceReview existing = serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+
+        User current = userService.getUser();
+        boolean isOwner = existing.getUser() != null && existing.getUser().getId().equals(current.getId());
+        boolean isAdmin = current.getRole().equals(Constants.RoleEnum.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new IllegalArgumentException("Only the comment owner or admin can update this review");
+        }
+
+        if (review.getComment() != null) existing.setComment(review.getComment());
+
+        return serviceReviewRepository.save(existing);
+    }
+
+    @Override
+    @Transactional
+    public void deleteReview(java.util.UUID id) {
+        ServiceReview existing = serviceReviewRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service review not found with id: " + id));
+
+        User current = userService.getUser();
+        boolean isOwner = existing.getUser() != null && existing.getUser().getId().equals(current.getId());
+        boolean isAdmin = current.getRole().equals(Constants.RoleEnum.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new IllegalArgumentException("Only the comment owner or admin can delete this review");
+        }
+
+        ServicePackage sp = existing.getServicePackage();
+        boolean wasTopLevel = existing.getParentReview() == null;
+
+        serviceReviewRepository.delete(existing);
+
+        if (wasTopLevel && sp != null) {
+            sp.setCommentCount(sp.getCommentCount() == null || sp.getCommentCount() <= 0 ? 0L : sp.getCommentCount() - 1);
+            servicePackageRepository.save(sp);
+        }
     }
 
     @Override

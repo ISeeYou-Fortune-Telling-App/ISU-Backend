@@ -42,6 +42,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -252,15 +253,23 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        // Process certificates if provided
-        if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {
-            for (CertificateCreateRequest certRequest : request.getCertificates()) {
-                try {
-                    // CertificateService now handles all logic: mapping, upload, and creation
-                    certificateService.create(certRequest);
-                } catch (IOException e) {
-                    log.error("Failed to create certificate: {}", e.getMessage());
+        // Process certificates if provided as JSON string (multipart field)
+        if (request.getCertificates() != null && !request.getCertificates().isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>> typeRef =
+                        new com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>>() {};
+                List<CertificateCreateRequest> certificateRequests = objectMapper.readValue(request.getCertificates(), typeRef);
+
+                for (CertificateCreateRequest certRequest : certificateRequests) {
+                    try {
+                        certificateService.create(certRequest);
+                    } catch (IOException e) {
+                        log.error("Failed to create certificate: {}", e.getMessage());
+                    }
                 }
+            } catch (Exception ex) {
+                log.error("Failed to parse certificates JSON: {}", ex.getMessage());
             }
         }
 

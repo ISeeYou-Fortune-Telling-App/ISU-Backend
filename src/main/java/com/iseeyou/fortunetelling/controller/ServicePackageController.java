@@ -4,13 +4,17 @@ import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.PackageInteractionRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageConfirmRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
+import com.iseeyou.fortunetelling.dto.request.servicepackage.ServiceReviewRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServiceReviewResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
+import com.iseeyou.fortunetelling.mapper.ServiceReviewMapper;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +47,7 @@ public class ServicePackageController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
     private final ServicePackageMapper servicePackageMapper;
+    private final ServiceReviewMapper serviceReviewMapper;
 
     @GetMapping
     @Operation(
@@ -383,6 +388,91 @@ public class ServicePackageController extends AbstractBaseController {
     ) {
         ServicePackageResponse response = servicePackageService.getPackageWithInteractions(packageId);
         return responseFactory.successSingle(response, "Service package with interactions retrieved successfully");
+    }
+
+    // ============ Reviews (merged) ============
+    @GetMapping("/{packageId}/reviews")
+    @Operation(summary = "Get top-level reviews for a service package", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<PageResponse<ServiceReviewResponse>> getTopLevelReviews(
+            @Parameter(description = "Service package ID", required = true) @PathVariable UUID packageId,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServiceReview> reviews = servicePackageService.getTopLevelReviewsByPackage(packageId, pageable);
+        Page<ServiceReviewResponse> response = serviceReviewMapper.mapToPage(reviews, ServiceReviewResponse.class);
+        return responseFactory.successPage(response, "Reviews retrieved successfully");
+    }
+
+    @GetMapping("/reviews/{id}")
+    @Operation(summary = "Get review by ID", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> getReviewById(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id
+    ) {
+        ServiceReview review = servicePackageService.getReviewById(id);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(review, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review retrieved successfully");
+    }
+
+    @GetMapping("/reviews/{id}/replies")
+    @Operation(summary = "Get replies for a review", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<PageResponse<ServiceReviewResponse>> getReplies(
+            @Parameter(description = "Parent review ID", required = true) @PathVariable UUID id,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "asc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServiceReview> replies = servicePackageService.getReplies(id, pageable);
+        Page<ServiceReviewResponse> response = serviceReviewMapper.mapToPage(replies, ServiceReviewResponse.class);
+        return responseFactory.successPage(response, "Replies retrieved successfully");
+    }
+
+    @PostMapping(path = "/{packageId}/reviews", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create a review or reply for a service package", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> createReview(
+            @Parameter(description = "Service Package ID", required = true) @PathVariable UUID packageId,
+            @Valid @RequestBody ServiceReviewRequest request
+    ) {
+        ServiceReview entity = new ServiceReview();
+        entity.setComment(request.getComment());
+        if (request.getParentReviewId() != null) {
+            ServiceReview parent = new ServiceReview();
+            parent.setId(request.getParentReviewId());
+            entity.setParentReview(parent);
+        }
+
+        ServiceReview saved = servicePackageService.createReview(packageId, entity);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(saved, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review created successfully");
+    }
+
+    @PutMapping(path = "/reviews/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Update a review", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<ServiceReviewResponse>> updateReview(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id,
+            @Valid @RequestBody ServiceReviewRequest request
+    ) {
+        ServiceReview entity = new ServiceReview();
+        entity.setComment(request.getComment());
+        ServiceReview updated = servicePackageService.updateReview(id, entity);
+        ServiceReviewResponse response = serviceReviewMapper.mapTo(updated, ServiceReviewResponse.class);
+        return responseFactory.successSingle(response, "Review updated successfully");
+    }
+
+    @DeleteMapping("/reviews/{id}")
+    @Operation(summary = "Delete a review (cascade deletes replies)", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    @PreAuthorize("hasAnyAuthority('CUSTOMER','SEER','ADMIN')")
+    public ResponseEntity<SingleResponse<String>> deleteReview(
+            @Parameter(description = "Review ID", required = true) @PathVariable UUID id
+    ) {
+        servicePackageService.deleteReview(id);
+        return responseFactory.successSingle("Review deleted successfully", "Review deleted successfully");
     }
 
     // ============ Admin Endpoints ============

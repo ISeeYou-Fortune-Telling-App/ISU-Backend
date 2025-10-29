@@ -33,4 +33,12 @@ public interface ServicePackageService {
     // Admin methods
     ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason);
     Page<ServicePackageResponse> getAllHiddenPackages(Pageable pageable);
+
+    // Review related methods (merged from ServiceReviewService)
+    Page<com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview> getTopLevelReviewsByPackage(java.util.UUID packageId, Pageable pageable);
+    com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview getReviewById(java.util.UUID id);
+    Page<com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview> getReplies(java.util.UUID reviewId, Pageable pageable);
+    com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview createReview(java.util.UUID packageId, com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview review);
+    com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview updateReview(java.util.UUID id, com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview review);
+    void deleteReview(java.util.UUID id);
 }

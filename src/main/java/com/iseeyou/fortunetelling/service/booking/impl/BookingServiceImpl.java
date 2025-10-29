@@ -462,6 +462,96 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional
+    public Booking seerConfirmBooking(UUID id, Constants.BookingStatusEnum status) {
+        log.info("Seer action {} on booking {}", status, id);
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
+
+        User currentUser = userService.getUser();
+
+        // Only seer assigned to the service package can perform this action
+        if (!currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
+            throw new IllegalArgumentException("Only a seer can perform this action");
+        }
+
+        if (booking.getServicePackage() == null || booking.getServicePackage().getSeer() == null ||
+                !booking.getServicePackage().getSeer().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("You are not authorized to modify this booking");
+        }
+
+        if (status == null) {
+            throw new IllegalArgumentException("Status is required");
+        }
+
+        if (status.equals(Constants.BookingStatusEnum.CONFIRMED)) {
+            // Allow confirming a pending booking. If already confirmed, just return.
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.CONFIRMED)) {
+                log.info("Booking {} already confirmed", id);
+            } else if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED)
+                    || booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)
+                    || booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                throw new IllegalArgumentException("Cannot confirm booking with status: " + booking.getStatus());
+            } else {
+                booking.setStatus(Constants.BookingStatusEnum.CONFIRMED);
+                bookingRepository.save(booking);
+                log.info("Booking {} confirmed by seer {}", id, currentUser.getId());
+
+                // Note: Chat creation is handled elsewhere when it's time; we only change DB status here.
+            }
+
+        } else if (status.equals(Constants.BookingStatusEnum.CANCELED)) {
+            // Seer-initiated cancel -> refund if payment exists
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED)) {
+                throw new IllegalArgumentException("Booking is already cancelled");
+            }
+
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
+                throw new IllegalArgumentException("Cannot cancel a completed booking");
+            }
+
+            if (booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                throw new IllegalArgumentException("Cannot cancel a failed booking");
+            }
+
+            // Find a completed payment
+            BookingPayment completedPayment = booking.getBookingPayments().stream()
+                    .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
+                    .findFirst()
+                    .orElse(null);
+
+            if (completedPayment != null) {
+                try {
+                    PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
+                    if (paymentStrategy == null) {
+                        throw new IllegalArgumentException("Payment method not supported for refund: " + completedPayment.getPaymentMethod());
+                    }
+                    BookingPayment refunded = paymentStrategy.refund(id, completedPayment);
+                    log.info("Refund processed for booking {} payment {}", id, refunded.getId());
+                } catch (Exception e) {
+                    log.error("Failed to refund payment for booking {}: {}", id, e.getMessage(), e);
+                    throw new RuntimeException("Cancellation failed: Unable to process refund. " + e.getMessage(), e);
+                }
+            } else {
+                log.info("No completed payment found for booking {}. No refund needed.", id);
+            }
+
+            booking.setStatus(Constants.BookingStatusEnum.CANCELED);
+            bookingRepository.save(booking);
+            log.info("Booking {} cancelled by seer {}", id, currentUser.getId());
+
+        } else {
+            throw new IllegalArgumentException("Invalid status for seer action. Only CONFIRMED or CANCELED are allowed");
+        }
+
+        Booking updated = bookingRepository.findWithDetailById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
+
+        return updated;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable) {
         Page<Booking> bookingsWithReviews = bookingRepository.findReviewsByServicePackageId(packageId, pageable);

@@ -28,7 +28,8 @@ public interface BookingService {
     void deleteBooking(UUID id);
     Booking refundBooking(UUID id);
     Booking cancelBooking(UUID id);
-    
+    Booking seerConfirmBooking(UUID id, Constants.BookingStatusEnum status);
+
     // Review methods
     BookingReviewResponse submitReview(UUID bookingId, BookingReviewRequest reviewRequest);
     Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable);
