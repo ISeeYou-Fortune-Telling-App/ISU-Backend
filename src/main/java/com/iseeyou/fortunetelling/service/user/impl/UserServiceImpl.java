@@ -48,6 +48,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -301,7 +302,8 @@ public class UserServiceImpl implements UserService {
                 seerSpecialityRepository.save(seerSpeciality);
             }
         }
-        // Process certificates if provided as JSON string (multipart field)
+
+        // Process certificates if provided
         if (request.getCertificates() != null && !request.getCertificates().isBlank()) {
             try {
                 com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -332,7 +334,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public User updateMe(UpdateUserRequest request) throws BindException {
         User user = getUser();
-        
+
         if (request.getFullName() != null) {
             user.setFullName(request.getFullName());
         }
@@ -348,11 +350,12 @@ public class UserServiceImpl implements UserService {
         if (request.getProfileDescription() != null) {
             user.setProfileDescription(request.getProfileDescription());
         }
-        
+
         return userRepository.save(user);
     }
 
     @Override
+    @Transactional
     public String uploadImage(MultipartFile file, String folderName) throws Exception {
         User existingUser = getUser();
 
@@ -363,20 +366,33 @@ public class UserServiceImpl implements UserService {
 
         if (existingUser.getAvatarUrl() == null) {
             String imageUrl = cloudinaryService.uploadFile(file, folderName);
-            existingUser.setAvatarUrl(imageUrl);
+            if (Objects.equals(folderName, "covers")) {
+                existingUser.setCoverUrl(imageUrl);
+            } else {
+                existingUser.setAvatarUrl(imageUrl);
+            }
             userRepository.save(existingUser);
 
             return imageUrl;
         } else {
             // Delete the old image from Cloudinary
             try {
-                cloudinaryService.deleteFile(existingUser.getAvatarUrl());
+                if (Objects.equals(folderName, "covers")) {
+                    cloudinaryService.deleteFile(existingUser.getCoverUrl());
+                } else {
+                    cloudinaryService.deleteFile(existingUser.getAvatarUrl());
+                }
+
             } catch (IOException e) {
                 log.error("Failed to delete old user avatar: {}", e.getMessage());
             }
 
             String imageUrl = cloudinaryService.uploadFile(file, folderName);
-            existingUser.setAvatarUrl(imageUrl);
+            if (Objects.equals(folderName, "covers")) {
+                existingUser.setCoverUrl(imageUrl);
+            } else {
+                existingUser.setAvatarUrl(imageUrl);
+            }
             userRepository.save(existingUser);
 
             return imageUrl;
