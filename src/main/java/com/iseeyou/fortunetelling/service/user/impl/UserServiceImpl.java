@@ -48,6 +48,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -362,6 +363,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public String uploadImage(MultipartFile file, String folderName) throws Exception {
         User existingUser = getUser();
 
@@ -372,20 +374,33 @@ public class UserServiceImpl implements UserService {
 
         if (existingUser.getAvatarUrl() == null) {
             String imageUrl = cloudinaryService.uploadFile(file, folderName);
-            existingUser.setAvatarUrl(imageUrl);
+            if (Objects.equals(folderName, "covers")) {
+                existingUser.setCoverUrl(imageUrl);
+            } else {
+                existingUser.setAvatarUrl(imageUrl);
+            }
             userRepository.save(existingUser);
 
             return imageUrl;
         } else {
             // Delete the old image from Cloudinary
             try {
-                cloudinaryService.deleteFile(existingUser.getAvatarUrl());
+                if (Objects.equals(folderName, "covers")) {
+                    cloudinaryService.deleteFile(existingUser.getCoverUrl());
+                } else {
+                    cloudinaryService.deleteFile(existingUser.getAvatarUrl());
+                }
+
             } catch (IOException e) {
                 log.error("Failed to delete old user avatar: {}", e.getMessage());
             }
 
             String imageUrl = cloudinaryService.uploadFile(file, folderName);
-            existingUser.setAvatarUrl(imageUrl);
+            if (Objects.equals(folderName, "covers")) {
+                existingUser.setCoverUrl(imageUrl);
+            } else {
+                existingUser.setAvatarUrl(imageUrl);
+            }
             userRepository.save(existingUser);
 
             return imageUrl;
