@@ -34,9 +34,12 @@ public interface ServicePackageService {
                                                                 Double minPrice, Double maxPrice,
                                                                 List<UUID> packageCategoryIds,
                                                                 List<UUID> seerSpecialityIds,
-                                                                int minTime, int maxTime
+                                                                Integer minTime, Integer maxTime
     );
     Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice);
+
+    // Seer
+    Page<ServicePackageResponse> getMyPackages(Pageable pageable);
 
     // Admin methods
     ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason);

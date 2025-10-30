@@ -70,9 +70,9 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Find by name service package")
             @RequestParam(required = false) String searchText,
             @Parameter(description = "Minimum time (minute) filter")
-            @RequestParam(required = false) int minTime,
+            @RequestParam(required = false) Integer minTime,
             @Parameter(description = "Maximum time (minute) filter")
-            @RequestParam(required = false) int maxTime,
+            @RequestParam(required = false) Integer maxTime,
             @Parameter(description = "Package category Ids")
             @RequestParam(required = false) List<UUID> packageCategoryIds,
             @Parameter(description = "Seer speciality Ids")

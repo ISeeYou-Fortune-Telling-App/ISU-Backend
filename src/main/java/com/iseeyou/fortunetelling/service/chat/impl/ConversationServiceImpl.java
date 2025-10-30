@@ -240,13 +240,17 @@ public class ConversationServiceImpl implements ConversationService {
         conversation.setCanceledBy(canceledBy);
         conversationRepository.save(conversation);
 
-        // Cancel booking
+        // Cancel booking if exists
         Booking booking = conversation.getBooking();
-        booking.setStatus(Constants.BookingStatusEnum.CANCELED);
-        bookingRepository.save(booking);
-
-        log.info("Session canceled due to late join: conversation={}, booking={}, canceledBy={}",
-                conversationId, booking.getId(), canceledBy);
+        if (booking != null) {
+            booking.setStatus(Constants.BookingStatusEnum.CANCELED);
+            bookingRepository.save(booking);
+            log.info("Session canceled due to late join: conversation={}, booking={}, canceledBy={}",
+                    conversationId, booking.getId(), canceledBy);
+        } else {
+            log.warn("Session canceled due to late join but no booking found: conversation={}, canceledBy={}",
+                    conversationId, canceledBy);
+        }
     }
 
     @Override
@@ -294,13 +298,17 @@ public class ConversationServiceImpl implements ConversationService {
         conversation.setSessionEndTime(LocalDateTime.now());
         conversationRepository.save(conversation);
 
-        // Complete booking
+        // Complete booking if exists
         Booking booking = conversation.getBooking();
-        booking.setStatus(Constants.BookingStatusEnum.COMPLETED);
-        bookingRepository.save(booking);
-
-        log.info("Session auto-ended: conversation={}, booking={}",
-                conversationId, booking.getId());
+        if (booking != null) {
+            booking.setStatus(Constants.BookingStatusEnum.COMPLETED);
+            bookingRepository.save(booking);
+            log.info("Session auto-ended: conversation={}, booking={}",
+                    conversationId, booking.getId());
+        } else {
+            log.warn("Session auto-ended but no booking found: conversation={}",
+                    conversationId);
+        }
     }
 
     @Override

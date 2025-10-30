@@ -406,12 +406,12 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         // 3. Validate permission - seer can only delete their own packages, admin can delete any
         User currentUser = userService.getUser();
         boolean isSeerOwner = servicePackage.getSeer() != null &&
-                              servicePackage.getSeer().getId().equals(currentUser.getId());
+                servicePackage.getSeer().getId().equals(currentUser.getId());
         boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
 
         if (!isSeerOwner && !isAdmin) {
             throw new IllegalArgumentException(
-                "Access denied: Only the package owner or admin can delete this service package"
+                    "Access denied: Only the package owner or admin can delete this service package"
             );
         }
 
@@ -433,7 +433,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
             // Check if booking is already canceled or failed
             if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) ||
-                booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
+                    booking.getStatus().equals(Constants.BookingStatusEnum.FAILED)) {
                 log.info("Booking {} already in terminal state {}, skipping refund",
                         booking.getId(), booking.getStatus());
                 continue;
@@ -480,8 +480,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         servicePackageRepository.delete(servicePackage);
 
         log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
-                "Refunded {} bookings, {} failed. " +
-                "All bookings and payments are preserved for historical records.",
+                        "Refunded {} bookings, {} failed. " +
+                        "All bookings and payments are preserved for historical records.",
                 id, currentUser.getId(), currentUser.getRole(), successfulRefunds, failedRefunds);
     }
 
@@ -494,19 +494,19 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
 
-        Optional<PackageInteraction> existingInteraction = 
+        Optional<PackageInteraction> existingInteraction =
                 interactionRepository.findByUser_IdAndServicePackage_Id(currentUser.getId(), packageId);
 
         if (existingInteraction.isPresent()) {
             PackageInteraction interaction = existingInteraction.get();
-            
+
             if (interaction.getInteractionType() == interactionType) {
                 // Same type clicked again -> Remove interaction (toggle off)
                 log.info("User {} removing {} from package {}", currentUser.getId(), interactionType, packageId);
                 interactionRepository.delete(interaction);
             } else {
                 // Different type clicked -> Change interaction
-                log.info("User {} changing interaction from {} to {} on package {}", 
+                log.info("User {} changing interaction from {} to {} on package {}",
                         currentUser.getId(), interaction.getInteractionType(), interactionType, packageId);
                 interaction.setInteractionType(interactionType);
                 interactionRepository.save(interaction);
@@ -539,7 +539,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
         // Get all interactions with user info
         List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(packageId);
-        
+
         List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
                 .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
                         .userId(interaction.getUser().getId())
@@ -577,7 +577,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        Double minPrice, Double maxPrice,
                                                                        List<UUID> packageCategoryIds,
                                                                        List<UUID> seerSpecialityIds,
-                                                                       int minTime, int maxTime) {
+                                                                       Integer minTime, Integer maxTime) {
         // Convert empty lists to null to avoid JPQL issues
         List<UUID> categoryIdsFilter = (packageCategoryIds != null && packageCategoryIds.isEmpty())
                 ? null
@@ -605,6 +605,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return enrichWithInteractions(servicePackages);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServicePackageResponse> getMyPackages(Pageable pageable) {
+        User currentSeer = userService.getUser();
+        Page<ServicePackage> mySeerPackages = servicePackageRepository.findAllBySeer_Id(currentSeer.getId(), pageable);
+        return enrichWithInteractions(mySeerPackages);
+    }
+
     /**
      * Helper method to enrich service packages with user interaction data
      */
@@ -612,10 +620,10 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return servicePackages.map(pkg -> {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
-            
+
             // Get all interactions for this package
             List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(pkg.getId());
-            
+
             // Map interactions to UserInteractionInfo
             List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
                     .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
@@ -625,9 +633,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                             .typeInteract(interaction.getInteractionType().getValue())
                             .build())
                     .collect(Collectors.toList());
-            
+
             response.setUserInteractions(userInteractions);
-            
+
             // Get review statistics from bookings
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
             Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
@@ -651,7 +659,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
         // Validate status transition
         if (status == Constants.PackageStatusEnum.REJECTED &&
-            (rejectionReason == null || rejectionReason.trim().isEmpty())) {
+                (rejectionReason == null || rejectionReason.trim().isEmpty())) {
             throw new IllegalArgumentException("Rejection reason is required when rejecting a service package");
         }
 

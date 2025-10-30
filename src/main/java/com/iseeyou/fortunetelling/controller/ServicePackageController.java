@@ -425,6 +425,58 @@ public class ServicePackageController extends AbstractBaseController {
         return responseFactory.successSingle("Review deleted successfully", "Review deleted successfully");
     }
 
+    // ============ Seer Endpoints ============
+
+    @GetMapping("/my-packages")
+    @Operation(
+            summary = "Get my service packages (Seer only)",
+            description = "Seer endpoint to retrieve all service packages created by the authenticated seer. " +
+                         "Returns packages with all statuses (AVAILABLE, HIDDEN, REJECTED, etc.)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "My service packages retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Seer only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<PageResponse<ServicePackageResponse>> getMyPackages(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        log.info("Seer fetching their service packages");
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<ServicePackageResponse> response = servicePackageService.getMyPackages(pageable);
+        return responseFactory.successPage(response, "My service packages retrieved successfully");
+    }
+
     // ============ Admin Endpoints ============
 
     @PutMapping("/{packageId}/confirm")
