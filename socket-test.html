@@ -67,10 +67,15 @@
                 return;
             }
 
-            log('Attempting to connect to http://localhost:8081/chat...');
+            // Detect server URL - try to get from query param or use localhost
+            const urlParams = new URLSearchParams(window.location.search);
+            const serverUrl = urlParams.get('server') || 'http://localhost:8081';
+
+            log(`Attempting to connect to ${serverUrl}/chat...`);
+            log('Tip: You can specify server URL with ?server=http://your-server:port');
 
             try {
-                const socket = io('http://localhost:8081/chat', {
+                const socket = io(`${serverUrl}/chat`, {
                     transports: ['websocket'],
                     query: {
                         userId: 'test-user-123'

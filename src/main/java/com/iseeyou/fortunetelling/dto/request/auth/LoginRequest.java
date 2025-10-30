@@ -31,4 +31,12 @@ public class LoginRequest {
             example = "P@sswd123."
     )
     private String password;
+
+    @Schema(
+            name = "fcmToken",
+            description = "FCM Token from device, for push notification",
+            type = "String",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
+    private String fcmToken;
 }

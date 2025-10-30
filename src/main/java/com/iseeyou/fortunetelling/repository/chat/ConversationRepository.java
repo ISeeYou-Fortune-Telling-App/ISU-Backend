@@ -95,17 +95,19 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             Pageable pageable
     );
 
-    // Find all conversations for a customer (booking conversations + admin conversations as target)
+    // Find all conversations for a customer (booking conversations + admin conversations as target + conversations as initiator)
     @Query("SELECT c FROM Conversation c " +
             "LEFT JOIN c.booking b " +
             "WHERE (b.customer.id = :customerId) OR " +
-            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :customerId)")
+            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :customerId) OR " +
+            "(c.type = 'ADMIN_CHAT' AND c.admin.id = :customerId)")
     Page<Conversation> findAllConversationsByCustomer(
             @Param("customerId") UUID customerId,
             Pageable pageable
     );
 
-    // Find all conversations for a seer (booking conversations + admin conversations as target)
+    // Find all conversations for a seer (booking conversations + admin conversations where seer is target)
+    // Note: Seers can only be targetUser in ADMIN_CHAT, not initiator
     @Query("SELECT c FROM Conversation c " +
             "LEFT JOIN c.booking b " +
             "LEFT JOIN b.servicePackage sp " +

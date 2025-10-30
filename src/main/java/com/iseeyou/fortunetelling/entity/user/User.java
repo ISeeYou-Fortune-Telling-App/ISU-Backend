@@ -59,6 +59,9 @@ public class User extends AbstractBaseEntity {
     @Column(name = "status", nullable = false)
     private Constants.StatusProfileEnum status;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = false;

@@ -540,13 +540,14 @@
     </div>
 
     <script>
-        // Configuration
-        const API_BASE = 'http://localhost:8080';
-        const SOCKET_URL = 'http://localhost:8081';
+        // Configuration - Auto-detect for Docker/localhost compatibility
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_BASE = urlParams.get('apiBase') || 'http://localhost:8080';
+        const SOCKET_URL = urlParams.get('socketServer') || 'http://localhost:8081';
 
         // Admin credentials - CHANGE THESE
-        const ADMIN_USER_ID = '16c0964d-7bd2-47a7-bb02-66c9e31ba1db'; // Replace with actual admin UUID
-        const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxNmMwOTY0ZC03YmQyLTQ3YTctYmIwMi02NmM5ZTMxYmExZGIiLCJpYXQiOjE3NjE2MzQxNDUsImV4cCI6MTc2MTY0NDk0NX0.fnqCzGXCKbDvHOVaNnmwbj95Q28OkR6GL9HU3b21LPo'; // Replace with actual admin JWT token
+        const ADMIN_USER_ID = '57bfa844-24a7-4908-9e68-1c161c2336e7'; // Replace with actual admin UUID
+        const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI1N2JmYTg0NC0yNGE3LTQ5MDgtOWU2OC0xYzE2MWMyMzM2ZTciLCJpYXQiOjE3NjE4MjMxMzIsImV4cCI6MTc2MTgzMzkzMn0.8hs5fmOEeLiQN6j07lwqLCs8P-p0vO78tcgy0kofxo4'; // Replace with actual admin JWT token
 
         let socket = null;
         let currentConversationId = null;
