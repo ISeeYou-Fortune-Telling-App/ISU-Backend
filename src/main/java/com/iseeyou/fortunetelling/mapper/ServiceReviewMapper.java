@@ -23,6 +23,11 @@ public class ServiceReviewMapper extends BaseMapper {
                     ServiceReview src = context.getSource();
                     ServiceReviewResponse dest = context.getDestination();
 
+                    // Map id to reviewId
+                    if (src.getId() != null) {
+                        dest.setReviewId(src.getId());
+                    }
+
                     if (src.getUser() != null) {
                         dest.setUser(ServiceReviewResponse.UserInfo.builder()
                                 .userId(src.getUser().getId())
@@ -39,4 +44,3 @@ public class ServiceReviewMapper extends BaseMapper {
                 });
     }
 }
-
