@@ -540,9 +540,10 @@
     </div>
 
     <script>
-        // Configuration
-        const API_BASE = 'http://localhost:8080';
-        const SOCKET_URL = 'http://localhost:8081';
+        // Configuration - Auto-detect for Docker/localhost compatibility
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_BASE = urlParams.get('apiBase') || 'http://localhost:8080';
+        const SOCKET_URL = urlParams.get('socketServer') || 'http://localhost:8081';
 
         // Admin credentials - CHANGE THESE
         const ADMIN_USER_ID = '16c0964d-7bd2-47a7-bb02-66c9e31ba1db'; // Replace with actual admin UUID

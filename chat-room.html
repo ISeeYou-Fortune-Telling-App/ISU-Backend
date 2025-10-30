@@ -777,8 +777,13 @@
             console.log('User ID:', currentUser.id);
             console.log('Access Token:', accessToken ? 'Present' : 'Missing');
 
+            // Auto-detect server URL for Docker/localhost compatibility
+            const urlParams = new URLSearchParams(window.location.search);
+            const socketServer = urlParams.get('socketServer') || 'http://localhost:8081';
+            console.log('Connecting to Socket.IO server:', socketServer + '/chat');
+
             // Connect to Socket.IO server at base URL, namespace will be /chat
-            socket = io('http://localhost:8081/chat', {
+            socket = io(socketServer + '/chat', {
                 transports: ['websocket'],
                 query: {
                     userId: currentUser.id

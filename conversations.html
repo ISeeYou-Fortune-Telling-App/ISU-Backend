@@ -557,7 +557,11 @@
 
             console.log('Initializing Socket.IO for conversations...');
             console.log('User ID:', currentUser.id);
-            console.log('Attempting to connect to: http://localhost:8081/chat');
+
+            // Auto-detect server URL for Docker/localhost compatibility
+            const urlParams = new URLSearchParams(window.location.search);
+            const socketServer = urlParams.get('socketServer') || 'http://localhost:8081';
+            console.log('Attempting to connect to:', socketServer + '/chat');
 
             // Set timeout to detect if connection hangs
             const connectionTimeout = setTimeout(() => {
@@ -566,7 +570,7 @@
             }, 10000);
 
             try {
-                socket = io('http://localhost:8081/chat', {
+                socket = io(socketServer + '/chat', {
                     transports: ['websocket'],
                     query: {
                         userId: currentUser.id

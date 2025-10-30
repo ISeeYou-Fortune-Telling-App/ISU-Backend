@@ -6,6 +6,7 @@ services:
     container_name: ${PROJECT_NAME}-server
     ports:
       - ${SERVER_PORT}:${SERVER_PORT}
+      - ${SOCKET_IO_PORT}:${SOCKET_IO_PORT}
     depends_on:
       - postgres
       - redis

@@ -120,5 +120,5 @@ paypal:
   mode: ${PAYPAL_MODE}
 
 socketio:
-  port: 8081
-  host: 0.0.0.0
+  port: ${SOCKET_IO_PORT}
+  host: ${SOCKET_IO_HOST}

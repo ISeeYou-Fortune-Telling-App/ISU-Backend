@@ -185,6 +185,17 @@ public class ChatSocketListener {
         });
 
         // Start server
-        log.info("Socket.IO server started successfully");
+        socketIOServer.start();
+        log.info("✅ Socket.IO server started successfully on port {}", socketIOServer.getConfiguration().getPort());
+        log.info("Socket.IO listening on: {}:{}",
+                socketIOServer.getConfiguration().getHostname(),
+                socketIOServer.getConfiguration().getPort());
+    }
+
+    @PreDestroy
+    public void destroy() {
+        log.info("Stopping Socket.IO server...");
+        socketIOServer.stop();
+        log.info("✅ Socket.IO server stopped");
     }
 }
