@@ -84,48 +84,177 @@ public class Conversations {
     public void createAdminConversations() {
         log.info("Bắt đầu tạo admin conversations...");
 
-        // Get admin user
+        // 1. Get admin user and create conversations with random customers/seers
         User admin = userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Constants.RoleEnum.ADMIN)
                 .findFirst()
                 .orElse(null);
 
-        if (admin == null) {
+        int adminConversationsCount = 0;
+
+        if (admin != null) {
+            // Get all customers and seers (exclude admin)
+            List<User> targetUsers = userRepository.findAll().stream()
+                    .filter(user -> user.getRole() == Constants.RoleEnum.CUSTOMER ||
+                                   user.getRole() == Constants.RoleEnum.SEER)
+                    .toList();
+
+            if (!targetUsers.isEmpty()) {
+                log.info("Tìm thấy {} users (customers & seers) để tạo admin conversations", targetUsers.size());
+
+                // Create admin conversations with random users (5-10 conversations)
+                int numberOfConversations = Math.min(targetUsers.size(), 5 + random.nextInt(6));
+
+                for (int i = 0; i < numberOfConversations; i++) {
+                    User targetUser = targetUsers.get(i);
+
+                    // Check if admin conversation already exists
+                    if (conversationRepository.findAdminConversationByAdminAndTarget(admin.getId(), targetUser.getId()).isPresent()) {
+                        log.info("Admin conversation đã tồn tại với user {}", targetUser.getId());
+                        continue;
+                    }
+
+                    createAdminConversationWithMessages(admin, targetUser);
+                    adminConversationsCount++;
+                }
+
+                log.info("Đã tạo {} admin conversations từ ADMIN", adminConversationsCount);
+            }
+        } else {
             log.warn("Không tìm thấy admin user để tạo admin conversations");
-            return;
         }
 
-        // Get all customers and seers (exclude admin)
-        List<User> targetUsers = userRepository.findAll().stream()
-                .filter(user -> user.getRole() == Constants.RoleEnum.CUSTOMER ||
-                               user.getRole() == Constants.RoleEnum.SEER)
+        // 2. Create conversations from customers to 5 random seers each
+        log.info("=== Bắt đầu tạo conversations giữa CUSTOMERS và SEERS ===");
+
+        List<User> customers = userRepository.findAll().stream()
+                .filter(user -> user.getRole() == Constants.RoleEnum.CUSTOMER)
                 .toList();
 
-        if (targetUsers.isEmpty()) {
-            log.warn("Không tìm thấy users nào để tạo admin conversations");
+        List<User> seers = userRepository.findAll().stream()
+                .filter(user -> user.getRole() == Constants.RoleEnum.SEER)
+                .toList();
+
+        log.info("Tìm thấy {} customers và {} seers", customers.size(), seers.size());
+
+        if (customers.isEmpty()) {
+            log.warn("⚠️ Không có customers nào để tạo customer-seer conversations");
             return;
         }
 
-        log.info("Tìm thấy {} users (customers & seers) để tạo admin conversations", targetUsers.size());
-
-        int createdCount = 0;
-        // Create admin conversations with random users (not all)
-        int numberOfConversations = Math.min(targetUsers.size(), 5 + random.nextInt(6)); // 5-10 conversations
-
-        for (int i = 0; i < numberOfConversations; i++) {
-            User targetUser = targetUsers.get(i);
-
-            // Check if admin conversation already exists
-            if (conversationRepository.findAdminConversationByAdminAndTarget(admin.getId(), targetUser.getId()).isPresent()) {
-                log.info("Admin conversation đã tồn tại với user {}", targetUser.getId());
-                continue;
-            }
-
-            createAdminConversationWithMessages(admin, targetUser);
-            createdCount++;
+        if (seers.isEmpty()) {
+            log.warn("⚠️ Không có seers nào để tạo customer-seer conversations");
+            return;
         }
 
-        log.info("Đã tạo {} admin conversations", createdCount);
+        int customerConversationsCount = 0;
+        int skippedCount = 0;
+
+        for (User customer : customers) {
+            // Each customer creates conversations with 5 random seers
+            List<User> shuffledSeers = new ArrayList<>(seers);
+            java.util.Collections.shuffle(shuffledSeers, random);
+
+            int numberOfSeers = Math.min(5, shuffledSeers.size());
+
+            log.info("Customer {} sẽ tạo conversations với {} seers", customer.getFullName(), numberOfSeers);
+
+            for (int i = 0; i < numberOfSeers; i++) {
+                User seer = shuffledSeers.get(i);
+
+                // Check if conversation already exists
+                if (conversationRepository.findAdminConversationByAdminAndTarget(customer.getId(), seer.getId()).isPresent()) {
+                    log.debug("Conversation đã tồn tại giữa customer {} và seer {}",
+                            customer.getId(), seer.getId());
+                    skippedCount++;
+                    continue;
+                }
+
+                try {
+                    createCustomerSeerConversation(customer, seer);
+                    customerConversationsCount++;
+                    log.info("✅ Đã tạo conversation #{} giữa customer {} và seer {}",
+                            customerConversationsCount, customer.getFullName(), seer.getFullName());
+                } catch (Exception e) {
+                    log.error("❌ Lỗi khi tạo conversation giữa customer {} và seer {}: {}",
+                            customer.getId(), seer.getId(), e.getMessage(), e);
+                }
+            }
+        }
+
+        log.info("✅ Đã tạo {} customer-seer conversations (bỏ qua {} đã tồn tại)",
+                customerConversationsCount, skippedCount);
+        log.info("=== Tổng số admin conversations đã tạo: {} ===",
+                adminConversationsCount + customerConversationsCount);
+    }
+
+    private void createCustomerSeerConversation(User customer, User seer) {
+        log.debug("Creating conversation: Customer {} ({}) -> Seer {} ({})",
+                customer.getFullName(), customer.getId(),
+                seer.getFullName(), seer.getId());
+
+        // Create conversation from customer to seer (customer acts as "admin" initiator)
+        Conversation conversation = new Conversation();
+        conversation.setBooking(null);  // No booking for admin chat
+        conversation.setType(Constants.ConversationTypeEnum.ADMIN_CHAT);
+        conversation.setAdmin(customer);  // Customer is the initiator
+        conversation.setTargetUser(seer);  // Seer is the target
+        conversation.setSessionStartTime(LocalDateTime.now().minusDays(random.nextInt(7) + 1)); // 1-7 days ago
+        conversation.setSessionEndTime(null);  // No end time for admin chat
+        conversation.setSessionDurationMinutes(null);  // No duration limit
+        conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
+
+        Conversation savedConversation = conversationRepository.save(conversation);
+        log.debug("Saved conversation with ID: {}", savedConversation.getId());
+
+        // Create messages between customer and seer
+        createCustomerSeerMessages(savedConversation, customer, seer);
+    }
+
+    private void createCustomerSeerMessages(Conversation conversation, User customer, User seer) {
+        log.debug("Creating messages for conversation {} between customer {} and seer {}",
+                conversation.getId(), customer.getFullName(), seer.getFullName());
+
+        List<Message> messages = new ArrayList<>();
+        LocalDateTime conversationStart = conversation.getSessionStartTime();
+
+        // Customer initiates conversation with seer
+        String[][] dialogue = new String[][]{
+                {"Xin chào, tôi muốn tư vấn về dịch vụ của bạn",
+                 "Chào bạn! Cảm ơn bạn đã quan tâm. Tôi có thể giúp gì cho bạn?"},
+                {"Tôi muốn biết về dịch vụ xem bói tarot của bạn",
+                 "Tôi chuyên về tarot và có thể tư vấn về tình yêu, sự nghiệp, tài chính"},
+                {"Phí tư vấn là bao nhiêu và kéo dài bao lâu?",
+                 "Phí từ 100k-500k tùy gói, thời gian từ 15-60 phút. Bạn quan tâm gói nào?"},
+                {"Tôi muốn gói 30 phút, có thể đặt lịch được không?",
+                 "Được ạ! Bạn có thể đặt lịch qua hệ thống. Khi nào tiện cho bạn?"},
+                {"Cảm ơn bạn nhiều, tôi sẽ đặt lịch sớm",
+                 "Rất vui được hỗ trợ! Hẹn gặp lại bạn"},
+        };
+
+        // Create messages with timing
+        for (int i = 0; i < dialogue.length; i++) {
+            // Customer message
+            messages.add(createMessage(
+                    conversation,
+                    customer,
+                    dialogue[i][0],
+                    conversationStart.plusMinutes(i * 5),
+                    Constants.MessageStatusEnum.READ
+            ));
+
+            // Seer response
+            messages.add(createMessage(
+                    conversation,
+                    seer,
+                    dialogue[i][1],
+                    conversationStart.plusMinutes(i * 5 + 2),
+                    i == dialogue.length - 1 ? Constants.MessageStatusEnum.UNREAD : Constants.MessageStatusEnum.READ
+            ));
+        }
+
+        messageRepository.saveAll(messages);
+        log.info("Đã tạo {} messages cho customer-seer conversation {}", messages.size(), conversation.getId());
     }
 
     private void createAdminConversationWithMessages(User admin, User targetUser) {
