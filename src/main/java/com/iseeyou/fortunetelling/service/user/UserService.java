@@ -48,9 +48,9 @@ public interface UserService {
     String uploadImage(MultipartFile file, String folderName) throws Exception;
     void uploadCertificates(MultipartFile[] files) throws Exception;
 
-    void delete(String id);
+    void setFcmTokenByEmail(String email, String fcmToken );
 
-    void activeteUser(String id);
+    void delete(String id);
 
     void activateUserByEmail(String email);
 

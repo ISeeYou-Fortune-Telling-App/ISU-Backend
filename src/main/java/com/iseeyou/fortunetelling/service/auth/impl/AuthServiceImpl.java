@@ -55,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public TokenResponse login(String email, final String password, final Boolean rememberMe) {
+    public TokenResponse login(String email, final String password, String fcmToken, final Boolean rememberMe) {
         log.info("Login request received: {}", email);
 
         String badCredentialsMessage = messageSourceService.get("Unauthorized");
@@ -85,6 +85,10 @@ public class AuthServiceImpl implements AuthService {
 
         // Active the user
         userService.activateUserByEmail(email);
+
+        if (fcmToken != null) {
+            userService.setFcmTokenByEmail(email, fcmToken);
+        }
 
         return generateTokens(UUID.fromString(jwtUserDetails.getId()), rememberMe);
     }

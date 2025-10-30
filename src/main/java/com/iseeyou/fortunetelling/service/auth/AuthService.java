@@ -6,7 +6,7 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import java.util.UUID;
 
 public interface AuthService {
-    TokenResponse login(String email, String password, Boolean rememberMe);
+    TokenResponse login(String email, String password, String fcmToken, Boolean rememberMe);
 
     TokenResponse refreshFromBearerString(String bearer);
 

@@ -405,27 +405,19 @@ public class UserServiceImpl implements UserService {
     public void uploadCertificates(MultipartFile[] files) throws Exception {
     }
 
+    @Override
+    @Transactional
+    public void setFcmTokenByEmail(String email, String fcmToken) {
+        User user = findByEmail(email);
+        user.setFcmToken(fcmToken);
+        userRepository.save(user);
+    }
+
 
     @Transactional
     @Override
     public void delete(String id) {
         userRepository.delete(findById(UUID.fromString(id)));
-    }
-
-    @Override
-    public void activeteUser(String id) {
-        if (!userRepository.existsById(UUID.fromString(id))) {
-            throw new NotFoundException(messageSourceService.get("not_found_with_param",
-                    new String[]{messageSourceService.get("user")}));
-        }
-        User user = findById(UUID.fromString(id));
-        if (user.getStatus() == Constants.StatusProfileEnum.ACTIVE) {
-            user.setStatus(Constants.StatusProfileEnum.ACTIVE);
-        } else {
-            user.setStatus(Constants.StatusProfileEnum.INACTIVE);
-        }
-
-        userRepository.save(user);
     }
 
     @Override
@@ -436,6 +428,8 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         log.info("User activated by email verification: {}", email);
     }
+
+
 
     @Override
     @Transactional

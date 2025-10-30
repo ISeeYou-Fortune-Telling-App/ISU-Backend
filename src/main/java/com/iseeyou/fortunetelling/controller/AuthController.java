@@ -86,7 +86,7 @@ public class AuthController {
             @Parameter(description = "Request body to login", required = true)
             @RequestBody @Validated final LoginRequest request
     ) {
-        TokenResponse tokenResponse = authService.login(request.getEmail(), request.getPassword(), false);
+        TokenResponse tokenResponse = authService.login(request.getEmail(), request.getPassword(), request.getFcmToken(), false);
         return responseFactory.successSingle(tokenResponse, "Login successful");
     }
 
