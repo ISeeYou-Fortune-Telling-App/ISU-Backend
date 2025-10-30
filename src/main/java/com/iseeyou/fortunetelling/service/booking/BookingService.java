@@ -33,7 +33,13 @@ public interface BookingService {
     // Review methods
     BookingReviewResponse submitReview(UUID bookingId, BookingReviewRequest reviewRequest);
     Page<BookingReviewResponse> getReviewsByServicePackage(UUID packageId, Pageable pageable);
-    
+    Page<BookingReviewResponse> adminGetReviews(UUID packageId, UUID seerId, Pageable pageable);
+    Page<BookingReviewResponse> seerGetReviews(UUID packageId, Pageable pageable);
+
     // Admin/Debug methods
     Page<BookingPayment> findPaymentsWithInvalidTransactionIds(Pageable pageable);
+
+    // New: Payments listing for seer and user
+    Page<BookingPayment> seerGetPayments(UUID packageId, org.springframework.data.domain.Pageable pageable);
+    Page<BookingPayment> userGetPayments(org.springframework.data.domain.Pageable pageable);
 }

@@ -649,6 +649,81 @@ public class BookingController extends AbstractBaseController {
         return responseFactory.successPage(response, "Invalid payments retrieved successfully");
     }
 
+    // New endpoint: Seer can view payments to their packages (optional packageId)
+    @GetMapping("/seer/payments")
+    @Operation(
+            summary = "Seer: Get payments for your service packages (optional packageId)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Payments retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> seerGetPayments(
+            @Parameter(description = "Service Package ID (optional)") @RequestParam(required = false) UUID packageId,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingPayment> payments = bookingService.seerGetPayments(packageId, pageable);
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(payments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "Payments retrieved successfully");
+    }
+
+    // New endpoint: Customer can view payments created by themselves
+    @GetMapping("/my-payments")
+    @Operation(
+            summary = "Customer: Get payments created by you",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Payments retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('CUSTOMER')")
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> userGetPayments(
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingPayment> payments = bookingService.userGetPayments(pageable);
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(payments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "Payments retrieved successfully");
+    }
+
     @PostMapping("/{id}/seer-confirm")
     @Operation(
             summary = "Seer confirm or cancel a booking (Seer only)",
@@ -691,5 +766,80 @@ public class BookingController extends AbstractBaseController {
         Booking updatedBooking = bookingService.seerConfirmBooking(id, request.getStatus());
         BookingResponse response = bookingMapper.mapTo(updatedBooking, BookingResponse.class);
         return responseFactory.successSingle(response, "Booking updated successfully");
+    }
+
+    // New: Admin endpoint to get booking reviews with filters (packageId, seerId)
+    @GetMapping("/reviews")
+    @Operation(
+            summary = "Admin: Get booking reviews with optional filters (packageId, seerId)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<PageResponse<BookingReviewResponse>> adminGetReviews(
+            @Parameter(description = "Service Package ID") @RequestParam(required = false) UUID packageId,
+            @Parameter(description = "Seer ID") @RequestParam(required = false) UUID seerId,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "reviewedAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingReviewResponse> response = bookingService.adminGetReviews(packageId, seerId, pageable);
+        return responseFactory.successPage(response, "Reviews retrieved successfully");
+    }
+
+    // New: Seer endpoint to get reviews for packages owned by the seer (optional packageId filter)
+    @GetMapping("/seer/reviews")
+    @Operation(
+            summary = "Seer: Get booking reviews for your service packages (optional packageId)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<PageResponse<BookingReviewResponse>> seerGetReviews(
+            @Parameter(description = "Service Package ID") @RequestParam(required = false) UUID packageId,
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "reviewedAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingReviewResponse> response = bookingService.seerGetReviews(packageId, pageable);
+        return responseFactory.successPage(response, "Reviews retrieved successfully");
     }
 }

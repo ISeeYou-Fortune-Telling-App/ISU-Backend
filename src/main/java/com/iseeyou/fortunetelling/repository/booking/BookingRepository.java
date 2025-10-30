@@ -63,5 +63,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     @Query("SELECT AVG(b.rating) FROM Booking b WHERE b.servicePackage.id = :packageId AND b.rating IS NOT NULL")
     Double getAverageRatingByServicePackageId(UUID packageId);
-}
 
+    // New: flexible review filter for admin/seer (packageId and/or seerId can be null)
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer"})
+    @Query("SELECT b FROM Booking b WHERE b.rating IS NOT NULL " +
+           "AND (:packageId IS NULL OR b.servicePackage.id = :packageId) " +
+           "AND (:seerId IS NULL OR b.servicePackage.seer.id = :seerId) " +
+           "ORDER BY b.reviewedAt DESC")
+    Page<Booking> findReviewsByFilters(UUID packageId, UUID seerId, Pageable pageable);
+}

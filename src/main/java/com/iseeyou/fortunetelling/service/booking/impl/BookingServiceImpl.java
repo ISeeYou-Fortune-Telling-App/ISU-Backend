@@ -577,6 +577,64 @@ public class BookingServiceImpl implements BookingService {
                 .build());
     }
 
+    // New: admin can filter reviews by packageId and/or seerId
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingReviewResponse> adminGetReviews(UUID packageId, UUID seerId, Pageable pageable) {
+        // Ensure user is admin
+        User currentUser = userService.getUser();
+        if (!currentUser.getRole().equals(Constants.RoleEnum.ADMIN)) {
+            throw new IllegalArgumentException("Only admin can access this endpoint");
+        }
+
+        Page<Booking> bookings = bookingRepository.findReviewsByFilters(packageId, seerId, pageable);
+
+        return bookings.map(booking -> BookingReviewResponse.builder()
+                .bookingId(booking.getId())
+                .rating(booking.getRating())
+                .comment(booking.getComment())
+                .reviewedAt(booking.getReviewedAt())
+                .customer(BookingReviewResponse.CustomerInfo.builder()
+                        .customerId(booking.getCustomer().getId())
+                        .customerName(booking.getCustomer().getFullName())
+                        .customerAvatar(booking.getCustomer().getAvatarUrl())
+                        .build())
+                .servicePackage(BookingReviewResponse.ServicePackageInfo.builder()
+                        .packageId(booking.getServicePackage().getId())
+                        .packageTitle(booking.getServicePackage().getPackageTitle())
+                        .build())
+                .build());
+    }
+
+    // New: seer can get reviews for their own packages, optional filter by packageId
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingReviewResponse> seerGetReviews(UUID packageId, Pageable pageable) {
+        User currentUser = userService.getUser();
+        if (!currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
+            throw new IllegalArgumentException("Only seer can access this endpoint");
+        }
+
+        UUID seerId = currentUser.getId();
+        Page<Booking> bookings = bookingRepository.findReviewsByFilters(packageId, seerId, pageable);
+
+        return bookings.map(booking -> BookingReviewResponse.builder()
+                .bookingId(booking.getId())
+                .rating(booking.getRating())
+                .comment(booking.getComment())
+                .reviewedAt(booking.getReviewedAt())
+                .customer(BookingReviewResponse.CustomerInfo.builder()
+                        .customerId(booking.getCustomer().getId())
+                        .customerName(booking.getCustomer().getFullName())
+                        .customerAvatar(booking.getCustomer().getAvatarUrl())
+                        .build())
+                .servicePackage(BookingReviewResponse.ServicePackageInfo.builder()
+                        .packageId(booking.getServicePackage().getId())
+                        .packageTitle(booking.getServicePackage().getPackageTitle())
+                        .build())
+                .build());
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<BookingPayment> findPaymentsWithInvalidTransactionIds(Pageable pageable) {
@@ -599,6 +657,36 @@ public class BookingServiceImpl implements BookingService {
             pageable,
             invalidPayments.size()
         );
+    }
+
+    // New: Seer can view payments to their service packages (optional packageId)
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> seerGetPayments(UUID packageId, Pageable pageable) {
+        User currentUser = userService.getUser();
+        if (!currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
+            throw new IllegalArgumentException("Only seer can access this endpoint");
+        }
+
+        UUID seerId = currentUser.getId();
+        if (packageId != null) {
+            return bookingPaymentRepository.findAllByBooking_ServicePackage_IdAndBooking_ServicePackage_Seer_Id(packageId, seerId, pageable);
+        } else {
+            return bookingPaymentRepository.findAllByBooking_ServicePackage_Seer_Id(seerId, pageable);
+        }
+    }
+
+    // New: User can view payments created by themselves
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> userGetPayments(Pageable pageable) {
+        User currentUser = userService.getUser();
+        if (!currentUser.getRole().equals(Constants.RoleEnum.CUSTOMER)) {
+            throw new IllegalArgumentException("Only customer can access this endpoint");
+        }
+
+        UUID customerId = currentUser.getId();
+        return bookingPaymentRepository.findAllByBooking_Customer_Id(customerId, pageable);
     }
 
     /**
