@@ -76,10 +76,16 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Package category Ids")
             @RequestParam(required = false) List<UUID> packageCategoryIds,
             @Parameter(description = "Seer speciality Ids")
-            @RequestParam(required = false) List<UUID> seerSpecialityIds
+            @RequestParam(required = false) List<UUID> seerSpecialityIds,
+            @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
+            @RequestParam(required = false) String status
             ) {
         log.info("Public API: Get all service packages - page: {}, limit: {}", page, limit);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Constants.PackageStatusEnum statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            statusEnum = Constants.PackageStatusEnum.get(status);
+        }
         return responseFactory.successPage(servicePackageService.getAllPackagesWithInteractions(
                 pageable,
                 searchText,
@@ -87,6 +93,7 @@ public class PublicController extends AbstractBaseController {
                 packageCategoryIds,
                 seerSpecialityIds,
                 minTime, maxTime
+                , statusEnum
         ), "Service packages retrieved successfully");
     }
 
@@ -196,13 +203,19 @@ public class PublicController extends AbstractBaseController {
             @Parameter(description = "Minimum price filter")
             @RequestParam(required = false) Double minPrice,
             @Parameter(description = "Maximum price filter")
-            @RequestParam(required = false) Double maxPrice
+            @RequestParam(required = false) Double maxPrice,
+            @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
+            @RequestParam(required = false) String status
     ) {
         log.info("Public API: Get service packages by category - category: {}, page: {}", category, page);
         Constants.ServiceCategoryEnum categoryEnum = Constants.ServiceCategoryEnum.get(category);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
 
-        Page<ServicePackageResponse> response = servicePackageService.getPackagesByCategoryWithInteractions(categoryEnum, pageable, minPrice, maxPrice);
+        Constants.PackageStatusEnum statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            statusEnum = Constants.PackageStatusEnum.get(status);
+        }
+        Page<ServicePackageResponse> response = servicePackageService.getPackagesByCategoryWithInteractions(categoryEnum, pageable, minPrice, maxPrice, statusEnum);
 
         return responseFactory.successPage(response,
                 String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));

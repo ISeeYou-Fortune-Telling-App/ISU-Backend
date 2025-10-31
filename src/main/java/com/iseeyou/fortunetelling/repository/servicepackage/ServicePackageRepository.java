@@ -52,7 +52,8 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         LEFT JOIN sp.packageCategories pc
         LEFT JOIN sp.seer s
         LEFT JOIN s.seerSpecialities ss
-        WHERE (:minPrice IS NULL OR sp.price >= :minPrice)
+        WHERE (:status IS NULL OR sp.status = :status)
+        AND (:minPrice IS NULL OR sp.price >= :minPrice)
         AND (:searchText IS NULL OR :searchText = '' OR LOWER(sp.packageTitle) LIKE LOWER(CONCAT('%', :searchText, '%')))
         AND (:maxPrice IS NULL OR sp.price <= :maxPrice)
         AND (:minTime IS NULL OR sp.durationMinutes >= :minTime)
@@ -61,7 +62,8 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         AND (:seerSpecialityIds IS NULL OR ss.knowledgeCategory.id IN :seerSpecialityIds)
         """)
     @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
-    Page<ServicePackage> findAllWithFilters(@Param("minPrice") Double minPrice,
+    Page<ServicePackage> findAllWithFilters(@Param("status") com.iseeyou.fortunetelling.util.Constants.PackageStatusEnum status,
+                                            @Param("minPrice") Double minPrice,
                                             @Param("maxPrice") Double maxPrice,
                                             @Param("packageCategoryIds") List<UUID> packageCategoryIds,
                                             @Param("seerSpecialityIds") List<UUID> seerSpecialityIds,
