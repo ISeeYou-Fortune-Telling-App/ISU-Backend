@@ -74,4 +74,6 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
                                      @Param("searchText") String searchText,
                                      @Param("seerSpecialityIds") List<UUID> seerSpecialityIds,
                                      Pageable pageable);
+
+    long countAllByStatus(Constants.StatusProfileEnum status);
 }

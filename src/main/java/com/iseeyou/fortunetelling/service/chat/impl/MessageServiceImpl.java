@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
 import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.response.chat.session.AdminMessageStatisticResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
@@ -9,6 +10,7 @@ import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.MessageMapper;
 import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.repository.chat.MessageRepository;
+import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.chat.MessageService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -35,6 +37,7 @@ public class MessageServiceImpl implements MessageService {
     private final UserService userService;
     private final MessageMapper messageMapper;
     private final CloudinaryService cloudinaryService;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -253,5 +256,25 @@ public class MessageServiceImpl implements MessageService {
         }
 
         messageRepository.save(message);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminMessageStatisticResponse getMessageStatistics() {
+        AdminMessageStatisticResponse response = new AdminMessageStatisticResponse();
+
+        long totalUsers = userRepository.count() - 1;
+        long totalActives = userRepository.countAllByStatus(Constants.StatusProfileEnum.ACTIVE) - 1;
+        User admin = userService.getUser();
+        long totalSent = messageRepository.countAllBySender(admin);
+        long totalSentAndRead = messageRepository.countAllBySenderAndStatus(admin, Constants.MessageStatusEnum.READ);
+        Double readPercent = (double) (totalSentAndRead * 100 / totalSent);
+
+        response.setTotalSentMessages(totalSent);
+        response.setReadPercent(readPercent);
+        response.setTotalUsers(totalUsers);
+        response.setTotalActives(totalActives);
+
+        return response;
     }
 }

@@ -4,9 +4,11 @@ import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.chat.session.AdminCreateConversationRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.AdminMessageStatisticResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
+import com.iseeyou.fortunetelling.service.chat.MessageService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +34,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 public class AdminConversationController extends AbstractBaseController {
 
     private final ConversationService conversationService;
+    private final MessageService messageService;
 
     @PostMapping
     @Operation(
@@ -113,6 +116,20 @@ public class AdminConversationController extends AbstractBaseController {
         ConversationStatisticResponse statistics = conversationService.getConversationStatistics();
 
         return responseFactory.successSingle(statistics, "Conversation statistics retrieved successfully");
+    }
+
+    @GetMapping("/messages/statistics")
+    @Operation(
+            summary = "Get message statistics",
+            description = "Admin can view statistics about messages including total sent, read percentage, and user activity",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<AdminMessageStatisticResponse>> getMessageStatistics() {
+        log.info("Admin retrieving message statistics");
+
+        AdminMessageStatisticResponse statistics = messageService.getMessageStatistics();
+
+        return responseFactory.successSingle(statistics, "Message statistics retrieved successfully");
     }
 
 }
