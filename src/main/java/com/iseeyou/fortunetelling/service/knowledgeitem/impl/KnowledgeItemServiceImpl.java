@@ -11,6 +11,7 @@ import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategorySer
 import com.iseeyou.fortunetelling.service.knowledgeitem.KnowledgeItemService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,8 +36,14 @@ public class KnowledgeItemServiceImpl implements KnowledgeItemService {
     @Override
     @Transactional(readOnly = true)
     public KnowledgeItem findById(UUID id) {
-        return knowledgeItemRepository.findById(id)
+        KnowledgeItem item = knowledgeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("knowledgeItem not found"));
+        // Force load itemCategories and their knowledgeCategory to avoid LazyInitializationException
+        Hibernate.initialize(item.getItemCategories());
+        item.getItemCategories().forEach(ic -> {
+            Hibernate.initialize(ic.getKnowledgeCategory());
+        });
+        return item;
     }
 
     @Override

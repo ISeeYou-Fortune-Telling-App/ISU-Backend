@@ -248,7 +248,7 @@ public class ServicePackageController extends AbstractBaseController {
         Constants.ServiceCategoryEnum categoryEnum = Constants.ServiceCategoryEnum.get(category);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
 
-        Page<ServicePackageResponse> response = servicePackageService.getPackagesByCategoryWithInteractions(categoryEnum, pageable, minPrice, maxPrice);
+        Page<ServicePackageResponse> response = servicePackageService.getPackagesByCategoryWithInteractions(categoryEnum, pageable, minPrice, maxPrice, null);
 
         return responseFactory.successPage(response,
                 String.format("Service packages in category %s retrieved successfully", categoryEnum.getValue()));

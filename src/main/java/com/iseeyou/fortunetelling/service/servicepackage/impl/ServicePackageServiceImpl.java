@@ -577,7 +577,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        Double minPrice, Double maxPrice,
                                                                        List<UUID> packageCategoryIds,
                                                                        List<UUID> seerSpecialityIds,
-                                                                       Integer minTime, Integer maxTime) {
+                                                                       Integer minTime, Integer maxTime,
+                                                                       Constants.PackageStatusEnum status) {
         // Convert empty lists to null to avoid JPQL issues
         List<UUID> categoryIdsFilter = (packageCategoryIds != null && packageCategoryIds.isEmpty())
                 ? null
@@ -587,6 +588,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 : seerSpecialityIds;
 
         Page<ServicePackage> servicePackages = servicePackageRepository.findAllWithFilters(
+                status,
                 minPrice, maxPrice,
                 categoryIdsFilter,
                 specialityIdsFilter,
@@ -600,8 +602,44 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Override
     @Transactional(readOnly = true)
     public Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(
-            Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice) {
-        Page<ServicePackage> servicePackages = findAvailableByCategoryWithFilters(category, minPrice, maxPrice, pageable);
+            Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice, Constants.PackageStatusEnum status) {
+        // If no status provided, default to AVAILABLE for public endpoints to keep existing behavior
+        Constants.PackageStatusEnum statusToUse = status != null ? status : Constants.PackageStatusEnum.AVAILABLE;
+
+        Specification<ServicePackage> spec = (root, query, criteriaBuilder) -> {
+            var predicates = criteriaBuilder.conjunction();
+
+            // Status filter
+            predicates = criteriaBuilder.and(predicates,
+                    criteriaBuilder.equal(root.get("status"), statusToUse));
+
+            // Category filter through packageCategories relationship
+            if (category != null) {
+                var categoryJoin = root.join("packageCategories");
+                var knowledgeCategoryJoin = categoryJoin.join("knowledgeCategory");
+                predicates = criteriaBuilder.and(predicates,
+                        criteriaBuilder.equal(knowledgeCategoryJoin.get("name"), category.getValue()));
+            }
+
+            // Price filters
+            if (minPrice != null) {
+                predicates = criteriaBuilder.and(predicates,
+                        criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates = criteriaBuilder.and(predicates,
+                        criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+
+            // Make distinct when joining categories
+            if (category != null) {
+                query.distinct(true);
+            }
+
+            return predicates;
+        };
+
+        Page<ServicePackage> servicePackages = servicePackageRepository.findAll(spec, pageable);
         return enrichWithInteractions(servicePackages);
     }
 
