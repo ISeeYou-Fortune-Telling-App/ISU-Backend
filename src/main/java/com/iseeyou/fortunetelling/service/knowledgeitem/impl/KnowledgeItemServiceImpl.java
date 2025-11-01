@@ -176,4 +176,29 @@ public class KnowledgeItemServiceImpl implements KnowledgeItemService {
         List<UUID> effectiveCategoryIds = (categoryIds != null && categoryIds.isEmpty()) ? null : categoryIds;
         return knowledgeItemRepository.search(title, effectiveCategoryIds, status, pageable);
     }
+
+    @Transactional(readOnly = true)
+    public KnowledgeItemStats getAllItemsStats() {
+        long published = knowledgeItemRepository.countByStatus(Constants.KnowledgeItemStatusEnum.PUBLISHED);
+        long draft = knowledgeItemRepository.countByStatus(Constants.KnowledgeItemStatusEnum.DRAFT);
+        long hidden = knowledgeItemRepository.countByStatus(Constants.KnowledgeItemStatusEnum.HIDDEN);
+        Long totalViewCount = knowledgeItemRepository.getTotalViewCount();
+        
+        return KnowledgeItemStats.builder()
+                .publishedItems(published)
+                .draftItems(draft)
+                .hiddenItems(hidden)
+                .totalViewCount(totalViewCount != null ? totalViewCount : 0L)
+                .build();
+    }
+
+    @lombok.Getter
+    @lombok.Builder
+    @lombok.AllArgsConstructor
+    public static class KnowledgeItemStats {
+        private Long publishedItems;
+        private Long draftItems;
+        private Long hiddenItems;
+        private Long totalViewCount;
+    }
 }

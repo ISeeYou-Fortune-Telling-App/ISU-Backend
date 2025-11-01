@@ -6,7 +6,9 @@ import com.iseeyou.fortunetelling.dto.request.knowledgeitem.KnowledgeItemUpdateR
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
+import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemPageResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemResponse;
+import com.iseeyou.fortunetelling.service.knowledgeitem.impl.KnowledgeItemServiceImpl;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.mapper.KnowledgeItemMapper;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
@@ -67,7 +69,7 @@ public class KnowledgeItemController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<PageResponse<KnowledgeItemResponse>> getAllKnowledgeItems(
+    public ResponseEntity<KnowledgeItemPageResponse> getAllKnowledgeItems(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -79,8 +81,32 @@ public class KnowledgeItemController extends AbstractBaseController {
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<KnowledgeItem> knowledgeItems = knowledgeItemService.findAll(pageable);
-        Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
-        return responseFactory.successPage(response, "Knowledge items retrieved successfully");
+        Page<KnowledgeItemResponse> itemResponses = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
+        
+        // Get statistics
+        KnowledgeItemServiceImpl.KnowledgeItemStats stats = 
+                ((KnowledgeItemServiceImpl) knowledgeItemService).getAllItemsStats();
+        
+        // Create response with stats
+        KnowledgeItemPageResponse response = KnowledgeItemPageResponse.builder()
+                .statusCode(200)
+                .message("Knowledge items retrieved successfully")
+                .data(itemResponses.getContent())
+                .paging(new PageResponse.PagingResponse(
+                        knowledgeItems.getNumber(),
+                        knowledgeItems.getSize(),
+                        knowledgeItems.getTotalElements(),
+                        knowledgeItems.getTotalPages()
+                ))
+                .stats(KnowledgeItemPageResponse.KnowledgeItemStats.builder()
+                        .publishedItems(stats.getPublishedItems())
+                        .draftItems(stats.getDraftItems())
+                        .hiddenItems(stats.getHiddenItems())
+                        .totalViewCount(stats.getTotalViewCount())
+                        .build())
+                .build();
+        
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

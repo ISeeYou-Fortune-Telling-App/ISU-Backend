@@ -18,6 +18,9 @@ import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import com.paypal.base.rest.PayPalRESTException;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -68,6 +71,31 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     public Page<Booking> getAllBookingsByStatus(Constants.BookingStatusEnum status, Pageable pageable) {
         return bookingRepository.findAllByStatus(status, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public BookingStats getAllBookingsStats() {
+        long total = bookingRepository.count();
+        long completed = bookingRepository.countByStatus(Constants.BookingStatusEnum.COMPLETED);
+        long pending = bookingRepository.countByStatus(Constants.BookingStatusEnum.PENDING);
+        long canceled = bookingRepository.countByStatus(Constants.BookingStatusEnum.CANCELED);
+        
+        return BookingStats.builder()
+                .totalBookings(total)
+                .completedBookings(completed)
+                .pendingBookings(pending)
+                .canceledBookings(canceled)
+                .build();
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class BookingStats {
+        private Long totalBookings;
+        private Long completedBookings;
+        private Long pendingBookings;
+        private Long canceledBookings;
     }
 
     @Override

@@ -729,4 +729,29 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         // Enrich with interactions and review statistics
         return enrichWithInteractions(hiddenPackages);
     }
+
+    @Transactional(readOnly = true)
+    public ServicePackageStats getAllPackagesStats() {
+        long total = servicePackageRepository.count();
+        long reported = servicePackageRepository.countPackagesWithReports(Constants.TargetReportTypeEnum.SERVICE_PACKAGE);
+        long hidden = servicePackageRepository.countByStatus(Constants.PackageStatusEnum.HIDDEN);
+        long totalInteractions = interactionRepository.count();
+        
+        return ServicePackageStats.builder()
+                .totalPackages(total)
+                .reportedPackages(reported)
+                .hiddenPackages(hidden)
+                .totalInteractions(totalInteractions)
+                .build();
+    }
+
+    @lombok.Getter
+    @lombok.Builder
+    @lombok.AllArgsConstructor
+    public static class ServicePackageStats {
+        private Long totalPackages;
+        private Long reportedPackages;
+        private Long hiddenPackages;
+        private Long totalInteractions;
+    }
 }

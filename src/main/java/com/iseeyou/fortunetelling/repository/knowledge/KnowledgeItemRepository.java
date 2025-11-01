@@ -39,4 +39,11 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
             @Param("status") Constants.KnowledgeItemStatusEnum status,
             Pageable pageable
     );
+
+    // Admin statistics methods
+    @Query("SELECT COUNT(ki) FROM KnowledgeItem ki WHERE ki.status = :status")
+    long countByStatus(Constants.KnowledgeItemStatusEnum status);
+    
+    @Query("SELECT COALESCE(SUM(ki.viewCount), 0) FROM KnowledgeItem ki")
+    Long getTotalViewCount();
 }

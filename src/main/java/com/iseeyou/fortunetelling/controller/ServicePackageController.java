@@ -8,7 +8,9 @@ import com.iseeyou.fortunetelling.dto.request.servicepackage.ServiceReviewReques
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackagePageResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
+import com.iseeyou.fortunetelling.service.servicepackage.impl.ServicePackageServiceImpl;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServiceReviewResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
@@ -35,6 +37,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
@@ -589,5 +592,99 @@ public class ServicePackageController extends AbstractBaseController {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<ServicePackageResponse> response = servicePackageService.getAllHiddenPackages(pageable);
         return responseFactory.successPage(response, "Hidden service packages retrieved successfully");
+    }
+
+    @GetMapping("/admin")
+    @Operation(
+            summary = "Admin: Get all service packages with statistics",
+            description = "Admin endpoint to retrieve all service packages with filters and statistics. Similar to /public/service-packages but includes stats.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Service packages retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ServicePackagePageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ServicePackagePageResponse> getAllServicePackagesAdmin(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction (asc/desc)")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field (createdAt, price, packageTitle)")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Search text for package title")
+            @RequestParam(required = false) String searchText,
+            @Parameter(description = "Minimum price filter")
+            @RequestParam(required = false) Double minPrice,
+            @Parameter(description = "Maximum price filter")
+            @RequestParam(required = false) Double maxPrice,
+            @Parameter(description = "Package category IDs filter (multiple values supported)")
+            @RequestParam(required = false) List<UUID> packageCategoryIds,
+            @Parameter(description = "Seer speciality IDs filter (multiple values supported)")
+            @RequestParam(required = false) List<UUID> seerSpecialityIds,
+            @Parameter(description = "Minimum duration in minutes")
+            @RequestParam(required = false) Integer minTime,
+            @Parameter(description = "Maximum duration in minutes")
+            @RequestParam(required = false) Integer maxTime,
+            @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
+            @RequestParam(required = false) String status
+    ) {
+        log.info("Admin fetching all service packages with stats");
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Constants.PackageStatusEnum statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            statusEnum = Constants.PackageStatusEnum.get(status);
+        }
+        
+        Page<ServicePackageResponse> packages = servicePackageService.getAllPackagesWithInteractions(
+                pageable,
+                searchText,
+                minPrice, maxPrice,
+                packageCategoryIds,
+                seerSpecialityIds,
+                minTime, maxTime,
+                statusEnum
+        );
+        
+        // Get statistics
+        ServicePackageServiceImpl.ServicePackageStats stats = 
+                ((ServicePackageServiceImpl) servicePackageService).getAllPackagesStats();
+        
+        // Create response with stats
+        ServicePackagePageResponse response = ServicePackagePageResponse.builder()
+                .statusCode(200)
+                .message("Service packages retrieved successfully")
+                .data(packages.getContent())
+                .paging(new PageResponse.PagingResponse(
+                        packages.getNumber(),
+                        packages.getSize(),
+                        packages.getTotalElements(),
+                        packages.getTotalPages()
+                ))
+                .stats(ServicePackagePageResponse.ServicePackageStats.builder()
+                        .totalPackages(stats.getTotalPackages())
+                        .reportedPackages(stats.getReportedPackages())
+                        .hiddenPackages(stats.getHiddenPackages())
+                        .totalInteractions(stats.getTotalInteractions())
+                        .build())
+                .build();
+        
+        return ResponseEntity.ok(response);
     }
 }

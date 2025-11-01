@@ -86,4 +86,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
            "AND (:seerId IS NULL OR b.servicePackage.seer.id = :seerId) " +
            "ORDER BY b.reviewedAt DESC")
     Page<Booking> findReviewsByFilters(UUID packageId, UUID seerId, Pageable pageable);
+
+    // Admin statistics methods
+    long count();
+    
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.status = :status")
+    long countByStatus(Constants.BookingStatusEnum status);
 }

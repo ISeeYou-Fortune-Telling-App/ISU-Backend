@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.repository.servicepackage;
 
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
+import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -77,4 +78,11 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
             "JOIN sp.packageCategories pc " +
             "WHERE pc.knowledgeCategory.id IN :categoryIds")
     Page<ServicePackage> findByCategoryIds(@Param("categoryIds") List<UUID> categoryIds, Pageable pageable);
+
+    // Admin statistics methods
+    @Query("SELECT COUNT(sp) FROM ServicePackage sp WHERE sp.status = :status")
+    long countByStatus(Constants.PackageStatusEnum status);
+    
+    @Query("SELECT COUNT(DISTINCT r.targetId) FROM Report r WHERE r.targetType = :targetType")
+    long countPackagesWithReports(@Param("targetType") Constants.TargetReportTypeEnum targetType);
 }

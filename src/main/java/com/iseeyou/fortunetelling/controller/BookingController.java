@@ -7,10 +7,12 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingSeerConfirmRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingPageResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.service.booking.impl.BookingServiceImpl;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
@@ -122,7 +124,7 @@ public class BookingController extends AbstractBaseController {
             }
     )
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PageResponse<BookingResponse>> getAllBookings(
+    public ResponseEntity<BookingPageResponse> getAllBookings(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -143,8 +145,31 @@ public class BookingController extends AbstractBaseController {
             bookings = bookingService.getAllBookings(pageable);
         }
 
-        Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
-        return responseFactory.successPage(response, "All bookings retrieved successfully");
+        Page<BookingResponse> bookingResponses = bookingMapper.mapToPage(bookings, BookingResponse.class);
+        
+        // Get statistics
+        BookingServiceImpl.BookingStats stats = ((BookingServiceImpl) bookingService).getAllBookingsStats();
+        
+        // Create response with stats
+        BookingPageResponse response = BookingPageResponse.builder()
+                .statusCode(200)
+                .message("All bookings retrieved successfully")
+                .data(bookingResponses.getContent())
+                .paging(new PageResponse.PagingResponse(
+                        bookings.getNumber(),
+                        bookings.getSize(),
+                        bookings.getTotalElements(),
+                        bookings.getTotalPages()
+                ))
+                .stats(BookingPageResponse.BookingStats.builder()
+                        .totalBookings(stats.getTotalBookings())
+                        .completedBookings(stats.getCompletedBookings())
+                        .pendingBookings(stats.getPendingBookings())
+                        .canceledBookings(stats.getCanceledBookings())
+                        .build())
+                .build();
+        
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
