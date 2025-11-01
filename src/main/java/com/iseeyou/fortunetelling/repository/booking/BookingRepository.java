@@ -24,19 +24,34 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer","servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAllByCustomer(User customer, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     @Query("SELECT b FROM Booking b WHERE b.servicePackage.seer = :seer")
     Page<Booking> findAllBySeer(User seer, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAllByCustomerAndStatus(User customer, Constants.BookingStatusEnum status, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     @Query("SELECT b FROM Booking b WHERE b.servicePackage.seer = :seer AND b.status = :status")
     Page<Booking> findAllBySeerAndStatus(User seer, Constants.BookingStatusEnum status, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAllByStatus(Constants.BookingStatusEnum status, Pageable pageable);
+
+    // Find bookings where user is either customer or seer
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @Query("SELECT b FROM Booking b WHERE b.customer = :user OR b.servicePackage.seer = :user")
+    Page<Booking> findAllByUserAsCustomerOrSeer(User user, Pageable pageable);
+
+    // Find bookings where user is either customer or seer with status filter
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    @Query("SELECT b FROM Booking b WHERE (b.customer = :user OR b.servicePackage.seer = :user) AND b.status = :status")
+    Page<Booking> findAllByUserAsCustomerOrSeerAndStatus(User user, Constants.BookingStatusEnum status, Pageable pageable);
+
+    // Override findAll with EntityGraph to fetch lazy associations
+    @Override
+    @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
+    Page<Booking> findAll(Pageable pageable);
 
     // Thống kê booking cho seer
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.servicePackage.seer = :seer")

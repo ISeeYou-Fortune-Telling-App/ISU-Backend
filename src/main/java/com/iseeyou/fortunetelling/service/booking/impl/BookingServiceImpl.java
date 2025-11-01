@@ -46,26 +46,28 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     public Page<Booking> getBookingsByMe(Pageable pageable) {
         User currentUser = userService.getUser();
-        if (currentUser.getRole().equals(Constants.RoleEnum.CUSTOMER)) {
-            return bookingRepository.findAllByCustomer(currentUser, pageable);
-        } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            return bookingRepository.findAllBySeer(currentUser, pageable);
-        } else {
-            return bookingRepository.findAll(pageable);
-        }
+        // Get bookings where user is either customer or seer (for all roles including ADMIN)
+        return bookingRepository.findAllByUserAsCustomerOrSeer(currentUser, pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<Booking> getBookingsByMeAndStatus(Constants.BookingStatusEnum status, Pageable pageable) {
         User currentUser = userService.getUser();
-        if (currentUser.getRole().equals(Constants.RoleEnum.CUSTOMER)) {
-            return bookingRepository.findAllByCustomerAndStatus(currentUser, status, pageable);
-        } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            return bookingRepository.findAllBySeerAndStatus(currentUser, status, pageable);
-        } else {
-            return bookingRepository.findAllByStatus(status, pageable);
-        }
+        // Get bookings where user is either customer or seer with status filter (for all roles including ADMIN)
+        return bookingRepository.findAllByUserAsCustomerOrSeerAndStatus(currentUser, status, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getAllBookings(Pageable pageable) {
+        return bookingRepository.findAll(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getAllBookingsByStatus(Constants.BookingStatusEnum status, Pageable pageable) {
+        return bookingRepository.findAllByStatus(status, pageable);
     }
 
     @Override
