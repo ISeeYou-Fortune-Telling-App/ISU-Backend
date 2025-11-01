@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -182,14 +184,14 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Page<ConversationResponse> getMyChatSessions(Pageable pageable) {
         User currentUser = userService.getUser();
         Page<Conversation> conversations;
 
         if (currentUser.getRole().equals(Constants.RoleEnum.ADMIN)) {
             // Admin: get all admin conversations where admin is the creator
-            conversations = conversationRepository.findAdminConversationsByAdmin(currentUser.getId(), pageable);
+            conversations = conversationRepository.findAdminConversationsByAdmin(pageable);
             log.info("Admin {} retrieved {} admin conversations", currentUser.getId(), conversations.getTotalElements());
         } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
             // Seer: get ALL conversations (booking conversations + admin conversations as target)
@@ -202,6 +204,64 @@ public class ConversationServiceImpl implements ConversationService {
         }
 
         return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ConversationResponse> getAllChatSessionsWithFilters(Pageable pageable, String participantName, Constants.ConversationTypeEnum typeEnum, Constants.ConversationStatusEnum status) {
+        // Trim participantName to avoid issues with whitespace
+        String trimmedName = (participantName != null && !participantName.trim().isEmpty())
+                ? participantName.trim()
+                : null;
+
+        // Convert enums to strings for native query
+        String typeString = typeEnum != null ? typeEnum.name() : null;
+        String statusString = status != null ? status.name() : null;
+
+        Pageable convertedPageable = convertPageableToSnakeCase(pageable);
+
+        Page<Conversation> conversations = conversationRepository.findAllWithFilters(
+                trimmedName,
+                typeString,
+                statusString,
+                convertedPageable
+        );
+
+        log.info("Filtered conversations: participantName={}, type={}, status={}, totalResults={}",
+                trimmedName, typeEnum, status, conversations.getTotalElements());
+
+        return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
+    }
+
+    /**
+     * Convert Pageable sort field names from camelCase to snake_case for native SQL queries
+     */
+    private Pageable convertPageableToSnakeCase(Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) {
+            return pageable;
+        }
+
+        org.springframework.data.domain.Sort newSort = org.springframework.data.domain.Sort.by(
+                pageable.getSort().stream()
+                        .map(order -> new org.springframework.data.domain.Sort.Order(
+                                order.getDirection(),
+                                camelToSnakeCase(order.getProperty())
+                        ))
+                        .collect(java.util.stream.Collectors.toList())
+        );
+
+        return org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                newSort
+        );
+    }
+
+    /**
+     * Convert camelCase string to snake_case
+     */
+    private String camelToSnakeCase(String camelCase) {
+        return camelCase.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
     @Override
@@ -325,6 +385,38 @@ public class ConversationServiceImpl implements ConversationService {
 
         log.info("Session extended: conversation={}, additionalMinutes={}, newEndTime={}",
                 conversationId, additionalMinutes, newEndTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConversationStatisticResponse getConversationStatistics() {
+        ConversationStatisticResponse conversationStatisticResponse = new ConversationStatisticResponse();
+
+        int bookings = 0;
+        int supports = 0;
+        int admins = 0;
+        int actives = 0;
+        long totalMessages = messageRepository.count();
+
+        List<Conversation> conversations = conversationRepository.findAll();
+        for (Conversation conversation : conversations) {
+            switch (conversation.getType()) {
+                case ADMIN_CHAT ->  admins++;
+                case SUPPORT -> supports++;
+                case BOOKING_SESSION -> bookings++;
+            }
+            if (conversation.getStatus() == Constants.ConversationStatusEnum.ACTIVE) {
+                actives++;
+            }
+        }
+
+        conversationStatisticResponse.setSupportConversations(supports);
+        conversationStatisticResponse.setAdminConversations(admins);
+        conversationStatisticResponse.setBookingConversations(bookings);
+        conversationStatisticResponse.setTotalMessages(totalMessages);
+        conversationStatisticResponse.setTotalActives(actives);
+
+        return conversationStatisticResponse;
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {

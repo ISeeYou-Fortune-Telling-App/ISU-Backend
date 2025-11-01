@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.repository.chat;
 
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
@@ -79,10 +80,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     // Find all admin conversations for admin
     @Query("SELECT c FROM Conversation c WHERE " +
-            "c.type = 'ADMIN_CHAT' AND " +
-            "c.admin.id = :adminId")
+            "c.type = 'ADMIN_CHAT'")
     Page<Conversation> findAdminConversationsByAdmin(
-            @Param("adminId") UUID adminId,
             Pageable pageable
     );
 
@@ -115,6 +114,45 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :seerId)")
     Page<Conversation> findAllConversationsBySeer(
             @Param("seerId") UUID seerId,
+            Pageable pageable
+    );
+
+    Page<Conversation> findAllConversationsByTypeIsNot(Constants.ConversationTypeEnum type, Pageable pageable);
+
+    // Find conversations with filters (participant name can be seer or customer)
+    @Query(value = "SELECT c.* FROM conversation c " +
+            "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
+            "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
+            "LEFT JOIN service_package sp ON sp.package_id = b.service_package_id AND sp.deleted_at IS NULL " +
+            "LEFT JOIN \"user\" seer ON seer.user_id = sp.seer_id " +
+            "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
+            "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
+            "WHERE (:participantName IS NULL OR " +
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
+            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            countQuery = "SELECT COUNT(c.conversation_id) FROM conversation c " +
+            "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
+            "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
+            "LEFT JOIN service_package sp ON sp.package_id = b.service_package_id AND sp.deleted_at IS NULL " +
+            "LEFT JOIN \"user\" seer ON seer.user_id = sp.seer_id " +
+            "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
+            "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
+            "WHERE (:participantName IS NULL OR " +
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
+            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            nativeQuery = true)
+    Page<Conversation> findAllWithFilters(
+            @Param("participantName") String participantName,
+            @Param("type") String type,
+            @Param("status") String status,
             Pageable pageable
     );
 }

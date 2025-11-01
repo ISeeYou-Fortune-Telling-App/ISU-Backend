@@ -4,8 +4,12 @@ import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
 import com.iseeyou.fortunetelling.dto.request.chat.session.AdminCreateConversationRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.AdminMessageStatisticResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
+import com.iseeyou.fortunetelling.service.chat.MessageService;
+import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -16,9 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -30,6 +34,7 @@ import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 public class AdminConversationController extends AbstractBaseController {
 
     private final ConversationService conversationService;
+    private final MessageService messageService;
 
     @PostMapping
     @Operation(
@@ -50,45 +55,82 @@ public class AdminConversationController extends AbstractBaseController {
         return responseFactory.successSingle(conversation, "Admin conversation created successfully");
     }
 
-    @GetMapping
+    @GetMapping("/search")
     @Operation(
-            summary = "Get all admin conversations",
-            description = "Get paginated list of all admin conversations",
+            summary = "Search all conversations with filters",
+            description = "Admin can search conversations by participant name (customer or seer), type, and status",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<PageResponse<ConversationResponse>> getMyAdminConversations(
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
-    ) {
-        log.info("Admin getting all conversations");
+    public ResponseEntity<PageResponse<ConversationResponse>> getAllChatSessionsWithFilters(
+            @Parameter(description = "Page number (1-indexed)") @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort by field") @RequestParam(defaultValue = "sessionStartTime") String sortBy,
+            @Parameter(description = "Participant name (customer or seer) - partial match") @RequestParam(required = false) String participantName,
+            @Parameter(description = "Conversation type (BOOKING_SESSION or ADMIN_CHAT)") @RequestParam(required = false) String type,
+            @Parameter(description = "Conversation status") @RequestParam(required = false) String status) {
 
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ConversationResponse> conversations = conversationService.getMyChatSessions(pageable);
+        log.info("Admin searching conversations: participantName={}, type={}, status={}",
+                participantName, type, status);
+
+        Pageable pageable = createPageable(page, size, sortType, sortBy);
+
+        // Parse enum values
+        Constants.ConversationTypeEnum typeEnum = null;
+        if (type != null && !type.trim().isEmpty()) {
+            try {
+                typeEnum = Constants.ConversationTypeEnum.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid conversation type: {}", type);
+            }
+        }
+
+        Constants.ConversationStatusEnum statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = Constants.ConversationStatusEnum.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid conversation status: {}", status);
+            }
+        }
+
+        Page<ConversationResponse> conversations = conversationService.getAllChatSessionsWithFilters(
+                pageable,
+                participantName,
+                typeEnum,
+                statusEnum
+        );
 
         return responseFactory.successPage(conversations, "Conversations retrieved successfully");
     }
 
-    @GetMapping("/{conversationId}")
+    @GetMapping("/statistics")
     @Operation(
-            summary = "Get admin conversation by ID",
-            description = "Get detailed information of a specific admin conversation",
+            summary = "Get conversation statistics",
+            description = "Admin can view statistics about conversations including booking, admin, and support conversations",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<SingleResponse<ConversationResponse>> getAdminConversation(
-            @Parameter(description = "Conversation ID")
-            @PathVariable UUID conversationId) {
+    public ResponseEntity<SingleResponse<ConversationStatisticResponse>> getConversationStatistics() {
+        log.info("Admin retrieving conversation statistics");
 
-        log.info("Admin getting conversation: {}", conversationId);
+        ConversationStatisticResponse statistics = conversationService.getConversationStatistics();
 
-        ConversationResponse conversation = conversationService.getConversation(conversationId);
-
-        return responseFactory.successSingle(conversation, "Conversation retrieved successfully");
+        return responseFactory.successSingle(statistics, "Conversation statistics retrieved successfully");
     }
+
+    @GetMapping("/messages/statistics")
+    @Operation(
+            summary = "Get message statistics",
+            description = "Admin can view statistics about messages including total sent, read percentage, and user activity",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<AdminMessageStatisticResponse>> getMessageStatistics() {
+        log.info("Admin retrieving message statistics");
+
+        AdminMessageStatisticResponse statistics = messageService.getMessageStatistics();
+
+        return responseFactory.successSingle(statistics, "Message statistics retrieved successfully");
+    }
+
 }
 

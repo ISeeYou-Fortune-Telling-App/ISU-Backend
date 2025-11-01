@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.repository.chat;
 
 import com.iseeyou.fortunetelling.entity.chat.Message;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,4 +23,8 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     Page<Message> findVisibleMessages(@Param("conversationId") UUID conversationId,
                                        @Param("excludeRole") Constants.RoleEnum excludeRole,
                                        Pageable pageable);
+
+    long countAllBySender(User sender);
+
+    long countAllBySenderAndStatus(User sender, Constants.MessageStatusEnum status);
 }
