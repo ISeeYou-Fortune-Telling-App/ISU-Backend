@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat;
 
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,6 +16,13 @@ public interface ConversationService {
     ConversationResponse getConversation(UUID conversationId);
     ConversationResponse getChatSessionByBookingId(UUID bookingId);
     Page<ConversationResponse> getMyChatSessions(Pageable pageable);
+    Page<ConversationResponse> getAllChatSessionsWithFilters(
+            Pageable pageable,
+            String participantName,
+            Constants.ConversationTypeEnum typeEnum,
+            Constants.ConversationStatusEnum status
+    );
+
     void endChatSession(UUID conversationId);
 
     // Auto-cancel late sessions

@@ -182,14 +182,14 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Page<ConversationResponse> getMyChatSessions(Pageable pageable) {
         User currentUser = userService.getUser();
         Page<Conversation> conversations;
 
         if (currentUser.getRole().equals(Constants.RoleEnum.ADMIN)) {
             // Admin: get all admin conversations where admin is the creator
-            conversations = conversationRepository.findAdminConversationsByAdmin(currentUser.getId(), pageable);
+            conversations = conversationRepository.findAdminConversationsByAdmin(pageable);
             log.info("Admin {} retrieved {} admin conversations", currentUser.getId(), conversations.getTotalElements());
         } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
             // Seer: get ALL conversations (booking conversations + admin conversations as target)
@@ -200,6 +200,27 @@ public class ConversationServiceImpl implements ConversationService {
             conversations = conversationRepository.findAllConversationsByCustomer(currentUser.getId(), pageable);
             log.info("Customer {} retrieved {} total conversations", currentUser.getId(), conversations.getTotalElements());
         }
+
+        return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ConversationResponse> getAllChatSessionsWithFilters(Pageable pageable, String participantName, Constants.ConversationTypeEnum typeEnum, Constants.ConversationStatusEnum status) {
+        // Trim participantName to avoid issues with whitespace
+        String trimmedName = (participantName != null && !participantName.trim().isEmpty())
+                ? participantName.trim()
+                : null;
+
+        Page<Conversation> conversations = conversationRepository.findAllWithFilters(
+                trimmedName,
+                typeEnum,
+                status,
+                pageable
+        );
+
+        log.info("Filtered conversations: participantName={}, type={}, status={}, totalResults={}",
+                trimmedName, typeEnum, status, conversations.getTotalElements());
 
         return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
     }

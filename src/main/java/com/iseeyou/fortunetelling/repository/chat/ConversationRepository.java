@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.repository.chat;
 
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
@@ -79,10 +80,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     // Find all admin conversations for admin
     @Query("SELECT c FROM Conversation c WHERE " +
-            "c.type = 'ADMIN_CHAT' AND " +
-            "c.admin.id = :adminId")
+            "c.type = 'ADMIN_CHAT'")
     Page<Conversation> findAdminConversationsByAdmin(
-            @Param("adminId") UUID adminId,
             Pageable pageable
     );
 
@@ -115,6 +114,29 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :seerId)")
     Page<Conversation> findAllConversationsBySeer(
             @Param("seerId") UUID seerId,
+            Pageable pageable
+    );
+
+    Page<Conversation> findAllConversationsByTypeIsNot(Constants.ConversationTypeEnum type, Pageable pageable);
+
+    // Find conversations with filters (participant name can be seer or customer)
+    @Query("SELECT c FROM Conversation c " +
+            "LEFT JOIN c.booking b " +
+            "LEFT JOIN b.customer customer " +
+            "LEFT JOIN b.servicePackage sp " +
+            "LEFT JOIN sp.seer seer " +
+            "LEFT JOIN c.admin admin " +
+            "LEFT JOIN c.targetUser targetUser " +
+            "WHERE (:participantName IS NULL OR " +
+            "LOWER(customer.fullName) LIKE LOWER(CONCAT('%', :participantName, '%')) OR " +
+            "LOWER(seer.fullName) LIKE LOWER(CONCAT('%', :participantName, '%')) OR " +
+            "LOWER(targetUser.fullName) LIKE LOWER(CONCAT('%', :participantName, '%'))) " +
+            "AND (:type IS NULL OR c.type = :type) " +
+            "AND (:status IS NULL OR c.status = :status)")
+    Page<Conversation> findAllWithFilters(
+            @Param("participantName") String participantName,
+            @Param("type") Constants.ConversationTypeEnum type,
+            @Param("status") Constants.ConversationStatusEnum status,
             Pageable pageable
     );
 }

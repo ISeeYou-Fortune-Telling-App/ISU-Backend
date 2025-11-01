@@ -6,6 +6,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
+import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -50,45 +51,54 @@ public class AdminConversationController extends AbstractBaseController {
         return responseFactory.successSingle(conversation, "Admin conversation created successfully");
     }
 
-    @GetMapping
+    @GetMapping("/search")
     @Operation(
-            summary = "Get all admin conversations",
-            description = "Get paginated list of all admin conversations",
+            summary = "Search all conversations with filters",
+            description = "Admin can search conversations by participant name (customer or seer), type, and status",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    public ResponseEntity<PageResponse<ConversationResponse>> getMyAdminConversations(
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "Sort direction")
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
-    ) {
-        log.info("Admin getting all conversations");
+    public ResponseEntity<PageResponse<ConversationResponse>> getAllChatSessionsWithFilters(
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort by field") @RequestParam(defaultValue = "sessionStartTime") String sortBy,
+            @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "desc") String sortDirection,
+            @Parameter(description = "Participant name (customer or seer) - partial match") @RequestParam(required = false) String participantName,
+            @Parameter(description = "Conversation type (BOOKING_SESSION or ADMIN_CHAT)") @RequestParam(required = false) String type,
+            @Parameter(description = "Conversation status") @RequestParam(required = false) String status) {
 
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<ConversationResponse> conversations = conversationService.getMyChatSessions(pageable);
+        log.info("Admin searching conversations: participantName={}, type={}, status={}",
+                participantName, type, status);
+
+        Pageable pageable = createPageable(page, size, sortBy, sortDirection);
+
+        // Parse enum values
+        Constants.ConversationTypeEnum typeEnum = null;
+        if (type != null && !type.trim().isEmpty()) {
+            try {
+                typeEnum = Constants.ConversationTypeEnum.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid conversation type: {}", type);
+            }
+        }
+
+        Constants.ConversationStatusEnum statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = Constants.ConversationStatusEnum.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid conversation status: {}", status);
+            }
+        }
+
+        Page<ConversationResponse> conversations = conversationService.getAllChatSessionsWithFilters(
+                pageable,
+                participantName,
+                typeEnum,
+                statusEnum
+        );
 
         return responseFactory.successPage(conversations, "Conversations retrieved successfully");
     }
 
-    @GetMapping("/{conversationId}")
-    @Operation(
-            summary = "Get admin conversation by ID",
-            description = "Get detailed information of a specific admin conversation",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
-    )
-    public ResponseEntity<SingleResponse<ConversationResponse>> getAdminConversation(
-            @Parameter(description = "Conversation ID")
-            @PathVariable UUID conversationId) {
-
-        log.info("Admin getting conversation: {}", conversationId);
-
-        ConversationResponse conversation = conversationService.getConversation(conversationId);
-
-        return responseFactory.successSingle(conversation, "Conversation retrieved successfully");
-    }
 }
 
