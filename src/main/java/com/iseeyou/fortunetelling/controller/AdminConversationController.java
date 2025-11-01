@@ -17,9 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -58,10 +58,10 @@ public class AdminConversationController extends AbstractBaseController {
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
     public ResponseEntity<PageResponse<ConversationResponse>> getAllChatSessionsWithFilters(
-            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page number (1-indexed)") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort by field") @RequestParam(defaultValue = "sessionStartTime") String sortBy,
-            @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "desc") String sortDirection,
             @Parameter(description = "Participant name (customer or seer) - partial match") @RequestParam(required = false) String participantName,
             @Parameter(description = "Conversation type (BOOKING_SESSION or ADMIN_CHAT)") @RequestParam(required = false) String type,
             @Parameter(description = "Conversation status") @RequestParam(required = false) String status) {
@@ -69,7 +69,7 @@ public class AdminConversationController extends AbstractBaseController {
         log.info("Admin searching conversations: participantName={}, type={}, status={}",
                 participantName, type, status);
 
-        Pageable pageable = createPageable(page, size, sortBy, sortDirection);
+        Pageable pageable = createPageable(page, size, sortType, sortBy);
 
         // Parse enum values
         Constants.ConversationTypeEnum typeEnum = null;

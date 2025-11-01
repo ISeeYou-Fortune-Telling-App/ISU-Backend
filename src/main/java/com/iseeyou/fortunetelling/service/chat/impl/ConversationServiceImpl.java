@@ -212,17 +212,54 @@ public class ConversationServiceImpl implements ConversationService {
                 ? participantName.trim()
                 : null;
 
+        // Convert enums to strings for native query
+        String typeString = typeEnum != null ? typeEnum.name() : null;
+        String statusString = status != null ? status.name() : null;
+
+        Pageable convertedPageable = convertPageableToSnakeCase(pageable);
+
         Page<Conversation> conversations = conversationRepository.findAllWithFilters(
                 trimmedName,
-                typeEnum,
-                status,
-                pageable
+                typeString,
+                statusString,
+                convertedPageable
         );
 
         log.info("Filtered conversations: participantName={}, type={}, status={}, totalResults={}",
                 trimmedName, typeEnum, status, conversations.getTotalElements());
 
         return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
+    }
+
+    /**
+     * Convert Pageable sort field names from camelCase to snake_case for native SQL queries
+     */
+    private Pageable convertPageableToSnakeCase(Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) {
+            return pageable;
+        }
+
+        org.springframework.data.domain.Sort newSort = org.springframework.data.domain.Sort.by(
+                pageable.getSort().stream()
+                        .map(order -> new org.springframework.data.domain.Sort.Order(
+                                order.getDirection(),
+                                camelToSnakeCase(order.getProperty())
+                        ))
+                        .collect(java.util.stream.Collectors.toList())
+        );
+
+        return org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                newSort
+        );
+    }
+
+    /**
+     * Convert camelCase string to snake_case
+     */
+    private String camelToSnakeCase(String camelCase) {
+        return camelCase.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
     @Override

@@ -120,23 +120,39 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Page<Conversation> findAllConversationsByTypeIsNot(Constants.ConversationTypeEnum type, Pageable pageable);
 
     // Find conversations with filters (participant name can be seer or customer)
-    @Query("SELECT c FROM Conversation c " +
-            "LEFT JOIN c.booking b " +
-            "LEFT JOIN b.customer customer " +
-            "LEFT JOIN b.servicePackage sp " +
-            "LEFT JOIN sp.seer seer " +
-            "LEFT JOIN c.admin admin " +
-            "LEFT JOIN c.targetUser targetUser " +
+    @Query(value = "SELECT c.* FROM conversation c " +
+            "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
+            "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
+            "LEFT JOIN service_package sp ON sp.package_id = b.service_package_id AND sp.deleted_at IS NULL " +
+            "LEFT JOIN \"user\" seer ON seer.user_id = sp.seer_id " +
+            "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
+            "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
             "WHERE (:participantName IS NULL OR " +
-            "LOWER(customer.fullName) LIKE LOWER(CONCAT('%', :participantName, '%')) OR " +
-            "LOWER(seer.fullName) LIKE LOWER(CONCAT('%', :participantName, '%')) OR " +
-            "LOWER(targetUser.fullName) LIKE LOWER(CONCAT('%', :participantName, '%'))) " +
-            "AND (:type IS NULL OR c.type = :type) " +
-            "AND (:status IS NULL OR c.status = :status)")
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
+            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            countQuery = "SELECT COUNT(c.conversation_id) FROM conversation c " +
+            "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
+            "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
+            "LEFT JOIN service_package sp ON sp.package_id = b.service_package_id AND sp.deleted_at IS NULL " +
+            "LEFT JOIN \"user\" seer ON seer.user_id = sp.seer_id " +
+            "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
+            "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
+            "WHERE (:participantName IS NULL OR " +
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
+            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            nativeQuery = true)
     Page<Conversation> findAllWithFilters(
             @Param("participantName") String participantName,
-            @Param("type") Constants.ConversationTypeEnum type,
-            @Param("status") Constants.ConversationStatusEnum status,
+            @Param("type") String type,
+            @Param("status") String status,
             Pageable pageable
     );
 }
