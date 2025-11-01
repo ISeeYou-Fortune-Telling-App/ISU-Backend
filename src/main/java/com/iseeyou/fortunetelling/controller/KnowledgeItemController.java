@@ -69,7 +69,7 @@ public class KnowledgeItemController extends AbstractBaseController {
                     )
             }
     )
-    public ResponseEntity<KnowledgeItemPageResponse> getAllKnowledgeItems(
+    public ResponseEntity<PageResponse<KnowledgeItemResponse>> getAllKnowledgeItems(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -81,32 +81,45 @@ public class KnowledgeItemController extends AbstractBaseController {
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<KnowledgeItem> knowledgeItems = knowledgeItemService.findAll(pageable);
-        Page<KnowledgeItemResponse> itemResponses = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
-        
-        // Get statistics
+        Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
+        return responseFactory.successPage(response, "Knowledge items retrieved successfully");
+    }
+
+    @GetMapping("/stat")
+    @Operation(
+            summary = "Get knowledge item statistics",
+            description = "Get knowledge item statistics (published, draft, hidden, total view count)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<KnowledgeItemPageResponse.KnowledgeItemStats>> getKnowledgeItemStats() {
         KnowledgeItemServiceImpl.KnowledgeItemStats stats = 
                 ((KnowledgeItemServiceImpl) knowledgeItemService).getAllItemsStats();
-        
-        // Create response with stats
-        KnowledgeItemPageResponse response = KnowledgeItemPageResponse.builder()
-                .statusCode(200)
-                .message("Knowledge items retrieved successfully")
-                .data(itemResponses.getContent())
-                .paging(new PageResponse.PagingResponse(
-                        knowledgeItems.getNumber(),
-                        knowledgeItems.getSize(),
-                        knowledgeItems.getTotalElements(),
-                        knowledgeItems.getTotalPages()
-                ))
-                .stats(KnowledgeItemPageResponse.KnowledgeItemStats.builder()
+        KnowledgeItemPageResponse.KnowledgeItemStats statsResponse = 
+                KnowledgeItemPageResponse.KnowledgeItemStats.builder()
                         .publishedItems(stats.getPublishedItems())
                         .draftItems(stats.getDraftItems())
                         .hiddenItems(stats.getHiddenItems())
                         .totalViewCount(stats.getTotalViewCount())
-                        .build())
-                .build();
-        
-        return ResponseEntity.ok(response);
+                        .build();
+        return responseFactory.successSingle(statsResponse, "Knowledge item statistics retrieved successfully");
     }
 
     @GetMapping("/{id}")

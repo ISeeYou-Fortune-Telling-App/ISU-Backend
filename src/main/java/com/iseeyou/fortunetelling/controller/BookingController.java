@@ -124,7 +124,7 @@ public class BookingController extends AbstractBaseController {
             }
     )
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<BookingPageResponse> getAllBookings(
+    public ResponseEntity<PageResponse<BookingResponse>> getAllBookings(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -145,31 +145,44 @@ public class BookingController extends AbstractBaseController {
             bookings = bookingService.getAllBookings(pageable);
         }
 
-        Page<BookingResponse> bookingResponses = bookingMapper.mapToPage(bookings, BookingResponse.class);
-        
-        // Get statistics
+        Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
+        return responseFactory.successPage(response, "All bookings retrieved successfully");
+    }
+
+    @GetMapping("/stat")
+    @Operation(
+            summary = "Admin: Get booking statistics",
+            description = "Admin endpoint to get booking statistics (total, completed, pending, canceled)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<BookingPageResponse.BookingStats>> getBookingStats() {
         BookingServiceImpl.BookingStats stats = ((BookingServiceImpl) bookingService).getAllBookingsStats();
-        
-        // Create response with stats
-        BookingPageResponse response = BookingPageResponse.builder()
-                .statusCode(200)
-                .message("All bookings retrieved successfully")
-                .data(bookingResponses.getContent())
-                .paging(new PageResponse.PagingResponse(
-                        bookings.getNumber(),
-                        bookings.getSize(),
-                        bookings.getTotalElements(),
-                        bookings.getTotalPages()
-                ))
-                .stats(BookingPageResponse.BookingStats.builder()
-                        .totalBookings(stats.getTotalBookings())
-                        .completedBookings(stats.getCompletedBookings())
-                        .pendingBookings(stats.getPendingBookings())
-                        .canceledBookings(stats.getCanceledBookings())
-                        .build())
+        BookingPageResponse.BookingStats statsResponse = BookingPageResponse.BookingStats.builder()
+                .totalBookings(stats.getTotalBookings())
+                .completedBookings(stats.getCompletedBookings())
+                .pendingBookings(stats.getPendingBookings())
+                .canceledBookings(stats.getCanceledBookings())
                 .build();
-        
-        return ResponseEntity.ok(response);
+        return responseFactory.successSingle(statsResponse, "Booking statistics retrieved successfully");
     }
 
     @GetMapping("/{id}")

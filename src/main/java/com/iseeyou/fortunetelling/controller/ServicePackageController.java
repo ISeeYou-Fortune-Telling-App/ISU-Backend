@@ -596,8 +596,8 @@ public class ServicePackageController extends AbstractBaseController {
 
     @GetMapping("/admin")
     @Operation(
-            summary = "Admin: Get all service packages with statistics",
-            description = "Admin endpoint to retrieve all service packages with filters and statistics. Similar to /public/service-packages but includes stats.",
+            summary = "Admin: Get all service packages",
+            description = "Admin endpoint to retrieve all service packages with filters. Similar to /public/service-packages.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -605,7 +605,7 @@ public class ServicePackageController extends AbstractBaseController {
                             description = "Service packages retrieved successfully",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ServicePackagePageResponse.class)
+                                    schema = @Schema(implementation = PageResponse.class)
                             )
                     ),
                     @ApiResponse(
@@ -619,7 +619,7 @@ public class ServicePackageController extends AbstractBaseController {
             }
     )
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<ServicePackagePageResponse> getAllServicePackagesAdmin(
+    public ResponseEntity<PageResponse<ServicePackageResponse>> getAllServicePackagesAdmin(
             @Parameter(description = "Page number (1-based)")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "Page size")
@@ -645,7 +645,7 @@ public class ServicePackageController extends AbstractBaseController {
             @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
             @RequestParam(required = false) String status
     ) {
-        log.info("Admin fetching all service packages with stats");
+        log.info("Admin fetching all service packages");
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Constants.PackageStatusEnum statusEnum = null;
         if (status != null && !status.isBlank()) {
@@ -662,29 +662,44 @@ public class ServicePackageController extends AbstractBaseController {
                 statusEnum
         );
         
-        // Get statistics
+        return responseFactory.successPage(packages, "Service packages retrieved successfully");
+    }
+
+    @GetMapping("/stat")
+    @Operation(
+            summary = "Admin: Get service package statistics",
+            description = "Admin endpoint to get service package statistics (total, reported, hidden, total interactions)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<ServicePackagePageResponse.ServicePackageStats>> getServicePackageStats() {
         ServicePackageServiceImpl.ServicePackageStats stats = 
                 ((ServicePackageServiceImpl) servicePackageService).getAllPackagesStats();
-        
-        // Create response with stats
-        ServicePackagePageResponse response = ServicePackagePageResponse.builder()
-                .statusCode(200)
-                .message("Service packages retrieved successfully")
-                .data(packages.getContent())
-                .paging(new PageResponse.PagingResponse(
-                        packages.getNumber(),
-                        packages.getSize(),
-                        packages.getTotalElements(),
-                        packages.getTotalPages()
-                ))
-                .stats(ServicePackagePageResponse.ServicePackageStats.builder()
+        ServicePackagePageResponse.ServicePackageStats statsResponse = 
+                ServicePackagePageResponse.ServicePackageStats.builder()
                         .totalPackages(stats.getTotalPackages())
                         .reportedPackages(stats.getReportedPackages())
                         .hiddenPackages(stats.getHiddenPackages())
                         .totalInteractions(stats.getTotalInteractions())
-                        .build())
-                .build();
-        
-        return ResponseEntity.ok(response);
+                        .build();
+        return responseFactory.successSingle(statsResponse, "Service package statistics retrieved successfully");
     }
 }
