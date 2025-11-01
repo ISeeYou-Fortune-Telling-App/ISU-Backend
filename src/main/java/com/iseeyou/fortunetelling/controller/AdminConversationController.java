@@ -5,6 +5,7 @@ import com.iseeyou.fortunetelling.dto.request.chat.session.AdminCreateConversati
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
@@ -98,6 +99,20 @@ public class AdminConversationController extends AbstractBaseController {
         );
 
         return responseFactory.successPage(conversations, "Conversations retrieved successfully");
+    }
+
+    @GetMapping("/statistics")
+    @Operation(
+            summary = "Get conversation statistics",
+            description = "Admin can view statistics about conversations including booking, admin, and support conversations",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
+    )
+    public ResponseEntity<SingleResponse<ConversationStatisticResponse>> getConversationStatistics() {
+        log.info("Admin retrieving conversation statistics");
+
+        ConversationStatisticResponse statistics = conversationService.getConversationStatistics();
+
+        return responseFactory.successSingle(statistics, "Conversation statistics retrieved successfully");
     }
 
 }

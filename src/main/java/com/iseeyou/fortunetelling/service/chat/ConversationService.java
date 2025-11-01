@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat;
 
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,4 +38,6 @@ public interface ConversationService {
 
     // Extend session
     void extendSession(UUID conversationId, Integer additionalMinutes);
+
+    ConversationStatisticResponse getConversationStatistics();
 }

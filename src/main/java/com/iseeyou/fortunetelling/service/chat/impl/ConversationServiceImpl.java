@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.service.chat.impl;
 
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
+import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationStatisticResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.chat.Message;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -383,6 +385,38 @@ public class ConversationServiceImpl implements ConversationService {
 
         log.info("Session extended: conversation={}, additionalMinutes={}, newEndTime={}",
                 conversationId, additionalMinutes, newEndTime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ConversationStatisticResponse getConversationStatistics() {
+        ConversationStatisticResponse conversationStatisticResponse = new ConversationStatisticResponse();
+
+        int bookings = 0;
+        int supports = 0;
+        int admins = 0;
+        int actives = 0;
+        long totalMessages = messageRepository.count();
+
+        List<Conversation> conversations = conversationRepository.findAll();
+        for (Conversation conversation : conversations) {
+            switch (conversation.getType()) {
+                case ADMIN_CHAT ->  admins++;
+                case SUPPORT -> supports++;
+                case BOOKING_SESSION -> bookings++;
+            }
+            if (conversation.getStatus() == Constants.ConversationStatusEnum.ACTIVE) {
+                actives++;
+            }
+        }
+
+        conversationStatisticResponse.setSupportConversations(supports);
+        conversationStatisticResponse.setAdminConversations(admins);
+        conversationStatisticResponse.setBookingConversations(bookings);
+        conversationStatisticResponse.setTotalMessages(totalMessages);
+        conversationStatisticResponse.setTotalActives(actives);
+
+        return conversationStatisticResponse;
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {
