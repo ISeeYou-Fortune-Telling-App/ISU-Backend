@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -67,38 +66,19 @@ public class AdminConversationController extends AbstractBaseController {
             @Parameter(description = "Sort direction (asc/desc)") @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort by field") @RequestParam(defaultValue = "sessionStartTime") String sortBy,
             @Parameter(description = "Participant name (customer or seer) - partial match") @RequestParam(required = false) String participantName,
-            @Parameter(description = "Conversation type (BOOKING_SESSION or ADMIN_CHAT)") @RequestParam(required = false) String type,
-            @Parameter(description = "Conversation status") @RequestParam(required = false) String status) {
+            @Parameter(description = "Conversation type (BOOKING_SESSION or ADMIN_CHAT)") @RequestParam(required = false) Constants.ConversationTypeEnum type,
+            @Parameter(description = "Conversation status") @RequestParam(required = false) Constants.ConversationStatusEnum status) {
 
         log.info("Admin searching conversations: participantName={}, type={}, status={}",
                 participantName, type, status);
 
         Pageable pageable = createPageable(page, size, sortType, sortBy);
 
-        // Parse enum values
-        Constants.ConversationTypeEnum typeEnum = null;
-        if (type != null && !type.trim().isEmpty()) {
-            try {
-                typeEnum = Constants.ConversationTypeEnum.valueOf(type.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid conversation type: {}", type);
-            }
-        }
-
-        Constants.ConversationStatusEnum statusEnum = null;
-        if (status != null && !status.trim().isEmpty()) {
-            try {
-                statusEnum = Constants.ConversationStatusEnum.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid conversation status: {}", status);
-            }
-        }
-
         Page<ConversationResponse> conversations = conversationService.getAllChatSessionsWithFilters(
                 pageable,
                 participantName,
-                typeEnum,
-                statusEnum
+                type,
+                status
         );
 
         return responseFactory.successPage(conversations, "Conversations retrieved successfully");

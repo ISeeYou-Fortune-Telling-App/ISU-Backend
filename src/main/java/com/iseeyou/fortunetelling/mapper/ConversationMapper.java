@@ -36,14 +36,13 @@ public class ConversationMapper extends BaseMapper{
 
                     // Map conversation ID
                     destination.setConversationId(source.getId());
+                    destination.setConversationType(source.getType());
 
                     // For ADMIN_CHAT: map admin and target user
                     if (source.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
                         // Admin info
                         if (source.getAdmin() != null) {
-                            destination.setSeerId(source.getAdmin().getId());
-                            destination.setSeerName(source.getAdmin().getFullName());
-                            destination.setSeerAvatarUrl(source.getAdmin().getAvatarUrl());
+                            ///  Don't do anything
                         }
 
                         // Target user info (customer or seer role)
@@ -54,10 +53,9 @@ public class ConversationMapper extends BaseMapper{
                                 destination.setCustomerName(targetUser.getFullName());
                                 destination.setCustomerAvatarUrl(targetUser.getAvatarUrl());
                             } else {
-                                // Target is seer, put in customer fields (admin already in seer fields)
-                                destination.setCustomerId(targetUser.getId());
-                                destination.setCustomerName(targetUser.getFullName());
-                                destination.setCustomerAvatarUrl(targetUser.getAvatarUrl());
+                                destination.setSeerId(targetUser.getId());
+                                destination.setSeerName(targetUser.getFullName());
+                                destination.setSeerAvatarUrl(targetUser.getAvatarUrl());
                             }
                         }
                     } else {

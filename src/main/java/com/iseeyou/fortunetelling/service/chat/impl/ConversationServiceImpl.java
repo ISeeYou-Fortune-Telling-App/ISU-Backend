@@ -218,6 +218,7 @@ public class ConversationServiceImpl implements ConversationService {
         String typeString = typeEnum != null ? typeEnum.name() : null;
         String statusString = status != null ? status.name() : null;
 
+        // Convert pageable for snake_case columns in native query
         Pageable convertedPageable = convertPageableToSnakeCase(pageable);
 
         Page<Conversation> conversations = conversationRepository.findAllWithFilters(
@@ -263,6 +264,7 @@ public class ConversationServiceImpl implements ConversationService {
     private String camelToSnakeCase(String camelCase) {
         return camelCase.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
+
 
     @Override
     @Transactional
@@ -417,6 +419,35 @@ public class ConversationServiceImpl implements ConversationService {
         conversationStatisticResponse.setTotalActives(actives);
 
         return conversationStatisticResponse;
+    }
+
+    @Override
+    @Transactional
+    public int fixAdminChatConversations() {
+        log.info("Starting to fix ADMIN_CHAT conversations...");
+
+        // Find all ADMIN_CHAT conversations that are not ACTIVE
+        List<Conversation> adminChats = conversationRepository.findAll().stream()
+                .filter(c -> c.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT)
+                .filter(c -> c.getStatus() != Constants.ConversationStatusEnum.ACTIVE)
+                .toList();
+
+        log.info("Found {} ADMIN_CHAT conversations with incorrect status", adminChats.size());
+
+        int fixed = 0;
+        for (Conversation conversation : adminChats) {
+            log.info("Fixing conversation ID: {} from status {} to ACTIVE",
+                    conversation.getId(), conversation.getStatus());
+
+            conversation.setStatus(Constants.ConversationStatusEnum.ACTIVE);
+            conversation.setSessionEndTime(null);  // ADMIN_CHAT should not have end time
+            conversation.setCanceledBy(null);  // Clear canceled by field
+            conversationRepository.save(conversation);
+            fixed++;
+        }
+
+        log.info("Fixed {} ADMIN_CHAT conversations", fixed);
+        return fixed;
     }
 
     private Message createInitiationMessage(Conversation conversation, Booking booking) {

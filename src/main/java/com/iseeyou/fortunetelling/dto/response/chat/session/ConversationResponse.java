@@ -13,6 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ConversationResponse extends AbstractBaseDataResponse {
     private UUID conversationId;
+    private Constants.ConversationTypeEnum conversationType;
 
     // Seer info
     private UUID seerId;
