@@ -22,6 +22,7 @@ import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.security.JwtUserDetails;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
+import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.email.EmailVerificationService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.user.UserService;
@@ -58,6 +59,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final MessageSourceService messageSourceService;
     private final CloudinaryService cloudinaryService;
+    private final ConversationService conversationService;
     private final CertificateService certificateService;
     private final EmailVerificationService emailVerificationService;
     private final BookingRepository bookingRepository;
@@ -69,6 +71,7 @@ public class UserServiceImpl implements UserService {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             MessageSourceService messageSourceService,
+            ConversationService conversationService,
             CloudinaryService cloudinaryService,
             @Lazy CertificateService certificateService,
             EmailVerificationService emailVerificationService,
@@ -80,6 +83,7 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
         this.cloudinaryService = cloudinaryService;
+        this.conversationService = conversationService;
         this.certificateService = certificateService;
         this.emailVerificationService = emailVerificationService;
         this.bookingRepository = bookingRepository;
@@ -253,6 +257,9 @@ public class UserServiceImpl implements UserService {
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("User registered and verification email sent to: {}", request.getEmail());
 
+        // Tạo admin conversation
+        conversationService.createAdminConversation(user.getId(), "Chào mừng bạn đến hệ thống I See You");
+
         return user;
     }
 
@@ -326,6 +333,9 @@ public class UserServiceImpl implements UserService {
         // Gửi OTP xác thực email
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("Seer registered and verification email sent to: {}", request.getEmail());
+
+        // Tạo admin conversation
+        conversationService.createAdminConversation(user.getId(), "Chào mừng bạn đến hệ thống I See You");
 
         return user;
     }
