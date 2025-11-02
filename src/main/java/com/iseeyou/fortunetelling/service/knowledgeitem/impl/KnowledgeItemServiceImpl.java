@@ -11,6 +11,7 @@ import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategorySer
 import com.iseeyou.fortunetelling.service.knowledgeitem.KnowledgeItemService;
 import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class KnowledgeItemServiceImpl implements KnowledgeItemService {
 
     private final ItemCategoryRepository itemCategoryRepository;
@@ -174,7 +176,15 @@ public class KnowledgeItemServiceImpl implements KnowledgeItemService {
     public Page<KnowledgeItem> search(String title, List<UUID> categoryIds, Constants.KnowledgeItemStatusEnum status, Pageable pageable) {
         // Convert empty list to null to avoid empty IN clause
         List<UUID> effectiveCategoryIds = (categoryIds != null && categoryIds.isEmpty()) ? null : categoryIds;
-        return knowledgeItemRepository.search(title, effectiveCategoryIds, status, pageable);
+        // Normalize title: if null or empty, pass null to query (which will match all)
+        String effectiveTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
+        
+        // If no filters are provided, use findAll() instead of search() to avoid LEFT JOIN issues
+        if (effectiveTitle == null && effectiveCategoryIds == null && status == null) {
+            return knowledgeItemRepository.findAll(pageable);
+        }
+        
+        return knowledgeItemRepository.search(effectiveTitle, effectiveCategoryIds, status, pageable);
     }
 
     @Transactional(readOnly = true)

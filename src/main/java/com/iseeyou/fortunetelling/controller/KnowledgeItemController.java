@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -455,7 +456,7 @@ public class KnowledgeItemController extends AbstractBaseController {
             @Parameter(description = "Search keyword by title")
             @RequestParam(required = false) String title,
             @Parameter(description = "Category IDs filter (multiple values supported)", 
-                      example = "123e4567-e89b-12d3-a456-426614174000,223e4567-e89b-12d3-a456-426614174001")
+                      example = "")
             @RequestParam(required = false) List<UUID> categoryIds,
             @Parameter(description = "Status filter")
             @RequestParam(required = false) Constants.KnowledgeItemStatusEnum status,
@@ -469,7 +470,16 @@ public class KnowledgeItemController extends AbstractBaseController {
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, categoryIds, status, pageable);
+        // Normalize categoryIds: convert empty list to null, filter out null values
+        // Swagger may send empty list or list with null/empty values
+        List<UUID> normalizedCategoryIds = null;
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            List<UUID> filteredIds = categoryIds.stream()
+                    .filter(id -> id != null)
+                    .collect(Collectors.toList());
+            normalizedCategoryIds = filteredIds.isEmpty() ? null : filteredIds;
+        }
+        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, normalizedCategoryIds, status, pageable);
         Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
         return responseFactory.successPage(response, "Knowledge items searched successfully");
     }

@@ -30,7 +30,7 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
     @EntityGraph(attributePaths = {"itemCategories.knowledgeCategory"})
     @Query("SELECT DISTINCT knowledgeItem FROM KnowledgeItem knowledgeItem " +
             "LEFT JOIN knowledgeItem.itemCategories itemCategories " +
-            "WHERE (:title IS NULL OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+            "WHERE (:title IS NULL OR :title = '' OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
             "AND (:categoryIds IS NULL OR itemCategories.knowledgeCategory.id IN :categoryIds) " +
             "AND (:status IS NULL OR knowledgeItem.status = :status)")
     Page<KnowledgeItem> search(
