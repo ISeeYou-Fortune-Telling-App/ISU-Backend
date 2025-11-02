@@ -59,7 +59,6 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final MessageSourceService messageSourceService;
     private final CloudinaryService cloudinaryService;
-    private final ConversationService conversationService;
     private final CertificateService certificateService;
     private final EmailVerificationService emailVerificationService;
     private final BookingRepository bookingRepository;
@@ -71,7 +70,6 @@ public class UserServiceImpl implements UserService {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             MessageSourceService messageSourceService,
-            ConversationService conversationService,
             CloudinaryService cloudinaryService,
             @Lazy CertificateService certificateService,
             EmailVerificationService emailVerificationService,
@@ -83,7 +81,6 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
         this.cloudinaryService = cloudinaryService;
-        this.conversationService = conversationService;
         this.certificateService = certificateService;
         this.emailVerificationService = emailVerificationService;
         this.bookingRepository = bookingRepository;
@@ -537,49 +534,32 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Page<User> searchUsers(String keyword, Pageable pageable) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return userRepository.findAll(pageable);
-        }
-        return userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                keyword.trim(), keyword.trim(), pageable);
-    }
+    public Page<User> findAllWithFilters(String keyword, String role, String status, Pageable pageable) {
+        // Trim keyword if provided
+        String trimmedKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
 
-    @Override
-    public Page<User> findAllWithFilters(String role, String status, Pageable pageable) {
-        if (role == null && status == null) {
-            return userRepository.findAll(pageable);
-        }
+        // Parse role and status enums
+        Constants.RoleEnum roleEnum = null;
+        Constants.StatusProfileEnum statusEnum = null;
 
-        if (role != null && status != null) {
+        if (role != null && !role.trim().isEmpty()) {
             try {
-                Constants.RoleEnum roleEnum = Constants.RoleEnum.valueOf(role.toUpperCase());
-                Constants.StatusProfileEnum statusEnum = Constants.StatusProfileEnum.valueOf(status.toUpperCase());
-                return userRepository.findByRoleAndStatus(roleEnum, statusEnum, pageable);
+                roleEnum = Constants.RoleEnum.valueOf(role.toUpperCase());
             } catch (IllegalArgumentException e) {
-                return userRepository.findAll(pageable);
+                // Invalid role, will be treated as null
             }
         }
 
-        if (role != null) {
+        if (status != null && !status.trim().isEmpty()) {
             try {
-                Constants.RoleEnum roleEnum = Constants.RoleEnum.valueOf(role.toUpperCase());
-                return userRepository.findByRole(roleEnum, pageable);
+                statusEnum = Constants.StatusProfileEnum.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
-                return userRepository.findAll(pageable);
+                // Invalid status, will be treated as null
             }
         }
 
-        if (status != null) {
-            try {
-                Constants.StatusProfileEnum statusEnum = Constants.StatusProfileEnum.valueOf(status.toUpperCase());
-                return userRepository.findByStatus(statusEnum, pageable);
-            } catch (IllegalArgumentException e) {
-                return userRepository.findAll(pageable);
-            }
-        }
-
-        return userRepository.findAll(pageable);
+        // Use the combined filter and search repository method
+        return userRepository.findAllWithFilters(trimmedKeyword, roleEnum, statusEnum, pageable);
     }
 
     @Override

@@ -213,7 +213,8 @@ public class AccountController extends AbstractBaseController {
 
     @GetMapping
     @Operation(
-            summary = "Get all users with pagination and filters",
+            summary = "Get all users with pagination, filters and search",
+            description = "Get all users with optional filters (role, status) and search by name or email",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -237,6 +238,8 @@ public class AccountController extends AbstractBaseController {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PageResponse<UserResponse>> getAllUsers(
+            @Parameter(description = "Search keyword (name or email)", required = false)
+            @RequestParam(required = false) String keyword,
             @Parameter(description = "Filter by role (GUEST, CUSTOMER, SEER, UNVERIFIED_SEER, ADMIN)", required = false)
             @RequestParam(required = false) String role,
             @Parameter(description = "Filter by status (ACTIVE, INACTIVE, VERIFIED, UNVERIFIED, BLOCKED)", required = false)
@@ -251,9 +254,14 @@ public class AccountController extends AbstractBaseController {
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<User> userPage = userService.findAllWithFilters(role, status, pageable);
+        Page<User> userPage = userService.findAllWithFilters(keyword, role, status, pageable);
         Page<UserResponse> response = userMapper.mapToPage(userPage, UserResponse.class);
-        return responseFactory.successPage(response, "Users retrieved successfully");
+
+        String message = (keyword != null && !keyword.trim().isEmpty())
+            ? "Search results retrieved successfully"
+            : "Users retrieved successfully";
+
+        return responseFactory.successPage(response, message);
     }
 
     @GetMapping("/{id}")
@@ -498,59 +506,4 @@ public class AccountController extends AbstractBaseController {
         return responseFactory.successSingle(stats, "Account statistics retrieved successfully");
     }
 
-    @GetMapping("/search")
-    @Operation(
-            summary = "Search users by name or email",
-            description = "Search for users using name or email. Returns paginated results.",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "Users found successfully",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = PageResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "403",
-                            description = "Forbidden - Admin access required",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PageResponse<UserResponse>> searchUsers(
-            @Parameter(description = "Search keyword (name or email)", required = false)
-            @RequestParam(required = false) String keyword,
-            @Parameter(description = "Page number", required = false)
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Items per page", required = false)
-            @RequestParam(defaultValue = "15") int limit,
-            @Parameter(description = "Sort type (asc/desc)", required = false)
-            @RequestParam(defaultValue = "desc") String sortType,
-            @Parameter(description = "Sort by field", required = false)
-            @RequestParam(defaultValue = "createdAt") String sortBy
-    ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<User> userPage = userService.searchUsers(keyword, pageable);
-        Page<UserResponse> response = userMapper.mapToPage(userPage, UserResponse.class);
-
-        String message = (keyword != null && !keyword.trim().isEmpty())
-            ? "Search results retrieved successfully"
-            : "All users retrieved successfully";
-
-        return responseFactory.successPage(response, message);
-    }
 }

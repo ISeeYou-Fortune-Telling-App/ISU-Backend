@@ -62,6 +62,18 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     Page<User> findByRoleAndStatus(Constants.RoleEnum role, Constants.StatusProfileEnum status, Pageable pageable);
 
+    // Combined filter and search method
+    @Query("SELECT u FROM User u WHERE " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +
+           "(:role IS NULL OR u.role = :role) AND " +
+           "(:status IS NULL OR u.status = :status)")
+    Page<User> findAllWithFilters(@Param("keyword") String keyword,
+                                   @Param("role") Constants.RoleEnum role,
+                                   @Param("status") Constants.StatusProfileEnum status,
+                                   Pageable pageable);
+
     @Query("""
         SELECT DISTINCT u FROM User u
         LEFT JOIN u.seerProfile sp
