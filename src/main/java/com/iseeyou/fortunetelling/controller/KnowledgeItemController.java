@@ -6,7 +6,9 @@ import com.iseeyou.fortunetelling.dto.request.knowledgeitem.KnowledgeItemUpdateR
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
+import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemPageResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgeitem.KnowledgeItemResponse;
+import com.iseeyou.fortunetelling.service.knowledgeitem.impl.KnowledgeItemServiceImpl;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeItem;
 import com.iseeyou.fortunetelling.mapper.KnowledgeItemMapper;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
 
@@ -81,6 +84,43 @@ public class KnowledgeItemController extends AbstractBaseController {
         Page<KnowledgeItem> knowledgeItems = knowledgeItemService.findAll(pageable);
         Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
         return responseFactory.successPage(response, "Knowledge items retrieved successfully");
+    }
+
+    @GetMapping("/stat")
+    @Operation(
+            summary = "Get knowledge item statistics",
+            description = "Get knowledge item statistics (published, draft, hidden, total view count)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<SingleResponse<KnowledgeItemPageResponse.KnowledgeItemStats>> getKnowledgeItemStats() {
+        KnowledgeItemServiceImpl.KnowledgeItemStats stats = 
+                ((KnowledgeItemServiceImpl) knowledgeItemService).getAllItemsStats();
+        KnowledgeItemPageResponse.KnowledgeItemStats statsResponse = 
+                KnowledgeItemPageResponse.KnowledgeItemStats.builder()
+                        .publishedItems(stats.getPublishedItems())
+                        .draftItems(stats.getDraftItems())
+                        .hiddenItems(stats.getHiddenItems())
+                        .totalViewCount(stats.getTotalViewCount())
+                        .build();
+        return responseFactory.successSingle(statsResponse, "Knowledge item statistics retrieved successfully");
     }
 
     @GetMapping("/{id}")
@@ -416,7 +456,7 @@ public class KnowledgeItemController extends AbstractBaseController {
             @Parameter(description = "Search keyword by title")
             @RequestParam(required = false) String title,
             @Parameter(description = "Category IDs filter (multiple values supported)", 
-                      example = "123e4567-e89b-12d3-a456-426614174000,223e4567-e89b-12d3-a456-426614174001")
+                      example = "")
             @RequestParam(required = false) List<UUID> categoryIds,
             @Parameter(description = "Status filter")
             @RequestParam(required = false) Constants.KnowledgeItemStatusEnum status,
@@ -430,7 +470,16 @@ public class KnowledgeItemController extends AbstractBaseController {
             @RequestParam(defaultValue = "createdAt") String sortBy
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, categoryIds, status, pageable);
+        // Normalize categoryIds: convert empty list to null, filter out null values
+        // Swagger may send empty list or list with null/empty values
+        List<UUID> normalizedCategoryIds = null;
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            List<UUID> filteredIds = categoryIds.stream()
+                    .filter(id -> id != null)
+                    .collect(Collectors.toList());
+            normalizedCategoryIds = filteredIds.isEmpty() ? null : filteredIds;
+        }
+        Page<KnowledgeItem> knowledgeItems = knowledgeItemService.search(title, normalizedCategoryIds, status, pageable);
         Page<KnowledgeItemResponse> response = knowledgeItemMapper.mapToPage(knowledgeItems, KnowledgeItemResponse.class);
         return responseFactory.successPage(response, "Knowledge items searched successfully");
     }

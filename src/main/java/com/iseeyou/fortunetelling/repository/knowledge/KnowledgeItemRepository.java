@@ -30,7 +30,7 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
     @EntityGraph(attributePaths = {"itemCategories.knowledgeCategory"})
     @Query("SELECT DISTINCT knowledgeItem FROM KnowledgeItem knowledgeItem " +
             "LEFT JOIN knowledgeItem.itemCategories itemCategories " +
-            "WHERE (:title IS NULL OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+            "WHERE (:title IS NULL OR :title = '' OR LOWER(knowledgeItem.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
             "AND (:categoryIds IS NULL OR itemCategories.knowledgeCategory.id IN :categoryIds) " +
             "AND (:status IS NULL OR knowledgeItem.status = :status)")
     Page<KnowledgeItem> search(
@@ -39,4 +39,11 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
             @Param("status") Constants.KnowledgeItemStatusEnum status,
             Pageable pageable
     );
+
+    // Admin statistics methods
+    @Query("SELECT COUNT(ki) FROM KnowledgeItem ki WHERE ki.status = :status")
+    long countByStatus(Constants.KnowledgeItemStatusEnum status);
+    
+    @Query("SELECT COALESCE(SUM(ki.viewCount), 0) FROM KnowledgeItem ki")
+    Long getTotalViewCount();
 }

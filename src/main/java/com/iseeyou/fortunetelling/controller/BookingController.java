@@ -7,10 +7,12 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingSeerConfirmRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingPageResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.service.booking.impl.BookingServiceImpl;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
@@ -81,7 +83,7 @@ public class BookingController extends AbstractBaseController {
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @Parameter(description = "Filter by booking status")
+            @Parameter(description = "Filter by booking status (optional)")
             @RequestParam(required = false) Constants.BookingStatusEnum status
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
@@ -95,6 +97,92 @@ public class BookingController extends AbstractBaseController {
 
         Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
         return responseFactory.successPage(response, "Bookings retrieved successfully");
+    }
+
+    @GetMapping
+    @Operation(
+            summary = "Admin: Get all bookings with optional status filter",
+            description = "Admin endpoint to retrieve all bookings in the system. Can filter by status or get all bookings.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<PageResponse<BookingResponse>> getAllBookings(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Filter by booking status (optional)")
+            @RequestParam(required = false) Constants.BookingStatusEnum status
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<Booking> bookings;
+
+        if (status != null) {
+            bookings = bookingService.getAllBookingsByStatus(status, pageable);
+        } else {
+            bookings = bookingService.getAllBookings(pageable);
+        }
+
+        Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
+        return responseFactory.successPage(response, "All bookings retrieved successfully");
+    }
+
+    @GetMapping("/stat")
+    @Operation(
+            summary = "Admin: Get booking statistics",
+            description = "Admin endpoint to get booking statistics (total, completed, pending, canceled)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<BookingPageResponse.BookingStats>> getBookingStats() {
+        BookingServiceImpl.BookingStats stats = ((BookingServiceImpl) bookingService).getAllBookingsStats();
+        BookingPageResponse.BookingStats statsResponse = BookingPageResponse.BookingStats.builder()
+                .totalBookings(stats.getTotalBookings())
+                .completedBookings(stats.getCompletedBookings())
+                .pendingBookings(stats.getPendingBookings())
+                .canceledBookings(stats.getCanceledBookings())
+                .build();
+        return responseFactory.successSingle(statsResponse, "Booking statistics retrieved successfully");
     }
 
     @GetMapping("/{id}")
@@ -513,9 +601,8 @@ public class BookingController extends AbstractBaseController {
         } else if (paymentStatus != null) {
             payments = bookingService.findAllByStatus(paymentStatus, pageable);
         } else {
-            // If no filters, you might need to add a findAllPayments method to the service
-            // For now, let's use findAllByStatus with null or implement a default behavior
-            throw new UnsupportedOperationException("Please provide either paymentMethod or paymentStatus filter");
+            // If no filters provided, return all payments
+            payments = bookingService.findAllBookingPayments(pageable);
         }
 
         Page<BookingPaymentResponse> response = bookingMapper.mapToPage(payments, BookingPaymentResponse.class);

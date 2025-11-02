@@ -25,4 +25,7 @@ public interface PackageInteractionRepository extends JpaRepository<PackageInter
 
     @Query("SELECT pi FROM PackageInteraction pi JOIN FETCH pi.user WHERE pi.servicePackage.id = :packageId")
     List<PackageInteraction> findAllByServicePackage_IdWithUser(@Param("packageId") UUID packageId);
+
+    // Count total interactions across all packages
+    long count();
 }

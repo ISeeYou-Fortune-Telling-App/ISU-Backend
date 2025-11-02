@@ -42,4 +42,8 @@ public interface BookingPaymentRepository extends JpaRepository<BookingPayment, 
     // Optional: filter by specific package and seer
     @EntityGraph(attributePaths = {"booking", "booking.customer", "booking.servicePackage.seer", "booking.servicePackage"})
     Page<BookingPayment> findAllByBooking_ServicePackage_IdAndBooking_ServicePackage_Seer_Id(UUID packageId, UUID seerId, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = {"booking", "booking.customer", "booking.servicePackage.seer", "booking.servicePackage"})
+    Page<BookingPayment> findAll(Pageable pageable);
 }

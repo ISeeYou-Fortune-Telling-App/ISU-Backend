@@ -18,6 +18,9 @@ import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
 import com.paypal.base.rest.PayPalRESTException;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,26 +49,53 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     public Page<Booking> getBookingsByMe(Pageable pageable) {
         User currentUser = userService.getUser();
-        if (currentUser.getRole().equals(Constants.RoleEnum.CUSTOMER)) {
-            return bookingRepository.findAllByCustomer(currentUser, pageable);
-        } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            return bookingRepository.findAllBySeer(currentUser, pageable);
-        } else {
-            return bookingRepository.findAll(pageable);
-        }
+        // Get bookings where user is either customer or seer (for all roles including ADMIN)
+        return bookingRepository.findAllByUserAsCustomerOrSeer(currentUser, pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<Booking> getBookingsByMeAndStatus(Constants.BookingStatusEnum status, Pageable pageable) {
         User currentUser = userService.getUser();
-        if (currentUser.getRole().equals(Constants.RoleEnum.CUSTOMER)) {
-            return bookingRepository.findAllByCustomerAndStatus(currentUser, status, pageable);
-        } else if (currentUser.getRole().equals(Constants.RoleEnum.SEER)) {
-            return bookingRepository.findAllBySeerAndStatus(currentUser, status, pageable);
-        } else {
-            return bookingRepository.findAllByStatus(status, pageable);
-        }
+        // Get bookings where user is either customer or seer with status filter (for all roles including ADMIN)
+        return bookingRepository.findAllByUserAsCustomerOrSeerAndStatus(currentUser, status, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getAllBookings(Pageable pageable) {
+        return bookingRepository.findAll(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Booking> getAllBookingsByStatus(Constants.BookingStatusEnum status, Pageable pageable) {
+        return bookingRepository.findAllByStatus(status, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public BookingStats getAllBookingsStats() {
+        long total = bookingRepository.count();
+        long completed = bookingRepository.countByStatus(Constants.BookingStatusEnum.COMPLETED);
+        long pending = bookingRepository.countByStatus(Constants.BookingStatusEnum.PENDING);
+        long canceled = bookingRepository.countByStatus(Constants.BookingStatusEnum.CANCELED);
+        
+        return BookingStats.builder()
+                .totalBookings(total)
+                .completedBookings(completed)
+                .pendingBookings(pending)
+                .canceledBookings(canceled)
+                .build();
+    }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class BookingStats {
+        private Long totalBookings;
+        private Long completedBookings;
+        private Long pendingBookings;
+        private Long canceledBookings;
     }
 
     @Override
