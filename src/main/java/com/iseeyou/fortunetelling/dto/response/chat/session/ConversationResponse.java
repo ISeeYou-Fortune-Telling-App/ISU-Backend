@@ -32,6 +32,7 @@ public class ConversationResponse extends AbstractBaseDataResponse {
     // Unread counts
     private Integer seerUnreadCount;
     private Integer customerUnreadCount;
+    private Integer adminUnreadCount;
 
     // Last message
     private String lastMessageContent;

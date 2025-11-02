@@ -109,13 +109,19 @@ public class ConversationMapper extends BaseMapper{
                                 long adminUnreadCount = unreadMessages.stream()
                                         .filter(msg -> msg.getSender().getId().equals(source.getTargetUser().getId()))
                                         .count();
-                                destination.setSeerUnreadCount((int) adminUnreadCount);
+                                destination.setAdminUnreadCount((int) adminUnreadCount);
 
                                 // Count unread for target user (messages from admin)
                                 long targetUnreadCount = unreadMessages.stream()
                                         .filter(msg -> msg.getSender().getId().equals(source.getAdmin().getId()))
                                         .count();
-                                destination.setCustomerUnreadCount((int) targetUnreadCount);
+                                if (source.getTargetUser().getRole() == Constants.RoleEnum.CUSTOMER) {
+                                    destination.setCustomerUnreadCount((int) targetUnreadCount);
+                                    destination.setSeerUnreadCount(0);
+                                } else {
+                                    destination.setCustomerUnreadCount(0);
+                                    destination.setSeerUnreadCount((int) targetUnreadCount);
+                                }
                             }
                         } else if (source.getBooking() != null) {
                             // For booking session
