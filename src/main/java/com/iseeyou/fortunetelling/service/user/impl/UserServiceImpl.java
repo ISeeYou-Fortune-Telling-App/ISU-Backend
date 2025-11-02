@@ -257,9 +257,6 @@ public class UserServiceImpl implements UserService {
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("User registered and verification email sent to: {}", request.getEmail());
 
-        // Tạo admin conversation
-        conversationService.createAdminConversation(user.getId(), "Chào mừng bạn đến hệ thống I See You");
-
         return user;
     }
 
@@ -333,9 +330,6 @@ public class UserServiceImpl implements UserService {
         // Gửi OTP xác thực email
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("Seer registered and verification email sent to: {}", request.getEmail());
-
-        // Tạo admin conversation
-        conversationService.createAdminConversation(user.getId(), "Chào mừng bạn đến hệ thống I See You");
 
         return user;
     }
