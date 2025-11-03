@@ -40,4 +40,7 @@ public interface ConversationService {
     void extendSession(UUID conversationId, Integer additionalMinutes);
 
     ConversationStatisticResponse getConversationStatistics();
+
+    // Fix admin chat conversations that were incorrectly cancelled
+    int fixAdminChatConversations();
 }

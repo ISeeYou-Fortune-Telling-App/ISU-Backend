@@ -27,7 +27,8 @@ public class ServicePackageResponse {
     private String rejectionReason;
     private Long likeCount;
     private Long dislikeCount;
-    private List<UserInteractionInfo> userInteractions; // Array of users who interacted
+    private Boolean isLike;
+    private Boolean isDislike;
     private Double avgRating; // Average rating from booking reviews
     private Long totalReviews; // Total number of reviews
     private LocalDateTime createdAt;
@@ -52,16 +53,5 @@ public class ServicePackageResponse {
         private UUID id;
         private String name;
         private String description;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class UserInteractionInfo {
-        private UUID userId;
-        private String name;
-        private String avatar;
-        private String typeInteract; // LIKE or DISLIKE
     }
 }

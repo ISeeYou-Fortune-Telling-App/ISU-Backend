@@ -45,24 +45,72 @@ public class Conversations {
             return;
         }
 
-        log.info("Tìm thấy {} confirmed bookings, sẽ tạo conversations với các trạng thái khác nhau", confirmedBookings.size());
+        createConversationsWithStatusDistribution(confirmedBookings);
+
+        // Create admin conversations
+        createAdminConversations();
+
+        log.info("Hoàn thành tạo dummy data cho Conversations.");
+    }
+
+    @Transactional
+    public void recreateAllConversations() {
+        log.warn("=== Xóa tất cả conversations và messages để tạo lại ===");
+
+        // Delete all messages first (foreign key constraint)
+        long deletedMessages = messageRepository.count();
+        messageRepository.deleteAll();
+        log.info("Đã xóa {} messages", deletedMessages);
+
+        // Delete all conversations
+        long deletedConversations = conversationRepository.count();
+        conversationRepository.deleteAll();
+        log.info("Đã xóa {} conversations", deletedConversations);
+
+        // Get all confirmed bookings
+        List<Booking> confirmedBookings = bookingRepository.findAll().stream()
+                .filter(booking -> booking.getStatus() == Constants.BookingStatusEnum.CONFIRMED)
+                .toList();
+
+        if (confirmedBookings.isEmpty()) {
+            log.warn("Không có confirmed booking nào để tạo conversation");
+            return;
+        }
+
+        log.info("Tìm thấy {} confirmed bookings để tạo conversations mới", confirmedBookings.size());
+
+        // Create conversations with proper status distribution
+        createConversationsWithStatusDistribution(confirmedBookings);
+
+        // Create admin conversations
+        createAdminConversations();
+
+        log.info("=== Hoàn thành tạo lại tất cả conversations ===");
+    }
+
+    private void createConversationsWithStatusDistribution(List<Booking> confirmedBookings) {
+        log.info("Tạo {} conversations với phân phối status hợp lý", Math.min(confirmedBookings.size(), 15));
 
         int activeCount = 0;
         int endedCount = 0;
         int cancelledCount = 0;
+        int waitingCount = 0;
 
-        for (int i = 0; i < Math.min(confirmedBookings.size(), 10); i++) {
+        for (int i = 0; i < Math.min(confirmedBookings.size(), 15); i++) {
             Booking booking = confirmedBookings.get(i);
             Constants.ConversationStatusEnum status;
 
-            // Distribute conversation statuses
-            if (activeCount < 3) {
+            // Distribute conversation statuses with more variety
+            if (waitingCount < 2) {
+                status = Constants.ConversationStatusEnum.WAITING;
+                waitingCount++;
+            } else if (activeCount < 3) {
                 status = Constants.ConversationStatusEnum.ACTIVE;
                 activeCount++;
-            } else if (endedCount < 4) {
+            } else if (endedCount < 6) {
                 status = Constants.ConversationStatusEnum.ENDED;
                 endedCount++;
-            } else if (cancelledCount < 3) {
+            } else if (cancelledCount < 4) {
                 status = Constants.ConversationStatusEnum.CANCELLED;
                 cancelledCount++;
             } else {
@@ -71,13 +119,8 @@ public class Conversations {
 
             createConversationWithMessages(booking, status);
         }
-        log.info("Đã tạo {} ACTIVE, {} ENDED, {} CANCELLED booking conversations",
-                activeCount, endedCount, cancelledCount);
-
-        // Create admin conversations
-        createAdminConversations();
-
-        log.info("Hoàn thành tạo dummy data cho Conversations.");
+        log.info("✅ Đã tạo {} WAITING, {} ACTIVE, {} ENDED, {} CANCELLED booking conversations",
+                waitingCount, activeCount, endedCount, cancelledCount);
     }
 
     @Transactional
@@ -353,11 +396,30 @@ public class Conversations {
         LocalDateTime seerJoined;
 
         switch (status) {
+            case WAITING -> {
+                // Waiting conversation - scheduled to start in the future
+                int minutesUntilStart = 15 + random.nextInt(46); // 15-60 minutes in future
+                sessionStart = LocalDateTime.now().plusMinutes(minutesUntilStart);
+                sessionEnd = sessionStart.plusMinutes(60);
+                customerJoined = null; // Not joined yet
+                seerJoined = null; // Not joined yet
+
+                conversation.setSessionStartTime(sessionStart);
+                conversation.setSessionEndTime(sessionEnd);
+                conversation.setCustomerJoinedAt(null);
+                conversation.setSeerJoinedAt(null);
+                conversation.setWarningNotificationSent(false);
+                conversation.setExtendedMinutes(0);
+
+                log.info("Tạo WAITING conversation cho booking {} (will start in {} mins)",
+                        booking.getId(), minutesUntilStart);
+            }
             case ACTIVE -> {
-                // Active conversation - started 5-15 minutes ago
+                // Active conversation - started 5-15 minutes ago, still has time remaining
                 int minutesAgo = 5 + random.nextInt(11);
                 sessionStart = LocalDateTime.now().minusMinutes(minutesAgo);
-                sessionEnd = sessionStart.plusMinutes(60);
+                // Session will end in the FUTURE (30-50 minutes from now)
+                sessionEnd = LocalDateTime.now().plusMinutes(30 + random.nextInt(21));
                 customerJoined = sessionStart;
                 seerJoined = sessionStart.plusMinutes(1);
 
@@ -368,7 +430,7 @@ public class Conversations {
                 conversation.setWarningNotificationSent(false);
                 conversation.setExtendedMinutes(0);
 
-                log.info("Tạo ACTIVE conversation cho booking {} (started {} mins ago)",
+                log.info("Tạo ACTIVE conversation cho booking {} (started {} mins ago, will end in future)",
                         booking.getId(), minutesAgo);
             }
             case ENDED -> {
@@ -429,6 +491,11 @@ public class Conversations {
         LocalDateTime sessionStart = conversation.getSessionStartTime();
 
         switch (conversation.getStatus()) {
+            case WAITING -> {
+                // No messages yet for WAITING conversations
+                log.info("WAITING conversation {} - no messages created yet", conversation.getId());
+                return;
+            }
             case ACTIVE -> messages.addAll(createActiveConversationMessages(conversation, customer, seer, sessionStart));
             case ENDED -> messages.addAll(createEndedConversationMessages(conversation, customer, seer, sessionStart));
             case CANCELLED -> messages.addAll(createCancelledConversationMessages(conversation, customer, seer, sessionStart));

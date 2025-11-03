@@ -14,11 +14,8 @@ import com.iseeyou.fortunetelling.entity.user.SeerProfile;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
-import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageRepository;
-import com.iseeyou.fortunetelling.repository.servicepackage.ServicePackageSpecification;
-import com.iseeyou.fortunetelling.repository.servicepackage.PackageInteractionRepository;
+import com.iseeyou.fortunetelling.repository.servicepackage.*;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
-import com.iseeyou.fortunetelling.repository.servicepackage.ServiceReviewRepository;
 import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
@@ -397,9 +394,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         Long totalReviews = bookingRepository.countReviewsByServicePackageId(packageId);
         Double avgRating = bookingRepository.getAverageRatingByServicePackageId(packageId);
 
-        // Get reviews (latest 10 reviews by default)
-        Pageable reviewPageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "reviewedAt"));
-        Page<Booking> reviewsPage = bookingRepository.findReviewsByServicePackageId(packageId, reviewPageable);
 
         // Tạo ServicePackageDetailResponse
         return ServicePackageDetailResponse.builder()
@@ -566,23 +560,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
 
         // Map service package to response
-        ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
-
-        // Get all interactions with user info
-        List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(packageId);
-
-        List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
-                .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
-                        .userId(interaction.getUser().getId())
-                        .name(interaction.getUser().getFullName())
-                        .avatar(interaction.getUser().getAvatarUrl())
-                        .typeInteract(interaction.getInteractionType().getValue())
-                        .build())
-                .collect(Collectors.toList());
-
-        response.setUserInteractions(userInteractions);
-
-        return response;
+        return servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
     }
 
     private void updatePackageCounts(UUID packageId) {
@@ -686,28 +664,26 @@ public class ServicePackageServiceImpl implements ServicePackageService {
      * Helper method to enrich service packages with user interaction data
      */
     private Page<ServicePackageResponse> enrichWithInteractions(Page<ServicePackage> servicePackages) {
+        User currentUser = userService.getUser();
+
         return servicePackages.map(pkg -> {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
 
-            // Get all interactions for this package
-            List<PackageInteraction> interactions = interactionRepository.findAllByServicePackage_IdWithUser(pkg.getId());
-
-            // Map interactions to UserInteractionInfo
-            List<ServicePackageResponse.UserInteractionInfo> userInteractions = interactions.stream()
-                    .map(interaction -> ServicePackageResponse.UserInteractionInfo.builder()
-                            .userId(interaction.getUser().getId())
-                            .name(interaction.getUser().getFullName())
-                            .avatar(interaction.getUser().getAvatarUrl())
-                            .typeInteract(interaction.getInteractionType().getValue())
-                            .build())
-                    .collect(Collectors.toList());
-
-            response.setUserInteractions(userInteractions);
-
             // Get review statistics from bookings
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
             Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
+
+            boolean isLike = false;
+            boolean isDislike = false;
+
+            PackageInteraction interaction = interactionRepository.findByUser_IdAndServicePackage_Id(currentUser.getId(), pkg.getId()).orElse(null);
+            if (interaction != null)
+                if (interaction.getInteractionType() == Constants.InteractionTypeEnum.LIKE)  isLike = true;
+                else isDislike = true;
+
+            response.setIsLike(isLike);
+            response.setIsDislike(isDislike);
 
             response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
             response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place

@@ -1,6 +1,5 @@
 package com.iseeyou.fortunetelling.repository.chat;
 
-import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
@@ -29,18 +28,21 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Optional<Conversation> findByIdWithDetails(@Param("conversationId") UUID conversationId);
 
     // Find late sessions (customer hoặc seer chưa join sau 10 phút từ session_start_time)
+    // Exclude ADMIN_CHAT as they don't have join time requirements
     @Query("SELECT conv FROM Conversation conv WHERE " +
             "conv.status = :status AND " +
+            "conv.type != com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
             "(conv.customerJoinedAt IS NULL OR conv.seerJoinedAt IS NULL) AND " +
             "conv.sessionStartTime <= :cutoffTime")
     List<Conversation> findLateSessions(
             @Param("status") Constants.ConversationStatusEnum status,
             @Param("cutoffTime") LocalDateTime cutoffTime
     );
-
     // Find sessions need to warning (10 mins left)
+    // Exclude ADMIN_CHAT as they don't have session end time
     @Query("SELECT conv FROM Conversation conv WHERE " +
             "conv.status = :status AND " +
+            "conv.type != com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
             "conv.warningNotificationSent = false AND " +
             "conv.sessionEndTime > :now AND " +
             "conv.sessionEndTime <= :warningTime")
@@ -51,8 +53,10 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     );
 
     // Find expired sessions
+    // Exclude ADMIN_CHAT as they don't have session end time
     @Query("SELECT conv FROM Conversation conv WHERE " +
             "conv.status = :status AND " +
+            "conv.type != com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
             "conv.sessionEndTime <= :now")
     List<Conversation> findExpiredSessions(
             @Param("status") Constants.ConversationStatusEnum status,
@@ -120,6 +124,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Page<Conversation> findAllConversationsByTypeIsNot(Constants.ConversationTypeEnum type, Pageable pageable);
 
     // Find conversations with filters (participant name can be seer or customer)
+    // Using native query with explicit CAST to handle encrypted bytea full_name columns
     @Query(value = "SELECT c.* FROM conversation c " +
             "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
             "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
@@ -128,12 +133,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
             "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
             "WHERE (:participantName IS NULL OR " +
-            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
-            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
-            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%')))) " +
+            "AND (:type IS NULL OR CAST(c.type AS VARCHAR) = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR CAST(c.status AS VARCHAR) = CAST(:status AS VARCHAR))",
             countQuery = "SELECT COUNT(c.conversation_id) FROM conversation c " +
             "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
             "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
@@ -142,12 +147,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
             "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
             "WHERE (:participantName IS NULL OR " +
-            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%'))) OR " +
-            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', :participantName, '%')))) " +
-            "AND (:type IS NULL OR c.type = CAST(:type AS VARCHAR)) " +
-            "AND (:status IS NULL OR c.status = CAST(:status AS VARCHAR))",
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%')))) " +
+            "AND (:type IS NULL OR CAST(c.type AS VARCHAR) = CAST(:type AS VARCHAR)) " +
+            "AND (:status IS NULL OR CAST(c.status AS VARCHAR) = CAST(:status AS VARCHAR))",
             nativeQuery = true)
     Page<Conversation> findAllWithFilters(
             @Param("participantName") String participantName,
