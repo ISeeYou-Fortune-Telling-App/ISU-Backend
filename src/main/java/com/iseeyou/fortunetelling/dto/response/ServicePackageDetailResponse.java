@@ -23,6 +23,8 @@ public class ServicePackageDetailResponse {
     private String imageUrl;
     private Integer durationMinutes;
     private Double price;
+    private Boolean isLike;
+    private Boolean isDislike;
     private Constants.ServiceCategoryEnum category; // thêm trường category
     private String status;
     private String rejectionReason;
