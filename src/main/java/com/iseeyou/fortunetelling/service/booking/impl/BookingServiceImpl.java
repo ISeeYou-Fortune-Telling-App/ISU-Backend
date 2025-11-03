@@ -16,6 +16,7 @@ import com.iseeyou.fortunetelling.service.booking.strategy.PaymentStrategy;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
+import com.iseeyou.fortunetelling.service.booking.strategy.gateway.PayPalGateway;
 import com.iseeyou.fortunetelling.util.Constants;
 import com.paypal.base.rest.PayPalRESTException;
 import lombok.AllArgsConstructor;
@@ -44,6 +45,7 @@ public class BookingServiceImpl implements BookingService {
     private final ConversationService conversationService;
     private final BookingMapper bookingMapper;
     private final Map<Constants.PaymentMethodEnum, PaymentStrategy> paymentStrategies;
+    private final PayPalGateway payPalGateway;
 
     @Override
     @Transactional(readOnly = true)
@@ -796,5 +798,152 @@ public class BookingServiceImpl implements BookingService {
                .append(", Transaction ID: ").append(payment.getTransactionId()).append("]");
 
         return message.toString();
+    }
+
+    @Override
+    @Transactional
+    public Booking processPayment(UUID bookingId) {
+        log.info("Processing payment for booking {}", bookingId);
+
+        // 1. Find booking with all relationships
+        Booking booking = bookingRepository.findWithDetailById(bookingId)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
+
+        // 2. Validate booking status
+        if (!booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED) && 
+            !booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
+            throw new IllegalArgumentException(
+                "Booking must be CANCELED or COMPLETED to process payment. Current status: " + booking.getStatus()
+            );
+        }
+
+        // 3. Find completed payment
+        BookingPayment completedPayment = booking.getBookingPayments().stream()
+                .filter(p -> p.getStatus().equals(Constants.PaymentStatusEnum.COMPLETED))
+                .findFirst()
+                .orElse(null);
+
+        if (completedPayment == null) {
+            throw new IllegalArgumentException("No completed payment found for this booking. Cannot process payment.");
+        }
+
+        // 4. Process based on booking status
+        if (booking.getStatus().equals(Constants.BookingStatusEnum.CANCELED)) {
+            // REFUND: Refund to customer's PayPal account
+            log.info("Booking {} is CANCELED, processing refund", bookingId);
+
+            // Check if already refunded
+            boolean hasRefundedPayment = booking.getBookingPayments().stream()
+                    .anyMatch(p -> p.getStatus().equals(Constants.PaymentStatusEnum.REFUNDED));
+
+            if (hasRefundedPayment) {
+                throw new IllegalArgumentException("This booking has already been refunded");
+            }
+
+            try {
+                PaymentStrategy paymentStrategy = paymentStrategies.get(completedPayment.getPaymentMethod());
+                if (paymentStrategy == null) {
+                    throw new IllegalArgumentException(
+                        "Payment method not supported for refund: " + completedPayment.getPaymentMethod()
+                    );
+                }
+
+                // Process refund
+                BookingPayment refundedPayment = paymentStrategy.refund(bookingId, completedPayment);
+                log.info("Successfully refunded payment {} for canceled booking {}", refundedPayment.getId(), bookingId);
+
+                return bookingRepository.findWithDetailById(bookingId)
+                        .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
+
+            } catch (PayPalRESTException e) {
+                log.error("PayPal refund failed for booking {}: {} - Details: {}",
+                        bookingId, e.getMessage(), e.getDetails(), e);
+                String errorMessage = buildRefundErrorMessage(bookingId, completedPayment, e);
+                throw new RuntimeException(errorMessage, e);
+            } catch (Exception e) {
+                log.error("Unexpected error during refund for booking {}: {}", bookingId, e.getMessage(), e);
+                throw new RuntimeException("Failed to process refund. Please contact support with booking ID: " + bookingId, e);
+            }
+
+        } else if (booking.getStatus().equals(Constants.BookingStatusEnum.COMPLETED)) {
+            // PAYOUT: Transfer money to seer's PayPal email
+            log.info("Booking {} is COMPLETED, processing payout to seer", bookingId);
+
+            // Get seer and seer profile
+            var seer = booking.getServicePackage().getSeer();
+            if (seer == null || seer.getSeerProfile() == null) {
+                throw new IllegalArgumentException("Seer or seer profile not found for this booking");
+            }
+
+            String paypalEmail = seer.getSeerProfile().getPaypalEmail();
+            if (paypalEmail == null || paypalEmail.trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Seer has not set up PayPal email. Please set PayPal email before processing payout."
+                );
+            }
+
+            // Calculate amount to payout (price - service_fee_amount = seer receives)
+            Double bookingPrice = booking.getServicePackage().getPrice();
+            Double serviceFeeAmount = booking.getServicePackage().getServiceFeeAmount();
+            if (serviceFeeAmount == null) {
+                // Fallback: calculate from commission rate if service_fee_amount is null
+                Double commissionRate = booking.getServicePackage().getCommissionRate();
+                if (commissionRate == null) {
+                    commissionRate = 0.10; // Default 10%
+                }
+                serviceFeeAmount = bookingPrice * commissionRate;
+            }
+            Double seerAmount = bookingPrice - serviceFeeAmount;
+
+            // Convert to USD (VND to USD conversion rate)
+            double VND_TO_USD = 0.0395;
+            double seerAmountInUSD = seerAmount * VND_TO_USD;
+
+            try {
+                // Process payout via PayPal
+                Map<String, Object> payoutResponse = payPalGateway.payoutToSeer(
+                        paypalEmail,
+                        seerAmountInUSD,
+                        bookingId.toString()
+                );
+
+                // Extract batch header info from response
+                Map<String, Object> batchHeader = payoutResponse != null ?
+                    (Map<String, Object>) payoutResponse.get("batch_header") : null;
+
+                String batchId = batchHeader != null ? (String) batchHeader.get("payout_batch_id") : "N/A";
+                String batchStatus = batchHeader != null ? (String) batchHeader.get("batch_status") : "N/A";
+
+                log.info("Successfully processed payout for booking {} to seer {} (${}). " +
+                        "Batch ID: {}, Status: {}",
+                        bookingId, paypalEmail, seerAmountInUSD, batchId, batchStatus);
+
+                // Create new payment record for SEER payout (RECEIVED_PACKAGE)
+                BookingPayment seerPayoutPayment = BookingPayment.builder()
+                        .booking(booking)
+                        .amount(seerAmount)  // Amount in VND that seer receives
+                        .status(Constants.PaymentStatusEnum.COMPLETED)
+                        .paymentMethod(Constants.PaymentMethodEnum.PAYPAL)
+                        .paymentType(Constants.PaymentTypeEnum.RECEIVED_PACKAGE)
+                        .transactionId(batchId)
+                        .extraInfo(String.format("Payout Batch ID: %s, Status: %s, Amount: %.2f USD, Seer PayPal: %s, Service Fee: %.2f VND",
+                                batchId, batchStatus, seerAmountInUSD, paypalEmail, serviceFeeAmount))
+                        .build();
+
+                bookingPaymentRepository.save(seerPayoutPayment);
+
+                log.info("Created RECEIVED_PACKAGE payment record for seer. Payment ID: {}, Amount: {} VND",
+                        seerPayoutPayment.getId(), seerAmount);
+
+                return bookingRepository.findWithDetailById(bookingId)
+                        .orElseThrow(() -> new NotFoundException("Booking not found with id: " + bookingId));
+
+            } catch (Exception e) {
+                log.error("Unexpected error during payout for booking {}: {}", bookingId, e.getMessage(), e);
+                throw new RuntimeException("Failed to process payout. Please contact support with booking ID: " + bookingId, e);
+            }
+        }
+
+        throw new IllegalStateException("Unexpected booking status: " + booking.getStatus());
     }
 }

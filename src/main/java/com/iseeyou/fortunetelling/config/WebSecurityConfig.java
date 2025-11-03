@@ -109,12 +109,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/admin/**").hasAuthority(Constants.RoleEnum.ADMIN.name())
                         .anyRequest().authenticated()
                 )
-                .logout(
-                        logout -> logout
-                        .logoutUrl("/auth/logout")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
-                )
+                // Tắt logout handler của Spring Security vì đã có controller endpoint riêng xử lý
+                .logout(AbstractHttpConfigurer::disable)
                 .build();
     }
 }

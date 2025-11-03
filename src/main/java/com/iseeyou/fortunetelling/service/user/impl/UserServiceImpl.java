@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.user.impl;
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.user.UpdatePaypalEmailRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
@@ -592,5 +593,34 @@ public class UserServiceImpl implements UserService {
         }
 
         return user;
+    }
+
+    @Override
+    @Transactional
+    public User updatePaypalEmail(UpdatePaypalEmailRequest request) {
+        User user = getUser();
+
+        // Kiểm tra xem user có phải là seer không
+        if (user.getRole() != Constants.RoleEnum.SEER && user.getRole() != Constants.RoleEnum.UNVERIFIED_SEER) {
+            throw new IllegalArgumentException("Only seers can update PayPal email");
+        }
+
+        // Đảm bảo seer profile tồn tại
+        SeerProfile seerProfile = user.getSeerProfile();
+        if (seerProfile == null) {
+            // Tạo seer profile nếu chưa có (trường hợp edge case)
+            seerProfile = new SeerProfile();
+            seerProfile.setUser(user);
+            seerProfile.setAvgRating(0.0);
+            seerProfile.setTotalRates(0);
+            user.setSeerProfile(seerProfile);
+        }
+
+        // Update PayPal email
+        seerProfile.setPaypalEmail(request.getPaypalEmail());
+        log.info("Seer {} updated PayPal email to: {}", user.getId(), request.getPaypalEmail());
+
+        // Lưu user (vì có cascade, seer profile sẽ được lưu tự động)
+        return userRepository.save(user);
     }
 }

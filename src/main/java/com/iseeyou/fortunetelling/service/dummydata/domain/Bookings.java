@@ -154,6 +154,7 @@ public class Bookings {
                         .paymentMethod(paymentMethod)
                         .amount(amount)
                         .status(paymentStatus)
+                        .paymentType(Constants.PaymentTypeEnum.PAID_PACKAGE)  // Thêm payment type
                         .transactionId(transactionId)
                         .approvalUrl(approvalUrl)
                         .failureReason(failureReason)

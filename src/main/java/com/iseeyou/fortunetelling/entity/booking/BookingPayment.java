@@ -25,6 +25,9 @@ public class BookingPayment extends AbstractBaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private Constants.PaymentStatusEnum status;
 
+    @Column(name = "payment_type", nullable = false, length = 50)
+    private Constants.PaymentTypeEnum paymentType;
+
     @Column(name = "transaction_id", length = 1000)
     private String transactionId;
 

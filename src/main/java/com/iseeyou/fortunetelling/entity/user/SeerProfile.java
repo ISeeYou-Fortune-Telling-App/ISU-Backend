@@ -25,4 +25,7 @@ public class SeerProfile extends AbstractBaseEntity {
 
     @Column(name = "payment_info", length = 500)
     private String paymentInfo;
+
+    @Column(name = "paypal_email", length = 255)
+    private String paypalEmail;
 }

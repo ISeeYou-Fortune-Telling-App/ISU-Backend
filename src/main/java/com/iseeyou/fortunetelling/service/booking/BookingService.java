@@ -46,4 +46,7 @@ public interface BookingService {
     // New: Payments listing for seer and user
     Page<BookingPayment> seerGetPayments(UUID packageId, org.springframework.data.domain.Pageable pageable);
     Page<BookingPayment> userGetPayments(org.springframework.data.domain.Pageable pageable);
+
+    // Process payment: refund if canceled, payout to seer if completed
+    Booking processPayment(UUID bookingId);
 }

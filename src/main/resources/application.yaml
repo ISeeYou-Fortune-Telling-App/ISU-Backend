@@ -46,7 +46,7 @@ spring:
           writetimeout: 5000
   jpa:
     hibernate:
-      ddl-auto: ${DB_DDL_AUTO:update}
+      ddl-auto: ${DB_DDL_AUTO:create-drop}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -54,7 +54,7 @@ spring:
         format_sql: true
         globally_quoted_identifiers: true
         hbm2ddl:
-          auto: update
+          auto: create-drop
         # Bật lại validation
         check_nullability: true
         validator:

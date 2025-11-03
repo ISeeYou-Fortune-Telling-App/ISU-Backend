@@ -124,10 +124,11 @@ public class ServicePackageController extends AbstractBaseController {
         summary = "Update service package",
         description = "Update an existing service package with multiple categories. " +
                      "Status remains HIDDEN if not approved. SeerId is automatically extracted from JWT. " +
-                     "Provide categoryIds as a list of knowledge category IDs.",
+                     "Provide categoryIds as a list of knowledge category IDs. " +
+                     "Admin can also update commissionRate (optional field).",
         security = @SecurityRequirement(name = SECURITY_SCHEME_NAME)
     )
-    @PreAuthorize("hasAuthority('SEER')")
+    @PreAuthorize("hasAnyAuthority('SEER', 'ADMIN')")
     public ResponseEntity<SingleResponse<ServicePackageResponse>> updateServicePackage(
             @Parameter(description = "Service Package ID", required = true)
             @RequestParam String id,

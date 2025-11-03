@@ -54,6 +54,7 @@ public class PayPalStrategy implements PaymentStrategy {
             bookingPayment.setAmount(amountInVND);
             bookingPayment.setStatus(Constants.PaymentStatusEnum.PENDING);
             bookingPayment.setPaymentMethod(Constants.PaymentMethodEnum.PAYPAL);
+            bookingPayment.setPaymentType(Constants.PaymentTypeEnum.PAID_PACKAGE);
             bookingPayment.setApprovalUrl(redirectUrl);
             bookingPayment.setExtraInfo(payment.getId());
 
@@ -67,6 +68,7 @@ public class PayPalStrategy implements PaymentStrategy {
             bookingPayment.setAmount(amountInVND);
             bookingPayment.setStatus(Constants.PaymentStatusEnum.FAILED);
             bookingPayment.setPaymentMethod(Constants.PaymentMethodEnum.PAYPAL);
+            bookingPayment.setPaymentType(Constants.PaymentTypeEnum.PAID_PACKAGE);
             bookingPayment.setFailureReason(e.getMessage());
 
             return bookingPaymentRepository.save(bookingPayment);

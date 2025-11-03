@@ -158,16 +158,30 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     private ServicePackage createOrUpdatePackageInternal(String packageId, ServicePackageUpsertRequest request) throws IOException {
         ServicePackage servicePackage;
-        User seer = userService.getUser(); // Get current user from JWT
+        User currentUser = userService.getUser(); // Get current user from JWT
+        boolean isAdmin = currentUser.getRole().equals(Constants.RoleEnum.ADMIN);
 
         if (StringUtils.hasText(packageId)) {
             // Update existing package
             Optional<ServicePackage> optional = servicePackageRepository.findById(UUID.fromString(packageId));
             servicePackage = optional.orElseThrow(() -> new NotFoundException("Service package not found"));
 
-            // Verify that the current user owns this package
-            if (!servicePackage.getSeer().getId().equals(seer.getId())) {
+            // Verify that the current user owns this package (unless admin)
+            if (!isAdmin && !servicePackage.getSeer().getId().equals(currentUser.getId())) {
                 throw new IllegalArgumentException("You can only update your own service packages");
+            }
+
+            // Admin can update commission rate, SEER cannot
+            if (request.getCommissionRate() != null) {
+                if (!isAdmin) {
+                    throw new IllegalArgumentException("Only admin can update commission rate");
+                }
+                // Validate commission rate
+                if (request.getCommissionRate() < 0 || request.getCommissionRate() > 1) {
+                    throw new IllegalArgumentException("Commission rate must be between 0 and 1 (0% to 100%)");
+                }
+                servicePackage.setCommissionRate(request.getCommissionRate());
+                log.info("Admin updating commission rate to {} for service package {}", request.getCommissionRate(), packageId);
             }
         } else {
             // Create new package
@@ -178,9 +192,26 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             servicePackage.setDislikeCount(0L);
             servicePackage.setCommentCount(0L);
             servicePackage.setPackageCategories(new HashSet<>());
+            // Set default commission rate to 10% (0.10) if not provided in request
+            if (request.getCommissionRate() != null) {
+                if (!isAdmin) {
+                    throw new IllegalArgumentException("Only admin can set commission rate when creating package");
+                }
+                if (request.getCommissionRate() < 0 || request.getCommissionRate() > 1) {
+                    throw new IllegalArgumentException("Commission rate must be between 0 and 1 (0% to 100%)");
+                }
+                servicePackage.setCommissionRate(request.getCommissionRate());
+            } else {
+                servicePackage.setCommissionRate(0.10); // Default 10%
+            }
         }
 
-        servicePackage.setSeer(seer);
+        // Only set seer when creating new package (not when updating)
+        // Admin should not change the seer of an existing package
+        if (!StringUtils.hasText(packageId)) {
+            servicePackage.setSeer(currentUser);
+        }
+        
         servicePackage.setPackageTitle(request.getPackageTitle());
         servicePackage.setPackageContent(request.getPackageContent());
         servicePackage.setDurationMinutes(request.getDurationMinutes());

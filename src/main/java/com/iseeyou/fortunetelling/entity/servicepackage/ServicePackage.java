@@ -10,6 +10,8 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,6 +45,13 @@ public class ServicePackage extends AbstractBaseEntity {
 
     @Column(name = "price", nullable = false)
     private Double price;
+
+    @Column(name = "commission_rate")
+    @Builder.Default
+    private Double commissionRate = 0.10; // Default 10% commission rate
+
+    @Column(name = "service_fee_amount")
+    private Double serviceFeeAmount;
 
     @Column(name = "status", length = 20)
     private Constants.PackageStatusEnum status;
@@ -88,4 +97,19 @@ public class ServicePackage extends AbstractBaseEntity {
     @Builder.Default
     @JsonIgnore
     private Set<Booking> bookings = new HashSet<>();
+
+    @PrePersist
+    private void calculateServiceFeeAmountOnCreate() {
+        if (price != null && commissionRate != null) {
+            this.serviceFeeAmount = price * commissionRate;
+        }
+    }
+
+
+    @PreUpdate
+    private void calculateServiceFeeAmountOnUpdate() {
+        if (price != null && commissionRate != null) {
+            this.serviceFeeAmount = price * commissionRate;
+        }
+    }
 }

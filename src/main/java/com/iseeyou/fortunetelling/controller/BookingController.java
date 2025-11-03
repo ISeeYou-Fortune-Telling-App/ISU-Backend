@@ -811,6 +811,73 @@ public class BookingController extends AbstractBaseController {
         return responseFactory.successPage(response, "Payments retrieved successfully");
     }
 
+    // COMMENTED OUT: This endpoint is removed from API but the service method is kept for internal/automated use
+    // The processPayment() method in BookingService can be called internally by the system
+    // For example: scheduled jobs, automated payout processing, etc.
+
+    /*
+    @PostMapping("/pay")
+    @Operation(
+            summary = "Process payment for booking (Admin only)",
+            description = "Process payment based on booking status: " +
+                         "- If CANCELED: Refund to customer's PayPal account " +
+                         "- If COMPLETED: Payout to seer's PayPal email (after deducting commission)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Payment processed successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = BookingResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Booking status invalid or payment already processed",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Booking not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<BookingResponse>> processPayment(
+            @Parameter(description = "Booking ID", required = true)
+            @RequestParam UUID bookingId
+    ) {
+        log.info("Admin processing payment for booking {}", bookingId);
+        Booking booking = bookingService.processPayment(bookingId);
+        BookingResponse response = bookingMapper.mapTo(booking, BookingResponse.class);
+        return responseFactory.successSingle(response, "Payment processed successfully");
+    }
+    */
+
     @PostMapping("/{id}/seer-confirm")
     @Operation(
             summary = "Seer confirm or cancel a booking (Seer only)",

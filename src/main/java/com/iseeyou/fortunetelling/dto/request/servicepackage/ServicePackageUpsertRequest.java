@@ -1,6 +1,8 @@
 package com.iseeyou.fortunetelling.dto.request.servicepackage;
 
 import com.iseeyou.fortunetelling.util.Constants;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -30,4 +32,9 @@ public class ServicePackageUpsertRequest {
     private List<String> categoryIds; // Danh sách ID của các category
 
     private MultipartFile image; // file ảnh minh họa - optional
+
+    // Commission rate (optional) - chỉ admin mới có thể cập nhật
+    @DecimalMin(value = "0.0", message = "Commission rate must be greater than or equal to 0")
+    @DecimalMax(value = "1.0", message = "Commission rate must be less than or equal to 1 (100%)")
+    private Double commissionRate;
 }

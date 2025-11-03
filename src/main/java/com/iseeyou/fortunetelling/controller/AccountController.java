@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.user.UpdatePaypalEmailRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.account.AccountStatsResponse;
@@ -552,5 +553,57 @@ public class AccountController extends AbstractBaseController {
             : "All users retrieved successfully";
 
         return responseFactory.successPage(response, message);
+    }
+
+    @PutMapping("/me/paypal-email")
+    @Operation(
+            summary = "Update PayPal email for seer",
+            description = "Seer can update their PayPal email address for receiving payments. " +
+                         "Only seers can use this endpoint.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "PayPal email updated successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid email format or user is not a seer",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Only seers can update PayPal email",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAnyAuthority('SEER', 'UNVERIFIED_SEER')")
+    public ResponseEntity<SingleResponse<UserResponse>> updatePaypalEmail(
+            @Parameter(description = "PayPal email update request", required = true)
+            @RequestBody @Valid UpdatePaypalEmailRequest request
+    ) {
+        log.info("Updating PayPal email for seer");
+        User updatedUser = userService.updatePaypalEmail(request);
+        UserResponse userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
+        return responseFactory.successSingle(userResponse, "PayPal email updated successfully");
     }
 }

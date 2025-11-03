@@ -252,6 +252,23 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum PaymentTypeEnum {
+        PAID_PACKAGE("PAID_PACKAGE"),           // Khách hàng thanh toán cho gói dịch vụ của Seer
+        RECEIVED_PACKAGE("RECEIVED_PACKAGE"),   // Hệ thống thanh toán lại tiền cho SEER
+        BONUS("BONUS");                         // Admin thưởng thêm cho SEER
+
+        private final String value;
+
+        public static PaymentTypeEnum get(final String name) {
+            return Stream.of(PaymentTypeEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid payment type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum ServiceCategoryEnum {
         TAROT("TAROT"),
         PALM_READING("PALM_READING"),

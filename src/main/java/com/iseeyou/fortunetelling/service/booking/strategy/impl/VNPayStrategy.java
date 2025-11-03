@@ -34,6 +34,7 @@ public class VNPayStrategy implements PaymentStrategy {
             bookingPayment.setAmount(amount);
             bookingPayment.setStatus(Constants.PaymentStatusEnum.PENDING);
             bookingPayment.setPaymentMethod(Constants.PaymentMethodEnum.VNPAY);
+            bookingPayment.setPaymentType(Constants.PaymentTypeEnum.PAID_PACKAGE);
             bookingPayment.setApprovalUrl(vnpayUrl);
 
             return bookingPaymentRepository.save(bookingPayment);
@@ -45,6 +46,7 @@ public class VNPayStrategy implements PaymentStrategy {
             bookingPayment.setAmount(amount);
             bookingPayment.setStatus(Constants.PaymentStatusEnum.FAILED);
             bookingPayment.setPaymentMethod(Constants.PaymentMethodEnum.VNPAY);
+            bookingPayment.setPaymentType(Constants.PaymentTypeEnum.PAID_PACKAGE);
             bookingPayment.setFailureReason(e.getMessage());
 
             return bookingPaymentRepository.save(bookingPayment);
