@@ -15,9 +15,6 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@AttributeOverrides({
-        @AttributeOverride(name = "id", column = @Column(name = "package_interaction_id", nullable = false)),
-})
 public class PackageInteraction extends AbstractBaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "interaction_type", nullable = false)

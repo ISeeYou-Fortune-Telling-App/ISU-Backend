@@ -12,9 +12,6 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@AttributeOverrides({
-        @AttributeOverride(name = "id", column = @Column(name = "certificate_category_id", nullable = false)),
-})
 public class CertificateCategory extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "certificate_id", nullable = false)
