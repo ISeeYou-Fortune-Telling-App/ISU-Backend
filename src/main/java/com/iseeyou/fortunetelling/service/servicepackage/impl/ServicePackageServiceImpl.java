@@ -1,12 +1,15 @@
 package com.iseeyou.fortunetelling.service.servicepackage.impl;
 
+import com.iseeyou.fortunetelling.dto.request.servicepackage.AvailableTimeSlotRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.AvailableTimeSlotResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.PackageInteraction;
+import com.iseeyou.fortunetelling.entity.servicepackage.PackageAvailableTime;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -16,21 +19,16 @@ import com.iseeyou.fortunetelling.mapper.ServicePackageMapper;
 import com.iseeyou.fortunetelling.repository.booking.BookingRepository;
 import com.iseeyou.fortunetelling.repository.servicepackage.*;
 import com.iseeyou.fortunetelling.repository.knowledge.KnowledgeCategoryRepository;
-import com.iseeyou.fortunetelling.repository.user.UserRepository;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.booking.BookingService;
 import com.iseeyou.fortunetelling.service.user.UserService;
-import com.iseeyou.fortunetelling.config.CloudinaryConfig;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionDefinition;
@@ -45,6 +43,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Comparator;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -60,6 +61,17 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final BookingService bookingService;
     private final TransactionTemplate transactionTemplate;
     private final ServiceReviewRepository serviceReviewRepository;
+    private final PackageAvailableTimeRepository availableTimeRepository;
+
+    private static final Map<Integer, String> WEEKDAY_NAMES = Map.of(
+        2, "Thứ 2",
+        3, "Thứ 3",
+        4, "Thứ 4",
+        5, "Thứ 5",
+        6, "Thứ 6",
+        7, "Thứ 7",
+        8, "Chủ nhật"
+    );
 
     // Constructor with @Lazy for BookingService to prevent circular dependency
     public ServicePackageServiceImpl(
@@ -72,7 +84,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             ServicePackageMapper servicePackageMapper,
             @Lazy BookingService bookingService,
             TransactionTemplate transactionTemplate,
-            ServiceReviewRepository serviceReviewRepository) {
+            ServiceReviewRepository serviceReviewRepository,
+            PackageAvailableTimeRepository availableTimeRepository) {
         this.servicePackageRepository = servicePackageRepository;
         this.knowledgeCategoryRepository = knowledgeCategoryRepository;
         this.cloudinaryService = cloudinaryService;
@@ -83,6 +96,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         this.bookingService = bookingService;
         this.transactionTemplate = transactionTemplate;
         this.serviceReviewRepository = serviceReviewRepository;
+        this.availableTimeRepository = availableTimeRepository;
     }
 
     @Override
@@ -90,6 +104,11 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     public Page<ServicePackage> findAllAvailable(Pageable pageable) {
         Specification<ServicePackage> spec = ServicePackageSpecification.availableOnly();
         return servicePackageRepository.findAll(spec, pageable);
+    }
+
+    // Public getter for controller to access UserService
+    public UserService getUserService() {
+        return userService;
     }
 
     @Override
@@ -245,7 +264,18 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             String imageUrl = uploadImage(request.getImage());
             servicePackage.setImageUrl(imageUrl);
         }
-        return servicePackageRepository.save(servicePackage);
+
+        // Lưu service package trước
+        ServicePackage savedPackage = servicePackageRepository.save(servicePackage);
+
+        // Xử lý thời gian rảnh nếu có
+        if (request.getAvailableTimeSlots() != null && !request.getAvailableTimeSlots().isEmpty()) {
+            saveAvailableTimes(savedPackage, request.getAvailableTimeSlots());
+            log.info("Saved {} available time slots for service package {}",
+                request.getAvailableTimeSlots().size(), savedPackage.getId());
+        }
+
+        return savedPackage;
     }
 
     @Override
@@ -376,14 +406,27 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .build();
 
         // Get category information from packageCategories
-        Constants.ServiceCategoryEnum categoryEnum = servicePackage.getPackageCategories().stream()
+        // Build categories list (matching ServicePackageResponse.CategoryInfo)
+        List<com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse.CategoryInfo> categories =
+                servicePackage.getPackageCategories().stream()
+                        .map(pc -> {
+                            var kc = pc.getKnowledgeCategory();
+                            return com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse.CategoryInfo.builder()
+                                    .id(kc.getId())
+                                    .name(kc.getName())
+                                    .description(kc.getDescription())
+                                    .build();
+                        })
+                        .collect(Collectors.toList());
+
+        // Legacy single category enum (keep for backward compatibility) - try map from first category name
+        Constants.ServiceCategoryEnum categoryEnum = categories.stream()
                 .findFirst()
-                .map(pc -> {
-                    String categoryName = pc.getKnowledgeCategory().getName();
+                .map(cat -> {
                     try {
-                        return Constants.ServiceCategoryEnum.get(categoryName);
+                        return Constants.ServiceCategoryEnum.get(cat.getName());
                     } catch (IllegalArgumentException e) {
-                        log.warn("Unknown category name: {}", categoryName);
+                        log.warn("Unknown category name when mapping to enum: {}", cat.getName());
                         return null;
                     }
                 })
@@ -394,24 +437,35 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         Long totalReviews = bookingRepository.countReviewsByServicePackageId(packageId);
         Double avgRating = bookingRepository.getAverageRatingByServicePackageId(packageId);
 
+        // Lấy thông tin thời gian rảnh
+        List<ServicePackageDetailResponse.AvailableTimeSlotInfo> availableTimeSlots =
+            availableTimeRepository.findByServicePackageId(packageId).stream()
+                .map(slot -> ServicePackageDetailResponse.AvailableTimeSlotInfo.builder()
+                    .weekDate(slot.getWeekDate())
+                    .weekDayName(WEEKDAY_NAMES.get(slot.getWeekDate()))
+                    .availableFrom(slot.getAvailableFrom())
+                    .availableTo(slot.getAvailableTo())
+                    .build())
+                .collect(Collectors.toList());
 
         // Tạo ServicePackageDetailResponse
-        return ServicePackageDetailResponse.builder()
-                .packageId(servicePackage.getId().toString())
-                .packageTitle(servicePackage.getPackageTitle())
-                .packageContent(servicePackage.getPackageContent())
-                .imageUrl(servicePackage.getImageUrl())
-                .durationMinutes(servicePackage.getDurationMinutes())
-                .price(servicePackage.getPrice())
-                .category(categoryEnum)
-                .status(servicePackage.getStatus().getValue())
-                .rejectionReason(servicePackage.getRejectionReason())
-                .createdAt(servicePackage.getCreatedAt())
-                .updatedAt(servicePackage.getUpdatedAt())
-                .avgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
-                .totalReviews(totalReviews != null ? totalReviews : 0L)
-                .seer(seerInfo)
-                .build();
+         return ServicePackageDetailResponse.builder()
+                 .packageId(servicePackage.getId().toString())
+                 .packageTitle(servicePackage.getPackageTitle())
+                 .packageContent(servicePackage.getPackageContent())
+                 .imageUrl(servicePackage.getImageUrl())
+                 .durationMinutes(servicePackage.getDurationMinutes())
+                 .price(servicePackage.getPrice())
+                 .categories(categories)
+                 .status(servicePackage.getStatus().getValue())
+                 .rejectionReason(servicePackage.getRejectionReason())
+                 .createdAt(servicePackage.getCreatedAt())
+                 .updatedAt(servicePackage.getUpdatedAt())
+                 .avgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null)
+                 .totalReviews(totalReviews != null ? totalReviews : 0L)
+                 .availableTimeSlots(availableTimeSlots)
+                 .seer(seerInfo)
+                 .build();
     }
 
     @Override
@@ -760,5 +814,133 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         private Long reportedPackages;
         private Long hiddenPackages;
         private Long totalInteractions;
+    }
+
+    // ============ Available Time methods (merged from PackageAvailableTimeService) ============
+
+    /**
+     * Tạo hoặc cập nhật thời gian rảnh cho service package
+     * @param servicePackage Service package cần thêm thời gian rảnh
+     * @param timeSlots Danh sách thời gian rảnh theo thứ trong tuần
+     */
+    @Override
+    @Transactional
+    public void saveAvailableTimes(ServicePackage servicePackage, List<AvailableTimeSlotRequest> timeSlots) {
+        if (timeSlots == null || timeSlots.isEmpty()) {
+            log.info("No available time slots provided for package {}", servicePackage.getId());
+            return;
+        }
+
+        // Validate time slots
+        validateTimeSlots(timeSlots);
+
+        // Xóa tất cả thời gian rảnh cũ
+        availableTimeRepository.deleteByServicePackageId(servicePackage.getId());
+
+        // Tạo các thời gian rảnh mới
+        Set<PackageAvailableTime> availableTimes = timeSlots.stream()
+            .map(slot -> PackageAvailableTime.builder()
+                .servicePackage(servicePackage)
+                .weekDate(slot.getWeekDate())
+                .availableFrom(slot.getAvailableFrom())
+                .availableTo(slot.getAvailableTo())
+                .build())
+            .collect(Collectors.toSet());
+
+        availableTimeRepository.saveAll(availableTimes);
+        log.info("Saved {} available time slots for package {}", availableTimes.size(), servicePackage.getId());
+    }
+
+    /**
+     * Lấy danh sách thời gian rảnh của service package
+     * @param packageId ID của service package
+     * @return Danh sách thời gian rảnh được sắp xếp theo thứ và giờ
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<AvailableTimeSlotResponse> getAvailableTimes(UUID packageId) {
+        List<PackageAvailableTime> times = availableTimeRepository.findByServicePackageId(packageId);
+
+        return times.stream()
+            .map(time -> AvailableTimeSlotResponse.builder()
+                .weekDate(time.getWeekDate())
+                .weekDayName(WEEKDAY_NAMES.get(time.getWeekDate()))
+                .availableFrom(time.getAvailableFrom())
+                .availableTo(time.getAvailableTo())
+                .build())
+            .sorted(Comparator.comparing(AvailableTimeSlotResponse::getWeekDate)
+                .thenComparing(AvailableTimeSlotResponse::getAvailableFrom))
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Xóa tất cả thời gian rảnh của service package
+     * @param packageId ID của service package
+     */
+    @Override
+    @Transactional
+    public void deleteAvailableTimes(UUID packageId) {
+        availableTimeRepository.deleteByServicePackageId(packageId);
+        log.info("Deleted all available time slots for package {}", packageId);
+    }
+
+    /**
+     * Kiểm tra xem một thời gian cụ thể có nằm trong thời gian rảnh không
+     * @param packageId ID của service package
+     * @param weekDate Thứ trong tuần
+     * @param time Thời gian cần kiểm tra
+     * @return true nếu thời gian nằm trong khoảng rảnh
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isTimeAvailable(UUID packageId, Integer weekDate, java.time.LocalTime time) {
+        List<PackageAvailableTime> times = availableTimeRepository.findByServicePackageIdAndWeekDate(packageId, weekDate);
+
+        return times.stream().anyMatch(availableTime ->
+            !time.isBefore(availableTime.getAvailableFrom()) &&
+            !time.isAfter(availableTime.getAvailableTo())
+        );
+    }
+
+    /**
+     * Kiểm tra thời gian rảnh hợp lệ
+     */
+    private void validateTimeSlots(List<AvailableTimeSlotRequest> timeSlots) {
+        for (AvailableTimeSlotRequest slot : timeSlots) {
+            if (slot.getAvailableFrom().isAfter(slot.getAvailableTo()) ||
+                slot.getAvailableFrom().equals(slot.getAvailableTo())) {
+                throw new IllegalArgumentException(
+                    String.format("Thời gian không hợp lệ: %s phải trước %s",
+                        slot.getAvailableFrom(), slot.getAvailableTo())
+                );
+            }
+        }
+
+        // Kiểm tra trùng lặp thời gian trong cùng một ngày
+        Map<Integer, List<AvailableTimeSlotRequest>> groupedByDay = timeSlots.stream()
+            .collect(Collectors.groupingBy(AvailableTimeSlotRequest::getWeekDate));
+
+        for (Map.Entry<Integer, List<AvailableTimeSlotRequest>> entry : groupedByDay.entrySet()) {
+            List<AvailableTimeSlotRequest> daySlots = entry.getValue();
+            for (int i = 0; i < daySlots.size(); i++) {
+                for (int j = i + 1; j < daySlots.size(); j++) {
+                    if (isTimeOverlap(daySlots.get(i), daySlots.get(j))) {
+                        throw new IllegalArgumentException(
+                            String.format("Thời gian bị trùng lặp trong %s", WEEKDAY_NAMES.get(entry.getKey()))
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Kiểm tra xem 2 khoảng thời gian có bị chồng lấn không
+     */
+    private boolean isTimeOverlap(AvailableTimeSlotRequest slot1, AvailableTimeSlotRequest slot2) {
+        return !(slot1.getAvailableTo().isBefore(slot2.getAvailableFrom()) ||
+                 slot1.getAvailableTo().equals(slot2.getAvailableFrom()) ||
+                 slot2.getAvailableTo().isBefore(slot1.getAvailableFrom()) ||
+                 slot2.getAvailableTo().equals(slot1.getAvailableFrom()));
     }
 }

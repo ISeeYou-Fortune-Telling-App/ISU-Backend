@@ -98,6 +98,10 @@ public class ServicePackage extends AbstractBaseEntity {
     @JsonIgnore
     private Set<Booking> bookings = new HashSet<>();
 
+    @OneToMany(mappedBy = "servicePackage", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private Set<PackageAvailableTime> availableTimes = new HashSet<>();
+
     @PrePersist
     private void calculateServiceFeeAmountOnCreate() {
         if (price != null && commissionRate != null) {

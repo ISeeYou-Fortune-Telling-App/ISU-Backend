@@ -1,6 +1,6 @@
 package com.iseeyou.fortunetelling.dto.request.servicepackage;
 
-import com.iseeyou.fortunetelling.util.Constants;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -11,7 +11,6 @@ import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.UUID;
 
 @Data
 public class ServicePackageUpsertRequest {
@@ -37,4 +36,8 @@ public class ServicePackageUpsertRequest {
     @DecimalMin(value = "0.0", message = "Commission rate must be greater than or equal to 0")
     @DecimalMax(value = "1.0", message = "Commission rate must be less than or equal to 1 (100%)")
     private Double commissionRate;
+
+    // Thời gian rảnh của service package
+    @Valid
+    private List<AvailableTimeSlotRequest> availableTimeSlots;
 }

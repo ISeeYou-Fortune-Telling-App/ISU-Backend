@@ -1,7 +1,9 @@
 package com.iseeyou.fortunetelling.service.servicepackage;
 
+import com.iseeyou.fortunetelling.dto.request.servicepackage.AvailableTimeSlotRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.AvailableTimeSlotResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -53,4 +55,10 @@ public interface ServicePackageService {
     com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview createReview(java.util.UUID packageId, com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview review);
     com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview updateReview(java.util.UUID id, com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview review);
     void deleteReview(java.util.UUID id);
+
+    // Available time methods (merged from PackageAvailableTimeService)
+    void saveAvailableTimes(com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage servicePackage, java.util.List<AvailableTimeSlotRequest> timeSlots);
+    java.util.List<AvailableTimeSlotResponse> getAvailableTimes(java.util.UUID packageId);
+    void deleteAvailableTimes(java.util.UUID packageId);
+    boolean isTimeAvailable(java.util.UUID packageId, Integer weekDate, java.time.LocalTime time);
 }

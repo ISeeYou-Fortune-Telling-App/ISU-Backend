@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.dto.response;
 
 import com.iseeyou.fortunetelling.util.Constants;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse.CategoryInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,7 +26,6 @@ public class ServicePackageDetailResponse {
     private Double price;
     private Boolean isLike;
     private Boolean isDislike;
-    private Constants.ServiceCategoryEnum category; // thêm trường category
     private String status;
     private String rejectionReason;
     private LocalDateTime createdAt;
@@ -35,6 +35,8 @@ public class ServicePackageDetailResponse {
     private Double avgRating;
     private Long totalReviews;
     private List<ReviewInfo> reviews;
+    private List<AvailableTimeSlotInfo> availableTimeSlots; // Thêm trường availableTimeSlots
+    private List<CategoryInfo> categories; // Danh sách category giống cấu trúc ServicePackageResponse
 
     // Thông tin Seer
     private SeerInfo seer;
@@ -76,5 +78,16 @@ public class ServicePackageDetailResponse {
         private UUID customerId;
         private String customerName;
         private String customerAvatar;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AvailableTimeSlotInfo {
+        private Integer weekDate; // 2 = Thứ 2, 3 = Thứ 3, ..., 8 = Chủ nhật
+        private String weekDayName; // Tên thứ bằng tiếng Việt
+        private java.time.LocalTime availableFrom;
+        private java.time.LocalTime availableTo;
     }
 }
