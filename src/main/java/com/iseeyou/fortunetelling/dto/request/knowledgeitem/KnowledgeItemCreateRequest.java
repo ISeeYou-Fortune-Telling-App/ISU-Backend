@@ -17,6 +17,7 @@ import java.util.UUID;
 public class KnowledgeItemCreateRequest {
     private String title;
     private String content;
+    private String source;
     private Set<UUID> categoryIds;
     private Constants.KnowledgeItemStatusEnum status;
     private MultipartFile imageFile;

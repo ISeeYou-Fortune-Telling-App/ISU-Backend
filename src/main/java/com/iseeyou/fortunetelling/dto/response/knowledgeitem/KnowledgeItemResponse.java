@@ -16,6 +16,7 @@ import java.util.List;
 public class KnowledgeItemResponse extends AbstractBaseDataResponse {
     private String title;
     private String content;
+    private String source;
     private List<String> categories;
     private Constants.KnowledgeItemStatusEnum status;
     private String imageUrl;

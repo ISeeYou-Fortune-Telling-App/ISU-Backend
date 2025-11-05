@@ -28,6 +28,9 @@ public class KnowledgeItem extends AbstractBaseEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "source")
+    private String source;
+
     @Column(name = "view_count", nullable = false)
     private Long viewCount;
 
