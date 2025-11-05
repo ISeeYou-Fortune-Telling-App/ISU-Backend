@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -23,12 +25,14 @@ public class BookingResponse extends AbstractBaseDataResponse {
     private String additionalNote;
     private BookingPaymentInfo[] bookingPaymentInfos;
     private String redirectUrl;
+    private BookingReviewInfo review;
 
     @Getter
     @Setter
     @NoArgsConstructor
     @SuperBuilder
     public static class BookingSeerInfo {
+        private UUID id;
         private String fullName;
         private String avatarUrl;
         private Double avgRating;
@@ -39,6 +43,7 @@ public class BookingResponse extends AbstractBaseDataResponse {
     @NoArgsConstructor
     @SuperBuilder
     public static class BookingCustomerInfo {
+        private UUID id;
         private String fullName;
         private String avatarUrl;
     }
@@ -66,5 +71,15 @@ public class BookingResponse extends AbstractBaseDataResponse {
         private LocalDateTime paymentTime;
         private String approvalUrl;
         private String failureReason;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @SuperBuilder
+    public static class BookingReviewInfo {
+        private BigDecimal rating;
+        private String comment;
+        private LocalDateTime reviewedAt;
     }
 }

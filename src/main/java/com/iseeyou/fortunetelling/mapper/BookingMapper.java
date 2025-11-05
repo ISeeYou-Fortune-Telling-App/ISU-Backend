@@ -33,6 +33,7 @@ public class BookingMapper extends BaseMapper {
 
                     if (source.getCustomer() != null) {
                         BookingResponse.BookingCustomerInfo customerInfo = BookingResponse.BookingCustomerInfo.builder()
+                                .id(source.getCustomer().getId())
                                 .fullName(source.getCustomer().getFullName())
                                 .avatarUrl(source.getCustomer().getAvatarUrl())
                                 .build();
@@ -46,6 +47,7 @@ public class BookingMapper extends BaseMapper {
                         }
 
                         BookingResponse.BookingSeerInfo seerInfo = BookingResponse.BookingSeerInfo.builder()
+                                .id(source.getServicePackage().getSeer().getId())
                                 .fullName(source.getServicePackage().getSeer().getFullName())
                                 .avatarUrl(source.getServicePackage().getSeer().getAvatarUrl())
                                 .avgRating(avgRating)
@@ -90,6 +92,16 @@ public class BookingMapper extends BaseMapper {
                         if (latestPayment.isPresent() && latestPayment.get().getApprovalUrl() != null) {
                             destination.setRedirectUrl(latestPayment.get().getApprovalUrl());
                         }
+                    }
+
+                    // Map review information
+                    if (source.getRating() != null || source.getComment() != null || source.getReviewedAt() != null) {
+                        BookingResponse.BookingReviewInfo reviewInfo = BookingResponse.BookingReviewInfo.builder()
+                                .rating(source.getRating())
+                                .comment(source.getComment())
+                                .reviewedAt(source.getReviewedAt())
+                                .build();
+                        destination.setReview(reviewInfo);
                     }
 
                     return destination;
