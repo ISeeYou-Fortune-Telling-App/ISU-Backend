@@ -41,10 +41,7 @@ public class BookingMapper extends BaseMapper {
                     }
 
                     if (source.getServicePackage() != null && source.getServicePackage().getSeer() != null) {
-                        Double avgRating = null;
-                        if (source.getServicePackage().getSeer().getSeerProfile() != null) {
-                            avgRating = source.getServicePackage().getSeer().getSeerProfile().getAvgRating();
-                        }
+                        Double avgRating = 0.0; // Temporarily set to 0
 
                         BookingResponse.BookingSeerInfo seerInfo = BookingResponse.BookingSeerInfo.builder()
                                 .id(source.getServicePackage().getSeer().getId())

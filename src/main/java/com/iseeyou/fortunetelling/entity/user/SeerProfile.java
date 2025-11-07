@@ -17,12 +17,6 @@ public class SeerProfile extends AbstractBaseEntity {
     @JoinColumn(name = "seer_id", referencedColumnName = "user_id")
     private User user;
 
-    @Column(name = "avg_rating", nullable = false)
-    private Double avgRating;
-
-    @Column(name = "total_rates", nullable = false)
-    private Integer totalRates;
-
     @Column(name = "payment_info", length = 500)
     private String paymentInfo;
 

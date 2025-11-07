@@ -284,8 +284,6 @@ public class UserServiceImpl implements UserService {
 
         SeerProfile seerProfile = new SeerProfile();
         seerProfile.setUser(user);
-        seerProfile.setAvgRating(0.0);
-        seerProfile.setTotalRates(0);
         user.setSeerProfile(seerProfile);
 
         userRepository.save(user);
@@ -465,8 +463,6 @@ public class UserServiceImpl implements UserService {
                     if (user.getSeerProfile() == null) {
                         SeerProfile seerProfile = new SeerProfile();
                         seerProfile.setUser(user);
-                        seerProfile.setAvgRating(0.0);
-                        seerProfile.setTotalRates(0);
                         user.setSeerProfile(seerProfile);
                     }
                     // New seers start as UNVERIFIED
@@ -595,8 +591,6 @@ public class UserServiceImpl implements UserService {
             // Tạo seer profile nếu chưa có (trường hợp edge case)
             seerProfile = new SeerProfile();
             seerProfile.setUser(user);
-            seerProfile.setAvgRating(0.0);
-            seerProfile.setTotalRates(0);
             user.setSeerProfile(seerProfile);
         }
 

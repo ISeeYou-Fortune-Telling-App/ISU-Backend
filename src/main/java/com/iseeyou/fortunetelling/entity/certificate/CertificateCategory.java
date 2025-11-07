@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name="certificate-category")
+@Table(name="certificate_category")
 @Getter
 @Setter
 @Builder

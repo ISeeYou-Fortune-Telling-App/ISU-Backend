@@ -42,11 +42,6 @@ public class ServicePackageMapper extends BaseMapper {
                     seerInfo.setFullName(user.getFullName());
                     seerInfo.setAvatarUrl(user.getAvatarUrl());
 
-                    // Map SeerProfile rating data if available
-                    if (user.getSeerProfile() != null) {
-                        seerInfo.setAvgRating(user.getSeerProfile().getAvgRating());
-                        seerInfo.setTotalRates(user.getSeerProfile().getTotalRates());
-                    }
 
                     return seerInfo;
                 }).map(source.getSeer(), destination.getSeer());

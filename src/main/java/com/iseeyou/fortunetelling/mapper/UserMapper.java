@@ -47,18 +47,6 @@ public class UserMapper extends BaseMapper {
                     mapper.map(User::getAvatarUrl, SimpleSeerCardResponse::setAvatarUrl);
                     mapper.map(User::getProfileDescription, SimpleSeerCardResponse::setProfileDescription);
 
-                    // Custom mapping for rating
-                    mapper.using(ctx -> {
-                        User user = (User) ctx.getSource();
-                        return user.getSeerProfile() != null ? user.getSeerProfile().getAvgRating() : 0.0;
-                    }).map(src -> src, SimpleSeerCardResponse::setRating);
-
-                    // Custom mapping for totalRates
-                    mapper.using(ctx -> {
-                        User user = (User) ctx.getSource();
-                        return user.getSeerProfile() != null ? user.getSeerProfile().getTotalRates().doubleValue() : 0.0;
-                    }).map(src -> src, SimpleSeerCardResponse::setTotalRates);
-
                     // Custom mapping for specialities
                     mapper.using(ctx -> {
                         User user = (User) ctx.getSource();

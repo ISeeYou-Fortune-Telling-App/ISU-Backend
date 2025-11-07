@@ -9,11 +9,11 @@ import com.iseeyou.fortunetelling.service.dummydata.domain.ServicePackages;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Service;
+// import org.springframework.stereotype.Service;
 
 @Slf4j
 @RequiredArgsConstructor
-@Service
+// @Service  // Comment lại để không tự động chạy DummyData nữa
 public class MainDummyDataService implements CommandLineRunner {
 
     private final Accounts accounts;

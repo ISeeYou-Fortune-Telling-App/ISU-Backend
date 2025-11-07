@@ -400,8 +400,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .avatarUrl(seer.getAvatarUrl())
                 .coverUrl(seer.getCoverUrl())
                 .profileDescription(seer.getProfileDescription())
-                .avgRating(seerProfile != null ? seerProfile.getAvgRating() : 0.0)
-                .totalRates(seerProfile != null ? seerProfile.getTotalRates() : 0)
+                .avgRating(0.0) // Temporarily set to 0
+                .totalRates(0) // Temporarily set to 0
                 .paymentInfo(seerProfile != null ? seerProfile.getPaymentInfo() : null)
                 .build();
 

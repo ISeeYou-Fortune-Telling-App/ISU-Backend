@@ -50,8 +50,6 @@ public class Accounts {
                 "Nguyễn Thị Minh Châu",
                 "Chuyên gia Tarot với hơn 15 năm kinh nghiệm, từng đào tạo tại Học viện Tarot Quốc tế Paris. Tư vấn tình yêu, sự nghiệp và định hướng cuộc sống qua bộ bài Tarot.",
                 LocalDateTime.of(1978, 5, 12, 0, 0),
-                4.9,
-                245,
                 "VCB - 1234567890 - Nguyễn Thị Minh Châu"
         );
 
@@ -62,8 +60,6 @@ public class Accounts {
                 "Lê Phương Anh",
                 "Thạc sĩ Tâm lý học kết hợp Chiêm tinh học phương Tây. Chuyên phân tích biểu đồ sao và tư vấn tính cách, khả năng tương thích trong các mối quan hệ.",
                 LocalDateTime.of(1985, 9, 23, 0, 0),
-                4.8,
-                189,
                 "ACB - 9876543210 - Lê Phương Anh"
         );
 
@@ -74,8 +70,6 @@ public class Accounts {
                 "Trần Anh Tuấn",
                 "Chuyên gia Tử vi Đẩu số với 20 năm kinh nghiệm. Được đào tạo bài bản từ các bậc cao thủ, chuyên xem vận hạn, giải mộng và phong thủy nhà ở.",
                 LocalDateTime.of(1975, 3, 8, 0, 0),
-                4.7,
-                312,
                 "Techcombank - 0123456789 - Trần Anh Tuấn"
         );
 
@@ -86,8 +80,6 @@ public class Accounts {
                 "Phạm Thị Linh",
                 "Chuyên gia xem chỉ tay và nhân tướng học, kế thừa nghề từ gia đình với truyền thống hơn 3 đời. Tư vấn về tài lộc, hôn nhân và sức khỏe qua đường chỉ tay.",
                 LocalDateTime.of(1982, 11, 15, 0, 0),
-                4.9,
-                278,
                 "MB Bank - 5555666777 - Phạm Thị Linh"
         );
 
@@ -98,8 +90,6 @@ public class Accounts {
                 "Hoàng Đức Minh",
                 "Chuyên gia Ngũ hành và phong thủy, có chứng chỉ quốc tế về Feng Shui. Tư vấn hóa giải vận hạn, chọn ngày giờ tốt và bài trí không gian sống hài hòa.",
                 LocalDateTime.of(1980, 7, 20, 0, 0),
-                4.6,
-                156,
                 "BIDV - 3333444555 - Hoàng Đức Minh"
         );
 
@@ -110,8 +100,6 @@ public class Accounts {
                 "Vũ Thị Thùy Dung",
                 "Chuyên gia Numerology (Thần số học), giúp khách hàng khám phá bản thân qua con số và đưa ra lời khuyên về sự nghiệp, tài chính dựa trên ngày tháng năm sinh.",
                 LocalDateTime.of(1987, 2, 28, 0, 0),
-                4.8,
-                201,
                 "Vietinbank - 7777888999 - Vũ Thị Thùy Dung"
         );
 
@@ -122,8 +110,6 @@ public class Accounts {
                 "Đỗ Văn Long",
                 "Chuyên gia về Dịch học và Kinh Dịch, nghiên cứu về Bát quái và Âm dương. Tư vấn chiến lược kinh doanh, đầu tư và các quyết định quan trọng trong cuộc sống.",
                 LocalDateTime.of(1970, 12, 5, 0, 0),
-                4.9,
-                367,
                 "Sacombank - 2222333444 - Đỗ Văn Long"
         );
 
@@ -134,8 +120,6 @@ public class Accounts {
                 "Bùi Thị Hương",
                 "Chuyên gia về 12 cung hoàng đạo phương Tây. Tư vấn về tình yêu, tương thích cặp đôi và định hướng nghề nghiệp dựa trên vị trí các vì sao khi sinh.",
                 LocalDateTime.of(1990, 6, 18, 0, 0),
-                4.7,
-                142,
                 "TPBank - 6666777888 - Bùi Thị Hương"
         );
 
@@ -146,8 +130,6 @@ public class Accounts {
                 "Ngô Minh Khải",
                 "Chuyên gia xem tướng mặt và quán khí sắc. Với kinh nghiệm 18 năm, có thể nhận định tính cách, vận mệnh và xu hướng phát triển của mỗi người qua gương mặt.",
                 LocalDateTime.of(1976, 4, 9, 0, 0),
-                4.8,
-                223,
                 "VPBank - 4444555666 - Ngô Minh Khải"
         );
 
@@ -158,8 +140,6 @@ public class Accounts {
                 "Đinh Thị Hằng",
                 "Chuyên gia Oracle Card và giải mộng. Sử dụng bộ bài thiên thần để kết nối với năng lượng vũ trụ, đưa ra lời khuyên và hướng dẫn cho những bước đi trong tương lai.",
                 LocalDateTime.of(1983, 10, 30, 0, 0),
-                4.9,
-                195,
                 "SHB - 8888999000 - Đinh Thị Hằng"
         );
 
@@ -263,7 +243,7 @@ public class Accounts {
 
     private void createSeerAccount(String email, String phone, String gender, String fullName,
                                    String profileDescription, LocalDateTime birthDate,
-                                   double avgRating, int totalRates, String paymentInfo) {
+                                   String paymentInfo) {
         User seer = User.builder()
                 .role(Constants.RoleEnum.SEER)
                 .email(email)
@@ -281,8 +261,6 @@ public class Accounts {
 
         SeerProfile seerProfile = SeerProfile.builder()
                 .user(seer)
-                .avgRating(avgRating)
-                .totalRates(totalRates)
                 .paymentInfo(paymentInfo)
                 .build();
 
