@@ -4,12 +4,14 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,4 +51,7 @@ public interface BookingService {
 
     // Process payment: refund if canceled, payout to seer if completed
     Booking processPayment(UUID bookingId);
+
+    // Revenue calculation
+    DailyRevenueResponse getDailyRevenue(LocalDate date);
 }

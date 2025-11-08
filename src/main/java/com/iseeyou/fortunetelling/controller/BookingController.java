@@ -12,6 +12,7 @@ import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
 import com.iseeyou.fortunetelling.service.booking.impl.BookingServiceImpl;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
@@ -995,5 +996,59 @@ public class BookingController extends AbstractBaseController {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<BookingReviewResponse> response = bookingService.seerGetReviews(packageId, pageable);
         return responseFactory.successPage(response, "Reviews retrieved successfully");
+    }
+
+    @GetMapping("/revenue/daily")
+    @Operation(
+            summary = "Get daily revenue (Admin only)",
+            description = "Tính tổng doanh thu trong ngày = (PAID_PACKAGE - RECEIVED_PACKAGE) với status COMPLETED. Trả về thông tin doanh thu và thuế cố định 10%",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Daily revenue retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid date format",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<DailyRevenueResponse>> getDailyRevenue(
+            @Parameter(description = "Date to calculate revenue (format: yyyy-MM-dd). Default is today", example = "2025-11-08")
+            @RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate date
+    ) {
+        // Nếu không truyền date, lấy ngày hôm nay
+        java.time.LocalDate targetDate = date != null ? date : java.time.LocalDate.now();
+
+        DailyRevenueResponse revenue = bookingService.getDailyRevenue(targetDate);
+        return responseFactory.successSingle(revenue, "Daily revenue retrieved successfully");
     }
 }

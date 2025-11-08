@@ -601,4 +601,10 @@ public class UserServiceImpl implements UserService {
         // Lưu user (vì có cascade, seer profile sẽ được lưu tự động)
         return userRepository.save(user);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public User getSimpleUserById(UUID userId) {
+        return findById(userId);
+    }
 }

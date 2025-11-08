@@ -7,8 +7,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,4 +50,14 @@ public interface BookingPaymentRepository extends JpaRepository<BookingPayment, 
     @Override
     @EntityGraph(attributePaths = {"booking", "booking.customer", "booking.servicePackage.seer", "booking.servicePackage"})
     Page<BookingPayment> findAll(Pageable pageable);
+
+    // Query for daily revenue calculation
+    @Query("SELECT bp FROM BookingPayment bp WHERE bp.status = :status " +
+           "AND bp.paymentType IN :paymentTypes " +
+           "AND DATE(bp.createdAt) = DATE(:date)")
+    List<BookingPayment> findPaymentsByStatusAndTypesAndDate(
+            @Param("status") Constants.PaymentStatusEnum status,
+            @Param("paymentTypes") List<Constants.PaymentTypeEnum> paymentTypes,
+            @Param("date") LocalDateTime date
+    );
 }

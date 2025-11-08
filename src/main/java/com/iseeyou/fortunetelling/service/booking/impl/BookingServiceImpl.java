@@ -4,6 +4,7 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -29,9 +30,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -945,5 +949,43 @@ public class BookingServiceImpl implements BookingService {
         }
 
         throw new IllegalStateException("Unexpected booking status: " + booking.getStatus());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DailyRevenueResponse getDailyRevenue(LocalDate date) {
+        LocalDateTime dateTime = date.atStartOfDay();
+
+        // Lấy tất cả payments COMPLETED trong ngày
+        List<BookingPayment> payments = bookingPaymentRepository.findPaymentsByStatusAndTypesAndDate(
+                Constants.PaymentStatusEnum.COMPLETED,
+                Arrays.asList(
+                    Constants.PaymentTypeEnum.PAID_PACKAGE,
+                    Constants.PaymentTypeEnum.RECEIVED_PACKAGE
+                ),
+                dateTime
+        );
+
+        // Tính doanh thu: PAID_PACKAGE (khách thanh toán) - RECEIVED_PACKAGE (trả lại cho seer)
+        double totalRevenue = 0.0;
+
+        for (BookingPayment payment : payments) {
+            if (payment.getPaymentType() == Constants.PaymentTypeEnum.PAID_PACKAGE) {
+                // Cộng tiền khách hàng thanh toán
+                totalRevenue += payment.getAmount();
+            } else if (payment.getPaymentType() == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
+                // Trừ tiền đã trả cho seer
+                totalRevenue -= payment.getAmount();
+            }
+        }
+
+        // Thuế cố định 10%
+        double taxPercentage = 10.0;
+
+        return DailyRevenueResponse.builder()
+                .date(date)
+                .totalRevenue(totalRevenue)
+                .taxPercentage(taxPercentage)
+                .build();
     }
 }
