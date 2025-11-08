@@ -346,6 +346,17 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getBirthDate() != null) {
             user.setBirthDate(request.getBirthDate());
+
+            // Update zodiac fields if user is a customer and has a customer profile
+            if (user.getRole() == Constants.RoleEnum.CUSTOMER && user.getCustomerProfile() != null) {
+                int day = request.getBirthDate().getDayOfMonth();
+                int month = request.getBirthDate().getMonthValue();
+                int year = request.getBirthDate().getYear();
+
+                user.getCustomerProfile().setZodiacSign(CalculateZodiac.getZodiacSign(month, day));
+                user.getCustomerProfile().setChineseZodiac(CalculateZodiac.getChineseZodiac(year));
+                user.getCustomerProfile().setFiveElements(CalculateZodiac.getFiveElements(year));
+            }
         }
         if (request.getProfileDescription() != null) {
             user.setProfileDescription(request.getProfileDescription());
@@ -600,11 +611,5 @@ public class UserServiceImpl implements UserService {
 
         // Lưu user (vì có cascade, seer profile sẽ được lưu tự động)
         return userRepository.save(user);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public User getSimpleUserById(UUID userId) {
-        return findById(userId);
     }
 }

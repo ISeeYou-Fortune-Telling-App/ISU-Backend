@@ -74,7 +74,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     // Find admin conversation between admin and target user
     @Query("SELECT c FROM Conversation c WHERE " +
-            "c.type = 'ADMIN_CHAT' AND " +
+            "c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
             "c.admin.id = :adminId AND " +
             "c.targetUser.id = :targetUserId")
     Optional<Conversation> findAdminConversationByAdminAndTarget(
@@ -84,14 +84,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     // Find all admin conversations for admin
     @Query("SELECT c FROM Conversation c WHERE " +
-            "c.type = 'ADMIN_CHAT'")
+            "c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT")
     Page<Conversation> findAdminConversationsByAdmin(
             Pageable pageable
     );
 
     // Find all admin conversations for target user (customer or seer)
     @Query("SELECT c FROM Conversation c WHERE " +
-            "c.type = 'ADMIN_CHAT' AND " +
+            "c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
             "c.targetUser.id = :targetUserId")
     Page<Conversation> findAdminConversationsByTargetUser(
             @Param("targetUserId") UUID targetUserId,
@@ -102,8 +102,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @Query("SELECT c FROM Conversation c " +
             "LEFT JOIN c.booking b " +
             "WHERE (b.customer.id = :customerId) OR " +
-            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :customerId) OR " +
-            "(c.type = 'ADMIN_CHAT' AND c.admin.id = :customerId)")
+            "(c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND c.targetUser.id = :customerId) OR " +
+            "(c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND c.admin.id = :customerId)")
     Page<Conversation> findAllConversationsByCustomer(
             @Param("customerId") UUID customerId,
             Pageable pageable
@@ -115,7 +115,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "LEFT JOIN c.booking b " +
             "LEFT JOIN b.servicePackage sp " +
             "WHERE (sp.seer.id = :seerId) OR " +
-            "(c.type = 'ADMIN_CHAT' AND c.targetUser.id = :seerId)")
+            "(c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND c.targetUser.id = :seerId)")
     Page<Conversation> findAllConversationsBySeer(
             @Param("seerId") UUID seerId,
             Pageable pageable
@@ -137,8 +137,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
             "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
             "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%')))) " +
-            "AND (:type IS NULL OR CAST(c.type AS VARCHAR) = CAST(:type AS VARCHAR)) " +
-            "AND (:status IS NULL OR CAST(c.status AS VARCHAR) = CAST(:status AS VARCHAR))",
+            "AND (:type IS NULL OR c.type = :type) " +
+            "AND (:status IS NULL OR c.status = :status)",
             countQuery = "SELECT COUNT(c.conversation_id) FROM conversation c " +
             "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
             "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
@@ -151,13 +151,13 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
             "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
             "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%')))) " +
-            "AND (:type IS NULL OR CAST(c.type AS VARCHAR) = CAST(:type AS VARCHAR)) " +
-            "AND (:status IS NULL OR CAST(c.status AS VARCHAR) = CAST(:status AS VARCHAR))",
+            "AND (:type IS NULL OR c.type = :type) " +
+            "AND (:status IS NULL OR c.status = :status)",
             nativeQuery = true)
     Page<Conversation> findAllWithFilters(
             @Param("participantName") String participantName,
-            @Param("type") String type,
-            @Param("status") String status,
+            @Param("type") Integer type,
+            @Param("status") Integer status,
             Pageable pageable
     );
 }

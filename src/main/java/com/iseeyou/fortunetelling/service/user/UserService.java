@@ -68,7 +68,4 @@ public interface UserService {
 
     // Seer: Update PayPal email
     User updatePaypalEmail(UpdatePaypalEmailRequest request);
-
-    // Get simple user by ID (returns id, name, avatarUrl only)
-    User getSimpleUserById(UUID userId);
 }

@@ -104,7 +104,8 @@ public class WebSecurityConfig {
                                 "/debug/**",
                                 "/bookings/payment/**",
                                 "/ai-chat/**",
-                                "debug/**"
+                                "debug/**",
+                                "/internal/**"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasAuthority(Constants.RoleEnum.ADMIN.name())
                         .anyRequest().authenticated()

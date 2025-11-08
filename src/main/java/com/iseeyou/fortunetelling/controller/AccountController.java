@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
-import com.iseeyou.fortunetelling.dto.response.user.SimpleUserResponse;
 import com.iseeyou.fortunetelling.dto.response.user.UserResponse;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import org.springframework.data.domain.Page;
@@ -558,53 +557,6 @@ public class AccountController extends AbstractBaseController {
         User updatedUser = userService.updatePaypalEmail(request);
         UserResponse userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
         return responseFactory.successSingle(userResponse, "PayPal email updated successfully");
-    }
-
-    @GetMapping("/simple")
-    @Operation(
-            summary = "Get simple user by ID",
-            description = "Get basic user information (id, name, avatarUrl) by user ID",
-            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
-            responses = {
-                    @ApiResponse(
-                            responseCode = "200",
-                            description = "User retrieved successfully",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = SimpleUserResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "404",
-                            description = "User not found",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    ),
-                    @ApiResponse(
-                            responseCode = "401",
-                            description = "Unauthorized",
-                            content = @Content(
-                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                    schema = @Schema(implementation = ErrorResponse.class)
-                            )
-                    )
-            }
-    )
-    public ResponseEntity<SingleResponse<SimpleUserResponse>> getSimpleUserById(
-            @Parameter(description = "User ID", required = true)
-            @RequestParam UUID userId
-    ) {
-        User user = userService.getSimpleUserById(userId);
-        SimpleUserResponse simpleUserResponse = SimpleUserResponse.builder()
-                .id(user.getId())
-                .name(user.getFullName())
-                .avatarUrl(user.getAvatarUrl())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
-        return responseFactory.successSingle(simpleUserResponse, "User retrieved successfully");
     }
 }
 

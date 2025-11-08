@@ -26,8 +26,7 @@ public class Conversation extends AbstractBaseEntity {
     @JoinColumn(name = "booking_id")
     private Booking booking;
 
-    @Column(name = "type", length = 50, nullable = false)
-    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
     private Constants.ConversationTypeEnum type;
 
     // For admin chat: admin user
@@ -49,8 +48,7 @@ public class Conversation extends AbstractBaseEntity {
     @Column(name = "session_duration_minutes")
     private Integer sessionDurationMinutes;
 
-    @Column(name = "status", length = 50, nullable = false)
-    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     @Builder.Default
     private Constants.ConversationStatusEnum status = Constants.ConversationStatusEnum.ACTIVE;
 

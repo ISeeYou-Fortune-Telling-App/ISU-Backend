@@ -214,17 +214,17 @@ public class ConversationServiceImpl implements ConversationService {
                 ? participantName.trim()
                 : null;
 
-        // Convert enums to strings for native query
-        String typeString = typeEnum != null ? typeEnum.name() : null;
-        String statusString = status != null ? status.name() : null;
+        // Convert enums to ordinal integers for native query (database stores SMALLINT)
+        Integer typeOrdinal = typeEnum != null ? typeEnum.ordinal() : null;
+        Integer statusOrdinal = status != null ? status.ordinal() : null;
 
         // Convert pageable for snake_case columns in native query
         Pageable convertedPageable = convertPageableToSnakeCase(pageable);
 
         Page<Conversation> conversations = conversationRepository.findAllWithFilters(
                 trimmedName,
-                typeString,
-                statusString,
+                typeOrdinal,
+                statusOrdinal,
                 convertedPageable
         );
 

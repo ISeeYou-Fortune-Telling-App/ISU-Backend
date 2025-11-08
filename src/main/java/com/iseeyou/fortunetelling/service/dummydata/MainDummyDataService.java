@@ -25,33 +25,6 @@ public class MainDummyDataService implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        log.info("Generating dummy data...");
-        try {
-            accounts.createDummyData();
-        } catch (Exception e) {
-            log.info("Dummy data already exists, skipping creation.");
-            return;
-        }
-        log.info("Dummy data generation completed.");
 
-        log.info("Creating knowledge categories...");
-        knowledge.createDummyData();
-        log.info("Knowledge categories created successfully.");
-
-        log.info("Creating service packages...");
-        servicePackages.createDummyData();
-        log.info("Service packages created successfully.");
-
-        log.info("Creating reports, report types and evidences...");
-        reports.createDummyData();
-        log.info("Reports created successfully.");
-
-        log.info("Creating bookings, payments and reviews...");
-        bookings.createDummyData();
-        log.info("Bookings created successfully.");
-
-        log.info("Creating conversations and messages...");
-        conversations.createDummyData();
-        log.info("Conversations created successfully.");
     }
 }
