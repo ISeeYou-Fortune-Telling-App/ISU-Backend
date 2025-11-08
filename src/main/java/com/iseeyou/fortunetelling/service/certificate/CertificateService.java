@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.service.certificate;
 
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateRequest;
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateApprovalRequest;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,4 +19,5 @@ public interface CertificateService {
     Page<Certificate> findByUserId(UUID userId, Pageable pageable);
     Page<Certificate> findByUserIdAndCategoryId(UUID userId, UUID categoryId, Pageable pageable);
     Page<Certificate> findByCategoryId(UUID categoryId, Pageable pageable);
+    Certificate approveCertificate(UUID certificateId, CertificateApprovalRequest request);
 }

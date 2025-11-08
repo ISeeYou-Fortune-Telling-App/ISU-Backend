@@ -1,5 +1,6 @@
 package com.iseeyou.fortunetelling.service.certificate.impl;
 
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateApprovalRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateRequest;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -232,5 +234,32 @@ public class CertificateServiceImpl implements CertificateService {
     @Transactional(readOnly = true)
     public Page<Certificate> findByCategoryId(UUID categoryId, Pageable pageable) {
         return certificateRepository.findByCategoryId(categoryId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public Certificate approveCertificate(UUID certificateId, CertificateApprovalRequest request) {
+        Certificate certificate = certificateRepository.findById(certificateId)
+                .orElseThrow(() -> new NotFoundException("Certificate not found with id: " + certificateId));
+
+        // Kiểm tra action phải là APPROVED hoặc REJECTED
+        if (request.getAction() != Constants.CertificateStatusEnum.APPROVED
+                && request.getAction() != Constants.CertificateStatusEnum.REJECTED) {
+            throw new IllegalArgumentException("Action must be APPROVED or REJECTED");
+        }
+
+        // Nếu action là REJECTED, phải có decision reason
+        if (request.getAction() == Constants.CertificateStatusEnum.REJECTED) {
+            if (request.getDecisionReason() == null || request.getDecisionReason().trim().isEmpty()) {
+                throw new IllegalArgumentException("Decision reason is required when rejecting a certificate");
+            }
+        }
+
+        // Cập nhật status
+        certificate.setStatus(request.getAction());
+        certificate.setDecisionDate(LocalDateTime.now());
+        certificate.setDecisionReason(request.getDecisionReason());
+
+        return certificateRepository.save(certificate);
     }
 }

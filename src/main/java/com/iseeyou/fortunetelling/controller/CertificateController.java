@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.certificate.CertificateApprovalRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
@@ -10,6 +11,7 @@ import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.mapper.CertificateMapper;
 import com.iseeyou.fortunetelling.service.certificate.CertificateService;
+import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -373,5 +375,59 @@ public class CertificateController extends AbstractBaseController {
         Page<Certificate> certificates = certificateService.findByUserIdAndCategoryId(userId, categoryId, pageable);
         Page<CertificateResponse> response = certificateMapper.mapToPage(certificates, CertificateResponse.class);
         return responseFactory.successPage(response, "Certificates retrieved successfully");
+    }
+
+    @PatchMapping("/{id}/approval")
+    @Operation(
+            summary = "Approve or reject certificate (Admin only)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Certificate approved/rejected successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid action or missing decision reason",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Certificate not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<CertificateResponse>> approveCertificate(
+            @Parameter(description = "Certificate ID", required = true)
+            @PathVariable UUID id,
+            @Parameter(description = "Approval decision", required = true)
+            @RequestBody @Valid CertificateApprovalRequest request
+    ) {
+        Certificate approvedCertificate = certificateService.approveCertificate(id, request);
+        CertificateResponse response = certificateMapper.mapTo(approvedCertificate, CertificateResponse.class);
+        String message = request.getAction() == Constants.CertificateStatusEnum.APPROVED
+                ? "Certificate approved successfully"
+                : "Certificate rejected successfully";
+        return responseFactory.successSingle(response, message);
     }
 }
