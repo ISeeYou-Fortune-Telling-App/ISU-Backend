@@ -54,6 +54,12 @@ public class UserMapper extends BaseMapper {
                                 .map(ss -> ss.getKnowledgeCategory().getName())
                                 .toList();
                     }).map(src -> src, SimpleSeerCardResponse::setSpecialities);
+                })
+                .setPostConverter(context -> {
+                    // Enrich with rating data after mapping
+                    User source = context.getSource();
+                    SimpleSeerCardResponse destination = context.getDestination();
+                    return seerStatsService.enrichSimpleSeerCard(destination, source.getId().toString());
                 });
     }
 }

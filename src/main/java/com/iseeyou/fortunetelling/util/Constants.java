@@ -386,4 +386,23 @@ public final class Constants {
                     .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid notification type name: %s", name)));
         }
     }
+
+    @Getter
+    @AllArgsConstructor
+    public enum SeerTier {
+        BRONZE("BRONZE"),
+        SILVER("SILVER"),
+        GOLD("GOLD"),
+        PLATINUM("PLATINUM"),
+        DIAMOND("DIAMOND");
+
+        private final String value;
+
+        public static SeerTier get(final String name) {
+            return Stream.of(SeerTier.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid seer tier name: %s", name)));
+        }
+    }
 }
