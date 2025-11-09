@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.TimeZone;
+
 @Configuration
 @Slf4j
 public class SocketIOConfig {
@@ -15,6 +17,9 @@ public class SocketIOConfig {
     @Value("${socketio.host}")
     private String socketIOHost;
 
+    @Value("${app.default-timezone:Asia/Ho_Chi_Minh}")
+    private String defaultTimezone;
+
     @Bean
     public SocketIOServer socketIOServer() {
         com.corundumstudio.socketio.Configuration config =
@@ -23,6 +28,8 @@ public class SocketIOConfig {
         config.setHostname(socketIOHost);
         config.setOrigin("*");
         config.setMaxHttpContentLength(1024 * 1024 * 100); // 100MB max file
+
+        log.info("SocketIO Server configured with timezone: {}", defaultTimezone);
 
         return new SocketIOServer(config);
     }
