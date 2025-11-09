@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.chat.session.ChatFile;
 import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
@@ -9,6 +10,7 @@ import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ConversationResponse;
 import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.chat.MessageService;
+import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,9 +19,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static com.iseeyou.fortunetelling.util.Constants.SECURITY_SCHEME_NAME;
@@ -33,6 +37,7 @@ public class ChatController extends AbstractBaseController {
 
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final CloudinaryService cloudinaryService;
 
     @GetMapping("/conversations")
     @Operation(summary = "Get my conversations", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
@@ -118,6 +123,30 @@ public class ChatController extends AbstractBaseController {
     public ResponseEntity<SuccessResponse> deleteMessage(@PathVariable UUID messageId) {
         messageService.deleteMessage(messageId);
         return ResponseEntity.ok(SuccessResponse.builder().statusCode(200).message("Message deleted successfully").build());
+    }
+
+    @PostMapping(path = "/messages/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "File sending in chat", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
+    public ResponseEntity<SingleResponse<Map<String, String>>> sendFileInChat(@Valid @ModelAttribute ChatFile chatFile) {
+        try {
+            String imagePath = "";
+            String videoPath = "";
+            if (chatFile.getImage() != null) {
+                imagePath = cloudinaryService.uploadFile(chatFile.getImage(), "chat_assets");
+            }
+            if (chatFile.getVideo() != null) {
+                videoPath = cloudinaryService.uploadFile(chatFile.getVideo(), "chat_assets");
+            }
+            return responseFactory.successSingle(
+                    Map.of("imagePath", imagePath, "videoPath", videoPath),
+                    "A di da phat"
+            );
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(
+                    null
+            );
+        }
     }
 }
 

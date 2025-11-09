@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.listener;
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.request.chat.session.SendMultipleMessagesRequest;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.entity.user.User;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -162,6 +164,58 @@ public class ChatSocketListener {
 
             } catch (Exception e) {
                 log.error("Error sending message", e);
+                ackRequest.sendAckData("error", e.getMessage());
+            }
+        });
+
+        // Send message to multiple conversations
+        namespace.addEventListener("send_messages", SendMultipleMessagesRequest.class, (client, request, ackRequest) -> {
+            try {
+                String userId = client.get("userId");
+                log.info("User {} sending message to {} conversations", userId, request.getConversationIds().size());
+
+                // Get user by ID
+                User currentUser = userService.findById(UUID.fromString(userId));
+
+                if (currentUser == null) {
+                    log.error("User not found: {}", userId);
+                    ackRequest.sendAckData("error", "User not found");
+                    return;
+                }
+
+                // Create message request for each conversation
+                ChatMessageRequest messageRequest = new ChatMessageRequest();
+                messageRequest.setTextContent(request.getTextContent());
+
+                // Send messages to all conversations
+                boolean success = messageService.sendMessages(request.getConversationIds(), messageRequest, currentUser);
+
+                if (success) {
+                    log.info("Messages sent successfully to {} conversations", request.getConversationIds().size());
+
+                    // Broadcast to each conversation room
+                    for (UUID conversationId : request.getConversationIds()) {
+                        // Get the saved message for this conversation
+                        ChatMessageRequest singleRequest = new ChatMessageRequest();
+                        singleRequest.setConversationId(conversationId);
+                        singleRequest.setTextContent(request.getTextContent());
+
+                        ChatMessageResponse message = messageService.sendMessage(conversationId, singleRequest, currentUser);
+
+                        com.corundumstudio.socketio.BroadcastOperations roomOps = namespace.getRoomOperations(conversationId.toString());
+                        if (roomOps != null) {
+                            roomOps.sendEvent("receive_message", message);
+                            log.info("Message broadcasted to room: {}", conversationId);
+                        }
+                    }
+
+                    ackRequest.sendAckData("success");
+                } else {
+                    ackRequest.sendAckData("error", "Failed to send messages");
+                }
+
+            } catch (Exception e) {
+                log.error("Error sending messages to multiple conversations", e);
                 ackRequest.sendAckData("error", e.getMessage());
             }
         });
