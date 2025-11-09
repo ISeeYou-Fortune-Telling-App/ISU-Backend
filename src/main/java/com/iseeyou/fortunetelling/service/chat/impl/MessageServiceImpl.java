@@ -85,25 +85,8 @@ public class MessageServiceImpl implements MessageService {
         }
 
         // Upload files if present
-        String imageUrl = null;
-        String videoUrl = null;
-
-        try {
-            if (request.getImage() != null && !request.getImage().isEmpty()) {
-                log.info("Uploading image for message in conversation {}", conversationId);
-                imageUrl = cloudinaryService.uploadFile(request.getImage(), "chat/images");
-                log.info("Image uploaded successfully: {}", imageUrl);
-            }
-
-            if (request.getVideo() != null && !request.getVideo().isEmpty()) {
-                log.info("Uploading video for message in conversation {}", conversationId);
-                videoUrl = cloudinaryService.uploadFile(request.getVideo(), "chat/videos");
-                log.info("Video uploaded successfully: {}", videoUrl);
-            }
-        } catch (IOException e) {
-            log.error("Failed to upload files for message in conversation {}", conversationId, e);
-            throw new RuntimeException("Failed to upload files: " + e.getMessage(), e);
-        }
+        String imageUrl = request.getImagePath();
+        String videoUrl = request.getVideoPath();
 
         // Create message
         Message message = Message.builder()

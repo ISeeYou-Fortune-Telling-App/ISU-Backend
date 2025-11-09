@@ -18,5 +18,7 @@ public class SendMultipleMessagesRequest {
     private List<UUID> conversationIds;
 
     private String textContent;
+    private String imagePath;
+    private String videoPath;
 }
 

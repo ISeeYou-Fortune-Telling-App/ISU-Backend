@@ -16,7 +16,6 @@ public class ChatMessageRequest {
     private UUID conversationId;
 
     private String textContent;
-
-    private MultipartFile image;
-    private MultipartFile video;
+    private String imagePath;
+    private String videoPath;
 }
