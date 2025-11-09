@@ -16,7 +16,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @SuperBuilder
-public class BookingResponse extends AbstractBaseDataResponse {
+public class CreateBookingResponse extends AbstractBaseDataResponse {
     private Constants.BookingStatusEnum status;
     private BookingSeerInfo seer;
     private BookingCustomerInfo customer;
@@ -25,6 +25,8 @@ public class BookingResponse extends AbstractBaseDataResponse {
     private String additionalNote;
     private BookingPaymentInfo[] bookingPaymentInfos;
     private BookingReviewInfo review;
+    private String approval;  // Changed from Boolean to String - contains approvalUrl
+    private String redirectUrl;
 
     @Getter
     @Setter

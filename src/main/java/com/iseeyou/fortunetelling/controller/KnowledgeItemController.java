@@ -202,7 +202,7 @@ public class KnowledgeItemController extends AbstractBaseController {
         return responseFactory.successSingle(null, "Knowledge item view count incremented successfully");
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Create a new knowledge item",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
@@ -249,7 +249,7 @@ public class KnowledgeItemController extends AbstractBaseController {
         return responseFactory.successSingle(response, "Knowledge item created successfully");
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Update knowledge item",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),

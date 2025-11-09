@@ -486,9 +486,9 @@ public class ServicePackageController extends AbstractBaseController {
     @PutMapping("/{packageId}/confirm")
     @Operation(
             summary = "Admin confirm/reject service package",
-            description = "Admin endpoint to approve, reject, or change status of a service package. " +
-                         "Status can be: AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN. " +
-                         "If status is REJECTED, rejectionReason is required.",
+            description = "Admin endpoint to approve or reject a service package. " +
+                         "Action can be: APPROVED, REJECTED. Only packages with HIDDEN status can be confirmed. " +
+                         "If action is REJECTED, rejectionReason is required.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -501,7 +501,7 @@ public class ServicePackageController extends AbstractBaseController {
                     ),
                     @ApiResponse(
                             responseCode = "400",
-                            description = "Invalid request - rejection reason required for REJECTED status",
+                            description = "Invalid request - rejection reason required for REJECTED action or invalid transition",
                             content = @Content(
                                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = ErrorResponse.class)
@@ -529,27 +529,22 @@ public class ServicePackageController extends AbstractBaseController {
     public ResponseEntity<SingleResponse<ServicePackageResponse>> confirmServicePackage(
             @Parameter(description = "Service Package ID", required = true)
             @PathVariable String packageId,
-            @Parameter(description = "Confirmation request with status and optional rejection reason", required = true)
+            @Parameter(description = "Confirmation request with action (APPROVED or REJECTED) and optional rejection reason", required = true)
             @RequestBody @Valid ServicePackageConfirmRequest request
     ) {
-        log.info("Admin confirming service package {} with status: {}", packageId, request.getStatus());
-
-        // Validate request
-        if (!request.isValid()) {
-            throw new IllegalArgumentException("Rejection reason is required when status is REJECTED");
-        }
+        log.info("Admin confirming service package {} with action: {}", packageId, request.getAction());
 
         ServicePackage servicePackage = servicePackageService.confirmServicePackage(
                 packageId,
-                request.getStatus(),
+                request.getAction(),
                 request.getRejectionReason()
         );
 
         ServicePackageResponse response = servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
 
-        String message = request.getStatus() == Constants.PackageStatusEnum.REJECTED
+        String message = request.getAction() == Constants.PackageActionEnum.REJECTED
                 ? "Service package rejected successfully"
-                : "Service package status updated to " + request.getStatus();
+                : "Service package approved successfully";
 
         return responseFactory.successSingle(response, message);
     }

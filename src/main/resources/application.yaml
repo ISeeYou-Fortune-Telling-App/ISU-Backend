@@ -64,6 +64,8 @@ spring:
         validator:
           apply_to_ddl: true
         use_sql_comments: true
+        jdbc:
+          time_zone: ${APP_DEFAULT_TIMEZONE:Asia/Ho_Chi_Minh}
     open-in-view: false
 
   # Flyway Configuration - Quản lý migration database

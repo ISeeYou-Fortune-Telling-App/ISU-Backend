@@ -122,7 +122,7 @@ public class CertificateController extends AbstractBaseController {
         return responseFactory.successSingle(response, "Certificate retrieved successfully");
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Create a new certificate",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
@@ -163,7 +163,7 @@ public class CertificateController extends AbstractBaseController {
         return responseFactory.successSingle(response, "Certificate created successfully");
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Update certificate",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),

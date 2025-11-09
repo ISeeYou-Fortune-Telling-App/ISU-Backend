@@ -48,6 +48,7 @@ public class ReportController extends AbstractBaseController {
     @GetMapping
     @Operation(
             summary = "Get all reports with pagination",
+            description = "Get all reports with optional filters: status and reportType. Both filters are optional.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -77,10 +78,19 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Optional report status filter (PENDING, VIEWED, RESOLVED, REJECTED)")
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Optional report type name filter (as stored in report_type.name)")
+            @RequestParam(required = false) String reportType
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Report> reports = reportService.findAllReports(pageable);
+        Constants.ReportStatusEnum statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            statusEnum = Constants.ReportStatusEnum.get(status);
+        }
+
+        Page<Report> reports = reportService.findAllReports(pageable, statusEnum, reportType);
         Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
         return responseFactory.successPage(response, "Reports retrieved successfully");
     }

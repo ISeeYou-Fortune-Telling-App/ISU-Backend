@@ -75,6 +75,14 @@ public class CertificateServiceImpl implements CertificateService {
         // Map DTO to Entity
         Certificate certificate = certificateMapper.mapTo(request, Certificate.class);
         
+        // Defensive validation in service layer to avoid Hibernate PropertyValueException
+        if (certificate.getIssuedBy() == null || certificate.getIssuedBy().trim().isEmpty()) {
+            throw new IllegalArgumentException("issuedBy must not be null or empty");
+        }
+        if (certificate.getIssuedAt() == null) {
+            throw new IllegalArgumentException("issuedAt must not be null");
+        }
+
         // Upload certificate file to Cloudinary
         if (request.getCertificateFile() != null && !request.getCertificateFile().isEmpty()) {
             String imageUrl = cloudinaryService.uploadFile(request.getCertificateFile(), "certificates");
@@ -255,11 +263,26 @@ public class CertificateServiceImpl implements CertificateService {
             }
         }
 
-        // Cập nhật status
-        certificate.setStatus(request.getAction());
-        certificate.setDecisionDate(LocalDateTime.now());
-        certificate.setDecisionReason(request.getDecisionReason());
+        // Nếu status thay đổi, cập nhật status và decision date
+        boolean statusChanged = certificate.getStatus() != request.getAction();
+        if (statusChanged) {
+            certificate.setStatus(request.getAction());
+            certificate.setDecisionDate(LocalDateTime.now());
+        }
 
-        return certificateRepository.save(certificate);
+        // Nếu có decision reason (bất kể action), cập nhật reason và cập nhật decisionDate
+        if (request.getDecisionReason() != null) {
+            certificate.setDecisionReason(request.getDecisionReason());
+            // Nếu decisionDate chưa được cập nhật ở trên (status không đổi), cập nhật decisionDate để phản ánh thay đổi lý do
+            if (!statusChanged) {
+                certificate.setDecisionDate(LocalDateTime.now());
+            }
+        }
+
+        Certificate saved = certificateRepository.save(certificate);
+
+        // Reload the saved certificate with categories and seer eagerly fetched to avoid LazyInitializationException
+        return certificateRepository.findByIdWithCategories(saved.getId())
+                .orElse(saved);
     }
 }

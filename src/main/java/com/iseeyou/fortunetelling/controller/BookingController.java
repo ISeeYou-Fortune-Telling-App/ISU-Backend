@@ -9,9 +9,9 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPageResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
-import com.iseeyou.fortunetelling.dto.response.booking.BookingRatingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.CreateBookingResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
 import com.iseeyou.fortunetelling.service.booking.impl.BookingServiceImpl;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
@@ -258,14 +258,14 @@ public class BookingController extends AbstractBaseController {
             }
     )
     @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<SingleResponse<BookingResponse>> createBooking(
+    public ResponseEntity<SingleResponse<CreateBookingResponse>> createBooking(
             @Parameter(description = "Service package ID", required = true)
             @PathVariable UUID servicePackageId,
             @Parameter(description = "Booking data to create", required = true)
             @RequestBody @Valid BookingCreateRequest request
     ) {
         Booking createdBooking = bookingService.createBooking(request, servicePackageId);
-        BookingResponse response = bookingMapper.mapTo(createdBooking, BookingResponse.class);
+        CreateBookingResponse response = bookingMapper.mapTo(createdBooking, CreateBookingResponse.class);
         return responseFactory.successSingle(response, "Booking created successfully");
     }
 
