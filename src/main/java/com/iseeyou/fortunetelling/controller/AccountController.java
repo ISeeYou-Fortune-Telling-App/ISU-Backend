@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.controller;
 
 import com.iseeyou.fortunetelling.controller.base.AbstractBaseController;
+import com.iseeyou.fortunetelling.dto.request.user.ApproveSeerRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdatePaypalEmailRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
 import com.iseeyou.fortunetelling.dto.response.PageResponse;
@@ -558,6 +559,72 @@ public class AccountController extends AbstractBaseController {
         UserResponse userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
         return responseFactory.successSingle(userResponse, "PayPal email updated successfully");
     }
+
+    @PatchMapping("/{userId}/approve-seer")
+    @Operation(
+            summary = "Approve or reject seer (Admin only)",
+            description = "Admin can approve or reject an UNVERIFIED_SEER. " +
+                    "If approved, user's role will be changed to SEER. " +
+                    "If rejected, reject reason will be updated and user remains UNVERIFIED_SEER.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Seer approval action completed successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - User is not UNVERIFIED_SEER or invalid request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin access required",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<UserResponse>> approveSeer(
+            @Parameter(description = "User ID", required = true)
+            @PathVariable UUID userId,
+            @Parameter(description = "Approve or reject request", required = true)
+            @RequestBody @Valid ApproveSeerRequest request
+    ) {
+        log.info("Admin processing seer approval for user: {}, action: {}", userId, request.getAction());
+        User updatedUser = userService.approveSeer(userId, request);
+        UserResponse userResponse = userMapper.mapTo(updatedUser, UserResponse.class);
+
+        String message = request.getAction() == ApproveSeerRequest.SeerApprovalAction.APPROVED
+                ? "Seer approved successfully"
+                : "Seer rejected successfully";
+
+        return responseFactory.successSingle(userResponse, message);
+    }
 }
-
-

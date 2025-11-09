@@ -66,6 +66,9 @@ public class User extends AbstractBaseEntity {
     @Builder.Default
     private Boolean isActive = false;
 
+    @Column(name = "reject_reason", length = 1000)
+    private String rejectReason;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private CustomerProfile customerProfile;
 

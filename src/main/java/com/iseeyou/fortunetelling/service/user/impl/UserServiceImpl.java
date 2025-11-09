@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.user.impl;
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
+import com.iseeyou.fortunetelling.dto.request.user.ApproveSeerRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdatePaypalEmailRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
@@ -610,6 +611,31 @@ public class UserServiceImpl implements UserService {
         log.info("Seer {} updated PayPal email to: {}", user.getId(), request.getPaypalEmail());
 
         // Lưu user (vì có cascade, seer profile sẽ được lưu tự động)
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public User approveSeer(UUID userId, ApproveSeerRequest request) {
+        User user = findById(userId);
+
+        // Kiểm tra user có phải là UNVERIFIED_SEER không
+        if (user.getRole() != Constants.RoleEnum.UNVERIFIED_SEER) {
+            throw new IllegalArgumentException("Only UNVERIFIED_SEER can be approved or rejected");
+        }
+
+        if (request.getAction() == ApproveSeerRequest.SeerApprovalAction.APPROVED) {
+            // Chuyển role thành SEER
+            user.setRole(Constants.RoleEnum.SEER);
+            user.setStatus(Constants.StatusProfileEnum.VERIFIED);
+            user.setRejectReason(null); // Xóa reject reason nếu có
+            log.info("User {} approved as SEER", userId);
+        } else if (request.getAction() == ApproveSeerRequest.SeerApprovalAction.REJECTED) {
+            // Giữ nguyên role UNVERIFIED_SEER và cập nhật reject reason
+            user.setRejectReason(request.getRejectReason());
+            log.info("User {} rejected with reason: {}", userId, request.getRejectReason());
+        }
+
         return userRepository.save(user);
     }
 }

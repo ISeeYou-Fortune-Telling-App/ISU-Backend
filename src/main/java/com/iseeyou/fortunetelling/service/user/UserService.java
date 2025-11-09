@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.service.user;
 
 import com.iseeyou.fortunetelling.dto.request.auth.RegisterRequest;
 import com.iseeyou.fortunetelling.dto.request.auth.SeerRegisterRequest;
+import com.iseeyou.fortunetelling.dto.request.user.ApproveSeerRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdatePaypalEmailRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRequest;
 import com.iseeyou.fortunetelling.dto.request.user.UpdateUserRoleRequest;
@@ -67,5 +68,8 @@ public interface UserService {
     User getUserWithSeerStats(UUID userId);
 
     // Seer: Update PayPal email
+
+    // Admin: Approve or reject seer
+    User approveSeer(UUID userId, ApproveSeerRequest request);
     User updatePaypalEmail(UpdatePaypalEmailRequest request);
 }
