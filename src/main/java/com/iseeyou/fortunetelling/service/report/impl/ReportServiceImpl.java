@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,8 +54,38 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Report> findAllReports(Pageable pageable) {
-        return reportRepository.findAll(pageable);
+    public Page<Report> findAllReports(Pageable pageable, Constants.ReportStatusEnum status, String reportTypeName) {
+        // If no filters provided, use repository's optimized findAll (with @EntityGraph)
+        if (status == null && (reportTypeName == null || reportTypeName.isBlank())) {
+            return reportRepository.findAll(pageable);
+        }
+
+        // Convert reportTypeName to enum if present
+        Constants.ReportTypeEnum reportTypeEnum;
+        if (reportTypeName != null && !reportTypeName.isBlank()) {
+            reportTypeEnum = Constants.ReportTypeEnum.get(reportTypeName);
+        } else {
+            reportTypeEnum = null;
+        }
+
+        Specification<Report> spec = (root, query, cb) -> {
+            var predicates = cb.conjunction();
+
+            if (status != null) {
+                predicates = cb.and(predicates, cb.equal(root.get("status"), status));
+            }
+
+            if (reportTypeEnum != null) {
+                var typeJoin = root.join("reportType");
+                predicates = cb.and(predicates, cb.equal(typeJoin.get("name"), reportTypeEnum));
+                // Ensure distinct results when joining
+                query.distinct(true);
+            }
+
+            return predicates;
+        };
+
+        return reportRepository.findAll(spec, pageable);
     }
 
     @Override
@@ -146,7 +177,7 @@ public class ReportServiceImpl implements ReportService {
         }
 
         log.info("Created new report with id: {} for target type: {} with target id: {} reporting user: {} with report type: {}",
-                savedReport.getId(), report.getTargetType(), report.getTargetId(), reportedUser.getId(), request.getReportType());
+                savedReport.getId(), savedReport.getTargetType(), savedReport.getTargetId(), reportedUser.getId(), request.getReportType());
 
         return savedReport;
     }

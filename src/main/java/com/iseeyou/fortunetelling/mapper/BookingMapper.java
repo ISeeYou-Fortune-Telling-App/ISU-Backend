@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.mapper;
 
 import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.CreateBookingResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -152,6 +153,111 @@ public class BookingMapper extends BaseMapper {
                     // Map package title
                     if (source.getBooking() != null && source.getBooking().getServicePackage() != null) {
                         destination.setPackageTitle(source.getBooking().getServicePackage().getPackageTitle());
+                    }
+
+                    return destination;
+                });
+
+        // Map Booking entity to CreateBookingResponse DTO (used for POST booking)
+        modelMapper.typeMap(Booking.class, CreateBookingResponse.class)
+                .setPostConverter(context -> {
+                    Booking source = context.getSource();
+                    CreateBookingResponse destination = context.getDestination();
+
+                    if (source.getCustomer() != null) {
+                        CreateBookingResponse.BookingCustomerInfo customerInfo = CreateBookingResponse.BookingCustomerInfo.builder()
+                                .id(source.getCustomer().getId())
+                                .fullName(source.getCustomer().getFullName())
+                                .avatarUrl(source.getCustomer().getAvatarUrl())
+                                .build();
+                        destination.setCustomer(customerInfo);
+                    }
+
+                    if (source.getServicePackage() != null && source.getServicePackage().getSeer() != null) {
+                        Double avgRating = 0.0; // Temporarily set to 0
+
+                        CreateBookingResponse.BookingSeerInfo seerInfo = CreateBookingResponse.BookingSeerInfo.builder()
+                                .id(source.getServicePackage().getSeer().getId())
+                                .fullName(source.getServicePackage().getSeer().getFullName())
+                                .avatarUrl(source.getServicePackage().getSeer().getAvatarUrl())
+                                .avgRating(avgRating)
+                                .build();
+                        destination.setSeer(seerInfo);
+                    }
+
+                    if (source.getServicePackage() != null) {
+                        List<String> categoryNames = source.getServicePackage().getPackageCategories() != null ?
+                                source.getServicePackage().getPackageCategories().stream()
+                                        .map(pc -> pc.getKnowledgeCategory().getName())
+                                        .collect(Collectors.toList()) :
+                                List.of();
+
+                        CreateBookingResponse.ServicePackageInfo servicePackageInfo = CreateBookingResponse.ServicePackageInfo.builder()
+                                .packageTitle(source.getServicePackage().getPackageTitle())
+                                .packageContent(source.getServicePackage().getPackageContent())
+                                .price(source.getServicePackage().getPrice())
+                                .durationMinutes(source.getServicePackage().getDurationMinutes())
+                                .categories(categoryNames)
+                                .build();
+                        destination.setServicePackage(servicePackageInfo);
+                    }
+
+                    // Map booking payment information - only include payments with PaymentType == PAID_PACKAGE
+                    CreateBookingResponse.BookingPaymentInfo[] paymentInfos;
+                    if (source.getBookingPayments() == null || source.getBookingPayments().isEmpty()) {
+                        paymentInfos = new CreateBookingResponse.BookingPaymentInfo[0];
+                    } else {
+                        paymentInfos = source.getBookingPayments().stream()
+                                .filter(Objects::nonNull)
+                                .filter(p -> p.getPaymentType() != null && p.getPaymentType() == Constants.PaymentTypeEnum.PAID_PACKAGE)
+                                .collect(Collectors.toMap(BookingPayment::getId, p -> p, (a, b) -> a, LinkedHashMap::new))
+                                .values().stream()
+                                .map(payment -> CreateBookingResponse.BookingPaymentInfo.builder()
+                                        .amount(payment.getAmount())
+                                        .paymentMethod(payment.getPaymentMethod())
+                                        .paymentStatus(payment.getStatus())
+                                        .paymentTime(payment.getCreatedAt())
+                                        .failureReason(payment.getFailureReason())
+                                        .build())
+                                .toArray(CreateBookingResponse.BookingPaymentInfo[]::new);
+                    }
+                    destination.setBookingPaymentInfos(paymentInfos);
+
+                    // Map review information
+                    if (source.getRating() != null || source.getComment() != null || source.getReviewedAt() != null) {
+                        CreateBookingResponse.BookingReviewInfo reviewInfo = CreateBookingResponse.BookingReviewInfo.builder()
+                                .rating(source.getRating())
+                                .comment(source.getComment())
+                                .reviewedAt(source.getReviewedAt())
+                                .build();
+                        destination.setReview(reviewInfo);
+                    }
+
+                    // Set approval and redirectUrl for CreateBookingResponse
+                    // approval contains the approvalUrl string (not boolean)
+                    // redirectUrl is same as approval (URL from PayPal gateway)
+                    if (source.getBookingPayments() != null && !source.getBookingPayments().isEmpty()) {
+                        Optional<BookingPayment> latestPayment = source.getBookingPayments().stream()
+                                .filter(p -> p.getPaymentType() == Constants.PaymentTypeEnum.PAID_PACKAGE)
+                                .findFirst();
+
+                        if (latestPayment.isPresent()) {
+                            BookingPayment payment = latestPayment.get();
+                            String approvalUrl = payment.getApprovalUrl();
+
+                            // Set approval to the approvalUrl string (not true/false)
+                            destination.setApproval(approvalUrl);
+                            // Set redirectUrl from payment's approvalUrl (URL from PayPal gateway)
+                            destination.setRedirectUrl(approvalUrl);
+                        } else {
+                            // No payment found, set default values
+                            destination.setApproval(null);
+                            destination.setRedirectUrl(null);
+                        }
+                    } else {
+                        // No payments, set default values
+                        destination.setApproval(null);
+                        destination.setRedirectUrl(null);
                     }
 
                     return destination;

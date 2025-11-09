@@ -750,28 +750,30 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     @Transactional
-    public ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason) {
-        log.info("Admin confirming service package {} with status: {}", packageId, status);
+    public ServicePackage confirmServicePackage(String packageId, Constants.PackageActionEnum action, String rejectionReason) {
+        log.info("Admin confirming service package {} with action: {}", packageId, action);
 
         ServicePackage servicePackage = servicePackageRepository.findById(UUID.fromString(packageId))
                 .orElseThrow(() -> new NotFoundException("Service package not found with id: " + packageId));
 
-        // Validate status transition
-        if (status == Constants.PackageStatusEnum.REJECTED &&
-                (rejectionReason == null || rejectionReason.trim().isEmpty())) {
-            throw new IllegalArgumentException("Rejection reason is required when rejecting a service package");
+        // Only HIDDEN packages can be confirmed/rejected
+        if (servicePackage.getStatus() != Constants.PackageStatusEnum.HIDDEN) {
+            throw new IllegalArgumentException("Only packages with HIDDEN status can be confirmed or rejected");
         }
 
-        // Update status and rejection reason
-        servicePackage.setStatus(status);
-
-        if (status == Constants.PackageStatusEnum.REJECTED) {
+        if (action == Constants.PackageActionEnum.REJECTED) {
+            if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+                throw new IllegalArgumentException("Rejection reason is required when rejecting a service package");
+            }
+            servicePackage.setStatus(Constants.PackageStatusEnum.REJECTED);
             servicePackage.setRejectionReason(rejectionReason);
             log.info("Service package {} rejected with reason: {}", packageId, rejectionReason);
-        } else {
-            // Clear rejection reason if status is not REJECTED
+        } else if (action == Constants.PackageActionEnum.APPROVED) {
+            servicePackage.setStatus(Constants.PackageStatusEnum.AVAILABLE);
             servicePackage.setRejectionReason(null);
-            log.info("Service package {} status changed to: {}", packageId, status);
+            log.info("Service package {} approved and set to AVAILABLE", packageId);
+        } else {
+            throw new IllegalArgumentException("Unsupported package action: " + action);
         }
 
         return servicePackageRepository.save(servicePackage);

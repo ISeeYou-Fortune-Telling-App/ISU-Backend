@@ -104,6 +104,22 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum PackageActionEnum {
+        APPROVED("APPROVED"),
+        REJECTED("REJECTED");
+
+        private final String value;
+
+        public static PackageActionEnum get(final String name) {
+            return Stream.of(PackageActionEnum.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid package action name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum KnowledgeItemStatusEnum {
         DRAFT("DRAFT"),
         PUBLISHED("PUBLISHED"),

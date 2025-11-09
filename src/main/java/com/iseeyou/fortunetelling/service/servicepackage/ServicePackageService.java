@@ -45,7 +45,7 @@ public interface ServicePackageService {
     Page<ServicePackageResponse> getMyPackages(Pageable pageable);
 
     // Admin methods
-    ServicePackage confirmServicePackage(String packageId, Constants.PackageStatusEnum status, String rejectionReason);
+    ServicePackage confirmServicePackage(String packageId, Constants.PackageActionEnum action, String rejectionReason);
     Page<ServicePackageResponse> getAllHiddenPackages(Pageable pageable);
 
     // Review related methods (merged from ServiceReviewService)
