@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,4 +33,8 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID>,
     @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
     @Query("SELECT c FROM Certificate c JOIN c.certificateCategories cc WHERE cc.knowledgeCategory.id = :categoryId")
     Page<Certificate> findByCategoryId(@Param("categoryId") UUID categoryId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
+    @Query("SELECT c FROM Certificate c WHERE c.id = :id")
+    Optional<Certificate> findByIdWithCategories(@Param("id") UUID id);
 }
