@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -124,9 +125,9 @@ public class ChatController extends AbstractBaseController {
         return ResponseEntity.ok(SuccessResponse.builder().statusCode(200).message("Message deleted successfully").build());
     }
 
-    @PostMapping("/messages/file")
+    @PostMapping(path = "/messages/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "File sending in chat", security = @SecurityRequirement(name = SECURITY_SCHEME_NAME))
-    public ResponseEntity<SingleResponse<Map<String, String>>> sendFileInChat(@RequestParam ChatFile chatFile) {
+    public ResponseEntity<SingleResponse<Map<String, String>>> sendFileInChat(@Valid @ModelAttribute ChatFile chatFile) {
         try {
             String imagePath = "";
             String videoPath = "";
