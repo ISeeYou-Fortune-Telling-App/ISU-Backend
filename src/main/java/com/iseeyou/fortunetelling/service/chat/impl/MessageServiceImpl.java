@@ -126,6 +126,20 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional
+    public boolean sendMessages(List<UUID> conversationIds, ChatMessageRequest request, User sender) {
+        try {
+            for  (UUID conversationId : conversationIds) {
+                sendMessage(conversationId, request);
+            }
+        } catch (RuntimeException e) {
+            log.error("Failed to send messages in conversation {}", conversationIds, e);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<ChatMessageResponse> getMessages(UUID conversationId, Pageable pageable) {
         // Get current user
