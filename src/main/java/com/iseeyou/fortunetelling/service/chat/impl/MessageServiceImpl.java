@@ -139,17 +139,17 @@ public class MessageServiceImpl implements MessageService {
         boolean isParticipant = false;
         Constants.RoleEnum userRole = null;
 
+        Constants.RoleEnum currentRole = currentUser.getRole();
+
         if (conversation.getType() == Constants.ConversationTypeEnum.ADMIN_CHAT) {
             // Admin chat: check if user is admin or target user
-            boolean isAdmin = conversation.getAdmin() != null &&
-                            conversation.getAdmin().getId().equals(currentUser.getId());
-            boolean isTarget = conversation.getTargetUser() != null &&
-                             conversation.getTargetUser().getId().equals(currentUser.getId());
+            boolean isAdmin = conversation.getAdmin() != null && conversation.getAdmin().getId().equals(currentUser.getId());
+            boolean isTarget = conversation.getTargetUser() != null && conversation.getTargetUser().getId().equals(currentUser.getId());
 
             isParticipant = isAdmin || isTarget;
 
             // For admin chat, use actual user role for filtering deleted messages
-            userRole = currentUser.getRole();
+            userRole = currentRole;
         } else if (conversation.getBooking() != null) {
             // Booking session: check if user is customer or seer
             boolean isCustomer = conversation.getBooking().getCustomer().getId().equals(currentUser.getId());
@@ -157,6 +157,13 @@ public class MessageServiceImpl implements MessageService {
 
             isParticipant = isCustomer || isSeer;
             userRole = isCustomer ? Constants.RoleEnum.CUSTOMER : Constants.RoleEnum.SEER;
+        }
+
+        // Allow platform admins to access any conversation even if not explicit participants
+        if (currentRole == Constants.RoleEnum.ADMIN) {
+            isParticipant = true;
+            // For admin, do not exclude messages deleted by any role so admin can see all messages
+            userRole = null;
         }
 
         if (!isParticipant) {

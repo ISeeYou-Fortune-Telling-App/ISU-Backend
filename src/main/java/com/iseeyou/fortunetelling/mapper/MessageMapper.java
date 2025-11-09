@@ -68,8 +68,17 @@ public class MessageMapper extends BaseMapper {
                     destination.setTextContent(source.getTextContent());
                     destination.setImageUrl(source.getImageUrl());
                     destination.setVideoUrl(source.getVideoUrl());
-                    destination.setMessageType(Constants.MessageTypeEnum.valueOf(source.getMessageType()));
-
+                    // Map message type robustly: the stored DB value may not match enum names exactly
+                    try {
+                        if (source.getMessageType() != null) {
+                            destination.setMessageType(Constants.MessageTypeEnum.get(source.getMessageType()));
+                        } else {
+                            destination.setMessageType(Constants.MessageTypeEnum.USER);
+                        }
+                    } catch (IllegalArgumentException ex) {
+                        log.warn("Unknown messageType '{}' for message {} - defaulting to USER", source.getMessageType(), source.getId());
+                        destination.setMessageType(Constants.MessageTypeEnum.USER);
+                    }
                     // Map status fields
                     destination.setStatus(source.getStatus());
                     destination.setDeletedBy(source.getDeletedBy());
