@@ -113,7 +113,7 @@ public class MessageServiceImpl implements MessageService {
     public boolean sendMessages(List<UUID> conversationIds, ChatMessageRequest request, User sender) {
         try {
             for  (UUID conversationId : conversationIds) {
-                sendMessage(conversationId, request);
+                sendMessage(conversationId, request, sender);
             }
         } catch (RuntimeException e) {
             log.error("Failed to send messages in conversation {}", conversationIds, e);
