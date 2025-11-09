@@ -89,7 +89,7 @@ public class BookingMapper extends BaseMapper {
                                         .paymentMethod(payment.getPaymentMethod())
                                         .paymentStatus(payment.getStatus())
                                         .paymentTime(payment.getCreatedAt())
-                                        // approvalUrl intentionally removed
+                                        .approvalUrl(payment.getApprovalUrl()) // include approvalUrl per payment
                                         .failureReason(payment.getFailureReason())
                                         .build())
                                 .toArray(BookingResponse.BookingPaymentInfo[]::new);
@@ -100,6 +100,22 @@ public class BookingMapper extends BaseMapper {
                     try {
                         log.debug("Booking {} - mapped paymentInfos count: {}", source.getId(), paymentInfos != null ? paymentInfos.length : 0);
                     } catch (Exception ignored) {
+                    }
+
+                    // Set top-level approvalUrl for BookingResponse (from first PAID_PACKAGE payment if present)
+                    if (source.getBookingPayments() != null && !source.getBookingPayments().isEmpty()) {
+                        Optional<BookingPayment> latestPayment = source.getBookingPayments().stream()
+                                .filter(p -> p.getPaymentType() == Constants.PaymentTypeEnum.PAID_PACKAGE)
+                                .findFirst();
+
+                        if (latestPayment.isPresent()) {
+                            String approvalUrl = latestPayment.get().getApprovalUrl();
+                            destination.setApprovalUrl(approvalUrl);
+                        } else {
+                            destination.setApprovalUrl(null);
+                        }
+                    } else {
+                        destination.setApprovalUrl(null);
                     }
 
                     // NOTE: redirectUrl removed from response DTO, so we do not set it here.
@@ -218,6 +234,7 @@ public class BookingMapper extends BaseMapper {
                                         .paymentStatus(payment.getStatus())
                                         .paymentTime(payment.getCreatedAt())
                                         .failureReason(payment.getFailureReason())
+                                        .approvalUrl(payment.getApprovalUrl()) // include approvalUrl per payment
                                         .build())
                                 .toArray(CreateBookingResponse.BookingPaymentInfo[]::new);
                     }
@@ -233,8 +250,8 @@ public class BookingMapper extends BaseMapper {
                         destination.setReview(reviewInfo);
                     }
 
-                    // Set approval and redirectUrl for CreateBookingResponse
-                    // approval contains the approvalUrl string (not boolean)
+                    // Set approvalUrl and redirectUrl for CreateBookingResponse
+                    // approvalUrl contains the approvalUrl string (not boolean)
                     // redirectUrl is same as approval (URL from PayPal gateway)
                     if (source.getBookingPayments() != null && !source.getBookingPayments().isEmpty()) {
                         Optional<BookingPayment> latestPayment = source.getBookingPayments().stream()
@@ -245,18 +262,18 @@ public class BookingMapper extends BaseMapper {
                             BookingPayment payment = latestPayment.get();
                             String approvalUrl = payment.getApprovalUrl();
 
-                            // Set approval to the approvalUrl string (not true/false)
-                            destination.setApproval(approvalUrl);
+                            // Set approvalUrl to the approvalUrl string
+                            destination.setApprovalUrl(approvalUrl);
                             // Set redirectUrl from payment's approvalUrl (URL from PayPal gateway)
                             destination.setRedirectUrl(approvalUrl);
                         } else {
                             // No payment found, set default values
-                            destination.setApproval(null);
+                            destination.setApprovalUrl(null);
                             destination.setRedirectUrl(null);
                         }
                     } else {
                         // No payments, set default values
-                        destination.setApproval(null);
+                        destination.setApprovalUrl(null);
                         destination.setRedirectUrl(null);
                     }
 

@@ -25,7 +25,7 @@ public class CreateBookingResponse extends AbstractBaseDataResponse {
     private String additionalNote;
     private BookingPaymentInfo[] bookingPaymentInfos;
     private BookingReviewInfo review;
-    private String approval;  // Changed from Boolean to String - contains approvalUrl
+    private String approvalUrl;
     private String redirectUrl;
 
     @Getter
@@ -71,6 +71,7 @@ public class CreateBookingResponse extends AbstractBaseDataResponse {
         private Constants.PaymentStatusEnum paymentStatus;
         private LocalDateTime paymentTime;
         private String failureReason;
+        private String approvalUrl; // approval url returned from payment gateway for this payment info
     }
 
     @Getter

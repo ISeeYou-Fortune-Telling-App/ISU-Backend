@@ -25,6 +25,7 @@ public class BookingResponse extends AbstractBaseDataResponse {
     private String additionalNote;
     private BookingPaymentInfo[] bookingPaymentInfos;
     private BookingReviewInfo review;
+    private String approvalUrl; // added to return approval URL in booking response
 
     @Getter
     @Setter
@@ -69,6 +70,7 @@ public class BookingResponse extends AbstractBaseDataResponse {
         private Constants.PaymentStatusEnum paymentStatus;
         private LocalDateTime paymentTime;
         private String failureReason;
+        private String approvalUrl; // added approvalUrl for each payment info
     }
 
     @Getter
