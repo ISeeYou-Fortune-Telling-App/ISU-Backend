@@ -4,13 +4,15 @@ import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
+import com.iseeyou.fortunetelling.util.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -69,27 +71,37 @@ public class BookingMapper extends BaseMapper {
                         destination.setServicePackage(servicePackageInfo);
                     }
 
-                    // Map booking payment information
-                    if (source.getBookingPayments() != null && !source.getBookingPayments().isEmpty()) {
-                        BookingResponse.BookingPaymentInfo[] paymentInfos = source.getBookingPayments().stream()
+                    // Map booking payment information - only include payments with PaymentType == PAID_PACKAGE
+                    BookingResponse.BookingPaymentInfo[] paymentInfos;
+                    if (source.getBookingPayments() == null || source.getBookingPayments().isEmpty()) {
+                        paymentInfos = new BookingResponse.BookingPaymentInfo[0];
+                    } else {
+                        // collect to LinkedHashMap to deduplicate by id while preserving order, then map values
+                        paymentInfos = source.getBookingPayments().stream()
+                                .filter(Objects::nonNull)
+                                // only include PAID_PACKAGE (payment_type == 0)
+                                .filter(p -> p.getPaymentType() != null && p.getPaymentType() == Constants.PaymentTypeEnum.PAID_PACKAGE)
+                                .collect(Collectors.toMap(BookingPayment::getId, p -> p, (a, b) -> a, LinkedHashMap::new))
+                                .values().stream()
                                 .map(payment -> BookingResponse.BookingPaymentInfo.builder()
                                         .amount(payment.getAmount())
                                         .paymentMethod(payment.getPaymentMethod())
                                         .paymentStatus(payment.getStatus())
                                         .paymentTime(payment.getCreatedAt())
-                                        .approvalUrl(payment.getApprovalUrl())
+                                        // approvalUrl intentionally removed
                                         .failureReason(payment.getFailureReason())
                                         .build())
                                 .toArray(BookingResponse.BookingPaymentInfo[]::new);
-                        destination.setBookingPaymentInfos(paymentInfos);
-
-                        // Set redirectUrl from the latest booking payment's approval URL
-                        Optional<BookingPayment> latestPayment = source.getBookingPayments().stream()
-                                .max(Comparator.comparing(BookingPayment::getCreatedAt));
-                        if (latestPayment.isPresent() && latestPayment.get().getApprovalUrl() != null) {
-                            destination.setRedirectUrl(latestPayment.get().getApprovalUrl());
-                        }
                     }
+                    destination.setBookingPaymentInfos(paymentInfos);
+
+                    // Debug log to help trace mapping issues at runtime
+                    try {
+                        log.debug("Booking {} - mapped paymentInfos count: {}", source.getId(), paymentInfos != null ? paymentInfos.length : 0);
+                    } catch (Exception ignored) {
+                    }
+
+                    // NOTE: redirectUrl removed from response DTO, so we do not set it here.
 
                     // Map review information
                     if (source.getRating() != null || source.getComment() != null || source.getReviewedAt() != null) {
