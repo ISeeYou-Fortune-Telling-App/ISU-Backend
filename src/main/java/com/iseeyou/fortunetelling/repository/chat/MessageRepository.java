@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,4 +28,12 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     long countAllBySender(User sender);
 
     long countAllBySenderAndStatus(User sender, Constants.MessageStatusEnum status);
+
+    // Return the latest createdAt timestamp for messages in a conversation
+    @Query("SELECT MAX(m.createdAt) FROM Message m WHERE m.conversation.id = :conversationId")
+    LocalDateTime findLatestMessageCreatedAtByConversationId(@Param("conversationId") UUID conversationId);
+
+    // Batch query: return pairs (conversationId, latestCreatedAt) for given conversation ids
+    @Query("SELECT m.conversation.id, MAX(m.createdAt) FROM Message m WHERE m.conversation.id IN :conversationIds GROUP BY m.conversation.id")
+    List<Object[]> findLatestMessageCreatedAtByConversationIds(@Param("conversationIds") List<UUID> conversationIds);
 }

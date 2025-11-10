@@ -18,15 +18,13 @@ import com.iseeyou.fortunetelling.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -199,7 +197,64 @@ public class ConversationServiceImpl implements ConversationService {
             log.info("Seer {} retrieved {} total conversations", currentUser.getId(), conversations.getTotalElements());
         } else {
             // Customer: get ALL conversations (booking conversations + admin conversations as target)
-            conversations = conversationRepository.findAllConversationsByCustomer(currentUser.getId(), pageable);
+            // We ignore the sort parameters from controller and sort by latest message time instead
+
+            List<Conversation> conversationList = conversationRepository.findAllConversationsByCustomer(currentUser.getId());
+            // Batch fetch latest message times to avoid N+1 queries
+            List<UUID> convIds = conversationList.stream().map(Conversation::getId).toList();
+            Map<UUID, LocalDateTime> conversationAndItsLatestTimeSent = new HashMap<>();
+            if (!convIds.isEmpty()) {
+                List<Object[]> pairs = messageRepository.findLatestMessageCreatedAtByConversationIds(convIds);
+                for (Object[] pair : pairs) {
+                    UUID id = (UUID) pair[0];
+                    LocalDateTime ts = (LocalDateTime) pair[1];
+                    conversationAndItsLatestTimeSent.put(id, ts);
+                }
+            }
+
+            // Sort conversations by latest message time (descending). Conversations with no messages go last.
+            conversationList.sort((c1, c2) -> {
+                LocalDateTime t1 = conversationAndItsLatestTimeSent.get(c1.getId());
+                LocalDateTime t2 = conversationAndItsLatestTimeSent.get(c2.getId());
+
+                if (t1 == null && t2 == null) {
+                    // Fallback to updatedAt descending
+                    if (c1.getUpdatedAt() == null && c2.getUpdatedAt() == null) {
+                        return c2.getId().compareTo(c1.getId());
+                    }
+                    if (c1.getUpdatedAt() == null) return 1;
+                    if (c2.getUpdatedAt() == null) return -1;
+                    return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+                }
+                if (t1 == null) return 1; // c1 after c2
+                if (t2 == null) return -1; // c1 before c2
+
+                // descending order by timeSent
+                int cmp = t2.compareTo(t1);
+                if (cmp != 0) return cmp;
+
+                // tie-breaker: updatedAt descending
+                if (c1.getUpdatedAt() == null && c2.getUpdatedAt() == null) {
+                    return c2.getId().compareTo(c1.getId());
+                }
+                if (c1.getUpdatedAt() == null) return 1;
+                if (c2.getUpdatedAt() == null) return -1;
+                return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+            });
+
+            // Calculate start and end indexes for pagination (ignore sort from pageable)
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), conversationList.size());
+
+            List<Conversation> pagedList = conversationList.subList(start, end);
+
+            // Create unsorted pageable to avoid confusion
+            Pageable unsortedPageable = org.springframework.data.domain.PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize()
+            );
+            conversations = new PageImpl<>(pagedList, unsortedPageable, conversationList.size());
+
             log.info("Customer {} retrieved {} total conversations", currentUser.getId(), conversations.getTotalElements());
         }
 
@@ -218,20 +273,69 @@ public class ConversationServiceImpl implements ConversationService {
         Integer typeOrdinal = typeEnum != null ? typeEnum.ordinal() : null;
         Integer statusOrdinal = status != null ? status.ordinal() : null;
 
-        // Convert pageable for snake_case columns in native query
-        Pageable convertedPageable = convertPageableToSnakeCase(pageable);
-
-        Page<Conversation> conversations = conversationRepository.findAllWithFilters(
+        // Fetch all matching conversations (no pagination) so we can sort by latest message time
+        // We ignore the sort parameters from controller and sort by latest message time instead
+        List<Conversation> allConversations = conversationRepository.findAllWithFilters(
                 trimmedName,
                 typeOrdinal,
-                statusOrdinal,
-                convertedPageable
+                statusOrdinal
         );
 
-        log.info("Filtered conversations: participantName={}, type={}, status={}, totalResults={}",
-                trimmedName, typeEnum, status, conversations.getTotalElements());
+        // Build map of conversationId -> latest message createdAt using batch query
+        Map<UUID, LocalDateTime> latestMessageMap = new HashMap<>();
+        if (!allConversations.isEmpty()) {
+            List<UUID> convIds = allConversations.stream().map(Conversation::getId).toList();
+            List<Object[]> pairs = messageRepository.findLatestMessageCreatedAtByConversationIds(convIds);
+            for (Object[] pair : pairs) {
+                UUID id = (UUID) pair[0];
+                LocalDateTime ts = (LocalDateTime) pair[1];
+                latestMessageMap.put(id, ts);
+            }
+        }
 
-        return conversations.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
+        // Sort by latest message time descending, nulls (no messages) go last. Tie-breaker: updatedAt desc, then id.
+        allConversations.sort((c1, c2) -> {
+            LocalDateTime t1 = latestMessageMap.get(c1.getId());
+            LocalDateTime t2 = latestMessageMap.get(c2.getId());
+
+            if (t1 == null && t2 == null) {
+                if (c1.getUpdatedAt() == null && c2.getUpdatedAt() == null) {
+                    return c2.getId().compareTo(c1.getId());
+                }
+                if (c1.getUpdatedAt() == null) return 1;
+                if (c2.getUpdatedAt() == null) return -1;
+                return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+            }
+            if (t1 == null) return 1;
+            if (t2 == null) return -1;
+
+            int cmp = t2.compareTo(t1);
+            if (cmp != 0) return cmp;
+
+            if (c1.getUpdatedAt() == null && c2.getUpdatedAt() == null) {
+                return c2.getId().compareTo(c1.getId());
+            }
+            if (c1.getUpdatedAt() == null) return 1;
+            if (c2.getUpdatedAt() == null) return -1;
+            return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+        });
+
+        // Manual pagination on sorted list (ignore sort from pageable)
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), allConversations.size());
+        List<Conversation> paged = start <= end ? allConversations.subList(start, end) : Collections.emptyList();
+
+        // Create unsorted pageable to avoid confusion
+        Pageable unsortedPageable = org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+        Page<Conversation> conversationPage = new PageImpl<>(paged, unsortedPageable, allConversations.size());
+
+        log.info("Filtered conversations: participantName={}, type={}, status={}, totalResults={}",
+                trimmedName, typeEnum, status, conversationPage.getTotalElements());
+
+        return conversationPage.map(conv -> conversationMapper.mapTo(conv, ConversationResponse.class));
     }
 
     /**
