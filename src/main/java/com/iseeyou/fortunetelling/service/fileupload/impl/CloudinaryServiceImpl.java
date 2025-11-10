@@ -26,8 +26,26 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File cannot be null or empty");
         }
+
+        // Determine resource type based on content type
+        String contentType = file.getContentType();
+        String resourceType = "auto"; // Default to auto-detect
+
+        if (contentType != null) {
+            if (contentType.startsWith("video/")) {
+                resourceType = "video";
+            } else if (contentType.startsWith("image/")) {
+                resourceType = "image";
+            } else if (contentType.startsWith("audio/")) {
+                resourceType = "raw";
+            }
+        }
+
         return cloudinary.uploader().upload(file.getBytes(),
-                ObjectUtils.asMap("folder", folder)).get("secure_url").toString();
+                ObjectUtils.asMap(
+                    "folder", folder,
+                    "resource_type", resourceType
+                )).get("secure_url").toString();
     }
 
     @Override
