@@ -47,6 +47,45 @@ public class ChatSocketListener {
             client.sendEvent("connect_success", Map.of("message", messageSourceService.get("chat.connect.success")));
         });
 
+        namespace.addEventListener("admin_join_all_conversations", String.class, (client, userId, ackRequest) -> {
+            try {
+                // Get all conversations (both ADMIN_CHAT and BOOKING_SESSION)
+                // So admin can monitor all conversations and see messages from users
+                List<Conversation> allConversations = conversationRepository.findAll();
+
+                log.info("Admin is joining {} total conversations", allConversations.size());
+
+                // Join each conversation room
+                int joinedCount = 0;
+                for (Conversation conversation : allConversations) {
+                    String convId = conversation.getId().toString();
+                    client.joinRoom(convId);
+                    joinedCount++;
+                }
+
+                log.info("User {} successfully joined {} conversation rooms", userId, joinedCount);
+
+                // Send success response with conversation IDs
+                List<String> conversationIds = allConversations.stream()
+                        .map(c -> c.getId().toString())
+                        .toList();
+
+                ackRequest.sendAckData(Map.of(
+                        "status", "success",
+                        "message", "Admin joined all conversations",
+                        "conversationIds", conversationIds,
+                        "totalJoined", joinedCount
+                ));
+
+            } catch (Exception e) {
+                log.error("Error in admin_join_all_conversations", e);
+                ackRequest.sendAckData(Map.of(
+                        "status", "error",
+                        "message", e.getMessage()
+                ));
+            }
+        });
+
         // User joins conversation room
         namespace.addEventListener("join_conversation", String.class, (client, conversationId, ackRequest) -> {
             try {

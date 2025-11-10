@@ -109,6 +109,15 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             Pageable pageable
     );
 
+    @Query("SELECT c FROM Conversation c " +
+            "LEFT JOIN c.booking b " +
+            "WHERE (b.customer.id = :customerId) OR " +
+            "(c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND c.targetUser.id = :customerId) OR " +
+            "(c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND c.admin.id = :customerId)")
+    List<Conversation> findAllConversationsByCustomer(
+            @Param("customerId") UUID customerId
+    );
+
     // Find all conversations for a seer (booking conversations + admin conversations where seer is target)
     // Note: Seers can only be targetUser in ADMIN_CHAT, not initiator
     @Query("SELECT c FROM Conversation c " +
@@ -159,5 +168,27 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("type") Integer type,
             @Param("status") Integer status,
             Pageable pageable
+    );
+
+    // Same native query variant that returns a List for manual sorting/pagination in service
+    @Query(value = "SELECT c.* FROM conversation c " +
+            "LEFT JOIN booking b ON b.booking_id = c.booking_id " +
+            "LEFT JOIN \"user\" customer ON customer.user_id = b.customer_id " +
+            "LEFT JOIN service_package sp ON sp.package_id = b.service_package_id AND sp.deleted_at IS NULL " +
+            "LEFT JOIN \"user\" seer ON seer.user_id = sp.seer_id " +
+            "LEFT JOIN \"user\" admin ON admin.user_id = c.admin_id " +
+            "LEFT JOIN \"user\" targetUser ON targetUser.user_id = c.target_user_id " +
+            "WHERE (:participantName IS NULL OR " +
+            "(customer.user_id IS NOT NULL AND LOWER(CAST(customer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(seer.user_id IS NOT NULL AND LOWER(CAST(seer.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(admin.user_id IS NOT NULL AND LOWER(CAST(admin.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%'))) OR " +
+            "(targetUser.user_id IS NOT NULL AND LOWER(CAST(targetUser.full_name AS VARCHAR)) LIKE LOWER(CONCAT('%', CAST(:participantName AS VARCHAR), '%')))) " +
+            "AND (:type IS NULL OR c.type = :type) " +
+            "AND (:status IS NULL OR c.status = :status)",
+            nativeQuery = true)
+    List<Conversation> findAllWithFilters(
+            @Param("participantName") String participantName,
+            @Param("type") Integer type,
+            @Param("status") Integer status
     );
 }

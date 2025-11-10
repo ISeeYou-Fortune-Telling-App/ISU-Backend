@@ -39,6 +39,8 @@ public interface UserService {
 
     User findByEmail(String email);
 
+    java.util.Optional<User> findFirstByRole(com.iseeyou.fortunetelling.util.Constants.RoleEnum role);
+
     UserDetails loadUserByEmail(String email);
 
     User register(RegisterRequest request) throws BindException;

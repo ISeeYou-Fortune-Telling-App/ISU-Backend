@@ -24,6 +24,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     List<User> findAllByRole(Constants.RoleEnum role);
 
+    // Find first admin (there's only one admin in the system)
+    Optional<User> findFirstByRole(Constants.RoleEnum role);
+
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.seerProfile WHERE u.id = :userId")
     Optional<User> findByIdWithSeerProfile(@Param("userId") UUID userId);
 
