@@ -67,6 +67,7 @@ public class UserServiceImpl implements UserService {
     private final SeerSpecialityRepository seerSpecialityRepository;
     private final KnowledgeCategoryRepository knowledgeCategoryRepository;
     private final UserMapper userMapper;
+    private final ConversationService conversationService;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -78,7 +79,8 @@ public class UserServiceImpl implements UserService {
             BookingRepository bookingRepository,
             SeerSpecialityRepository seerSpecialityRepository,
             KnowledgeCategoryRepository knowledgeCategoryRepository,
-            UserMapper userMapper) {
+            UserMapper userMapper,
+            @Lazy ConversationService conversationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.messageSourceService = messageSourceService;
@@ -89,6 +91,7 @@ public class UserServiceImpl implements UserService {
         this.seerSpecialityRepository = seerSpecialityRepository;
         this.knowledgeCategoryRepository = knowledgeCategoryRepository;
         this.userMapper = userMapper;
+        this.conversationService = conversationService;
     }
 
     public Authentication getAuthentication() {
@@ -143,6 +146,12 @@ public class UserServiceImpl implements UserService {
     public User findById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<User> findFirstByRole(Constants.RoleEnum role) {
+        return userRepository.findFirstByRole(role);
     }
 
     @Override
@@ -256,6 +265,17 @@ public class UserServiceImpl implements UserService {
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("User registered and verification email sent to: {}", request.getEmail());
 
+        // Create admin conversation with welcome message
+        // Note: There's only one admin in the system
+        try {
+            String welcomeMessage = "Welcome to ISeeYou! We're here to help you with any questions or concerns. Feel free to reach out anytime.";
+            conversationService.createAdminConversation(user.getId(), welcomeMessage);
+            log.info("Admin conversation created for new user: {}", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to create admin conversation for user {}: {}", user.getId(), e.getMessage());
+            // Don't fail registration if conversation creation fails
+        }
+
         return user;
     }
 
@@ -327,6 +347,17 @@ public class UserServiceImpl implements UserService {
         // Gửi OTP xác thực email
         emailVerificationService.sendVerificationEmail(request.getEmail());
         log.info("Seer registered and verification email sent to: {}", request.getEmail());
+
+        // Create admin conversation with welcome message
+        // Note: There's only one admin in the system
+        try {
+            String welcomeMessage = "Welcome to ISeeYou! Thank you for joining as a Seer. We'll review your application and get back to you soon. Feel free to reach out if you have any questions.";
+            conversationService.createAdminConversation(user.getId(), welcomeMessage);
+            log.info("Admin conversation created for new seer: {}", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to create admin conversation for seer {}: {}", user.getId(), e.getMessage());
+            // Don't fail registration if conversation creation fails
+        }
 
         return user;
     }

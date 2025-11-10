@@ -107,12 +107,21 @@ public class ConversationServiceImpl implements ConversationService {
     @Override
     @Transactional
     public ConversationResponse createAdminConversation(UUID targetUserId, String initialMessage) {
-        // 1. Get current admin user
-        User admin = userService.getUser();
-
-        // Verify user is admin
-        if (!admin.getRole().equals(Constants.RoleEnum.ADMIN)) {
-            throw new IllegalStateException("Only admin can create admin conversations");
+        // 1. Get admin user - try to get current authenticated user first,
+        // if not authenticated (e.g., during registration), get the single admin from database
+        User admin = null;
+        try {
+            admin = userService.getUser();
+            // Verify user is admin
+            if (!admin.getRole().equals(Constants.RoleEnum.ADMIN)) {
+                throw new IllegalStateException("Only admin can create admin conversations");
+            }
+        } catch (Exception e) {
+            // No authenticated user, get the single admin from database
+            // Note: There's only one admin in the system
+            log.info("No authenticated admin, fetching admin from database");
+            admin = userService.findFirstByRole(Constants.RoleEnum.ADMIN)
+                    .orElseThrow(() -> new NotFoundException("Admin user not found in the system"));
         }
 
         // 2. Get target user (customer or seer)

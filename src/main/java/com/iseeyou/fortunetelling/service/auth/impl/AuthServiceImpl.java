@@ -60,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
 
         String badCredentialsMessage = messageSourceService.get("Unauthorized");
 
-        User user = null;
+        User user;
         try {
             user = userService.findByEmail(email);
             email = user.getEmail();
