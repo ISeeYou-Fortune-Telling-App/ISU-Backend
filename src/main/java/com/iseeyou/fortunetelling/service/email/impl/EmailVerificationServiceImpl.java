@@ -13,6 +13,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -39,7 +40,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendVerificationEmail(String email) {
         try {
             // Vô hiệu hóa tất cả OTP cũ của email này
@@ -68,7 +69,7 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendPasswordResetEmail(String email) {
         try {
             // Vô hiệu hóa tất cả OTP cũ của email này

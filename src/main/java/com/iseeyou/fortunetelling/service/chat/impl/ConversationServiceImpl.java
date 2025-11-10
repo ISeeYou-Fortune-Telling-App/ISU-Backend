@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -105,7 +106,7 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ConversationResponse createAdminConversation(UUID targetUserId, String initialMessage) {
         // 1. Get admin user - try to get current authenticated user first,
         // if not authenticated (e.g., during registration), get the single admin from database
