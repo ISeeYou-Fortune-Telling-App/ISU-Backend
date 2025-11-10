@@ -304,23 +304,33 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        // Process certificates if provided
-        if (request.getCertificates() != null && !request.getCertificates().isBlank()) {
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>> typeRef =
-                        new com.fasterxml.jackson.core.type.TypeReference<List<CertificateCreateRequest>>() {};
-                List<CertificateCreateRequest> certificateRequests = objectMapper.readValue(request.getCertificates(), typeRef);
-
-                for (CertificateCreateRequest certRequest : certificateRequests) {
-                    try {
-                        certificateService.create(certRequest);
-                    } catch (IOException e) {
-                        log.error("Failed to create certificate: {}", e.getMessage());
-                    }
+        // Process certificates with full information
+        // Seer có thể truyền đầy đủ thông tin certificate ngay khi đăng ký
+        if (request.getCertificates() != null && !request.getCertificates().isEmpty()) {
+            for (CertificateCreateRequest certRequest : request.getCertificates()) {
+                // Skip if certificate file is empty
+                if (certRequest.getCertificateFile() == null || certRequest.getCertificateFile().isEmpty()) {
+                    log.warn("Skipping certificate with empty file: {}", certRequest.getCertificateName());
+                    continue;
                 }
-            } catch (Exception ex) {
-                log.error("Failed to parse certificates JSON: {}", ex.getMessage());
+
+                try {
+                    // Tạo certificate với đầy đủ thông tin từ request
+                    // Sử dụng createForUser để truyền user trực tiếp (vì user chưa được authenticate)
+                    // CertificateService sẽ tự động:
+                    // - Upload file lên Cloudinary
+                    // - Set seer = user được truyền vào
+                    // - Set status = PENDING
+                    // - Xử lý categories nếu có
+                    certificateService.createForUser(certRequest, user);
+                    log.info("Certificate created successfully for seer {}: {}",
+                            user.getEmail(), certRequest.getCertificateName());
+
+                } catch (IOException e) {
+                    log.error("Failed to create certificate {} for seer {}: {}",
+                            certRequest.getCertificateName(), user.getEmail(), e.getMessage());
+                    // Continue processing other certificates even if one fails
+                }
             }
         }
 

@@ -6,6 +6,7 @@ import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateReque
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.mapper.CertificateMapper;
 import com.iseeyou.fortunetelling.repository.certificate.CertificateCategoryRepository;
@@ -94,6 +95,52 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
         Certificate newCertificate = certificateRepository.save(certificate);
         
+        // Handle categories if provided
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            List<KnowledgeCategory> categories = knowledgeCategoryService.findAllByIds(request.getCategoryIds());
+
+            Set<CertificateCategory> certificateCategories = new HashSet<>();
+            for (KnowledgeCategory category : categories) {
+                CertificateCategory certificateCategory = CertificateCategory.builder()
+                        .certificate(newCertificate)
+                        .knowledgeCategory(category)
+                        .build();
+
+                certificateCategories.add(certificateCategory);
+            }
+
+            certificateCategoryRepository.saveAll(certificateCategories);
+            newCertificate.setCertificateCategories(certificateCategories);
+        }
+
+        return newCertificate;
+    }
+
+    @Override
+    @Transactional
+    public Certificate createForUser(CertificateCreateRequest request, User user) throws IOException {
+        // Map DTO to Entity
+        Certificate certificate = certificateMapper.mapTo(request, Certificate.class);
+
+        // Defensive validation in service layer to avoid Hibernate PropertyValueException
+        if (certificate.getIssuedBy() == null || certificate.getIssuedBy().trim().isEmpty()) {
+            throw new IllegalArgumentException("issuedBy must not be null or empty");
+        }
+        if (certificate.getIssuedAt() == null) {
+            throw new IllegalArgumentException("issuedAt must not be null");
+        }
+
+        // Upload certificate file to Cloudinary
+        if (request.getCertificateFile() != null && !request.getCertificateFile().isEmpty()) {
+            String imageUrl = cloudinaryService.uploadFile(request.getCertificateFile(), "certificates");
+            certificate.setCertificateUrl(imageUrl);
+        }
+
+        // Set business logic fields - sử dụng User được truyền vào thay vì lấy từ security context
+        certificate.setSeer(user);
+        certificate.setStatus(Constants.CertificateStatusEnum.PENDING);
+        Certificate newCertificate = certificateRepository.save(certificate);
+
         // Handle categories if provided
         if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             List<KnowledgeCategory> categories = knowledgeCategoryService.findAllByIds(request.getCategoryIds());

@@ -1,0 +1,305 @@
+{
+	"info": {
+		"_postman_id": "seer-register-collection-001",
+		"name": "Seer Registration API",
+		"description": "Collection for testing Seer Registration endpoint with certificate upload",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Seer Register with Certificates",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "email",
+							"value": "seer.demo@example.com",
+							"description": "Seer email address",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "P@sswrd123.",
+							"description": "Password for the account",
+							"type": "text"
+						},
+						{
+							"key": "fullName",
+							"value": "John Tarot Master",
+							"description": "Full name of the seer",
+							"type": "text"
+						},
+						{
+							"key": "birthDate",
+							"value": "2000-01-30T00:00:00",
+							"description": "Birth date (ISO LocalDateTime format)",
+							"type": "text"
+						},
+						{
+							"key": "gender",
+							"value": "Nam",
+							"description": "Gender (Nam/Nữ)",
+							"type": "text"
+						},
+						{
+							"key": "phoneNumber",
+							"value": "0901234567",
+							"description": "Phone number",
+							"type": "text"
+						},
+						{
+							"key": "profileDescription",
+							"value": "Expert Tarot reader with over 10 years of experience. Specialized in love, career, and spiritual guidance.",
+							"description": "Seer profile description",
+							"type": "text"
+						},
+						{
+							"key": "specialityIds",
+							"value": "1a1d3003-cad8-4805-8e04-2170d12e5bcf",
+							"description": "Knowledge category ID (replace with actual UUID from your database)",
+							"type": "text"
+						},
+						{
+							"key": "specialityIds",
+							"value": "2b2d3003-cad8-4805-8e04-2170d12e5bcf",
+							"description": "Another knowledge category ID (optional, can add multiple)",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].certificateName",
+							"value": "Tarot Master Certification",
+							"description": "First certificate name",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].certificateDescription",
+							"value": "Professional certification in Advanced Tarot Reading and Interpretation",
+							"description": "First certificate description",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].issuedBy",
+							"value": "International Tarot Association",
+							"description": "Organization that issued the first certificate",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].issuedAt",
+							"value": "2020-01-15T10:00:00",
+							"description": "Date when first certificate was issued (ISO 8601 format)",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].expirationDate",
+							"value": "2030-01-15T10:00:00",
+							"description": "First certificate expiration date (optional)",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].certificateFile",
+							"description": "First certificate file (CLICK 'Select Files' to upload JPG/PNG/PDF)",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "certificates[0].categoryIds",
+							"value": "1a1d3003-cad8-4805-8e04-2170d12e5bcf",
+							"description": "Knowledge category ID for first certificate",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].certificateName",
+							"value": "Palm Reading Expert Certificate",
+							"description": "Second certificate name",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].certificateDescription",
+							"value": "Advanced certification in Palmistry and Hand Analysis",
+							"description": "Second certificate description",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].issuedBy",
+							"value": "World Palmistry Institute",
+							"description": "Organization that issued the second certificate",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].issuedAt",
+							"value": "2021-06-20T14:30:00",
+							"description": "Date when second certificate was issued",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].expirationDate",
+							"value": "2031-06-20T14:30:00",
+							"description": "Second certificate expiration date (optional)",
+							"type": "text"
+						},
+						{
+							"key": "certificates[1].certificateFile",
+							"description": "Second certificate file (CLICK 'Select Files' to upload)",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "certificates[1].categoryIds",
+							"value": "2b2d3003-cad8-4805-8e04-2170d12e5bcf",
+							"description": "Knowledge category ID for second certificate",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/seer/register",
+					"rawPath": "/auth/seer/register"
+				},
+				"description": "Register a new seer with complete profile information and multiple certificates.\n\n**Required Fields:**\n- email\n- password\n- fullName\n- birthDate\n- gender\n- phoneNumber\n\n**Certificate Fields (for each certificate):**\n- certificateName (required)\n- issuedBy (required)\n- issuedAt (required)\n- certificateFile (required) - Upload actual file here\n- certificateDescription (optional)\n- expirationDate (optional)\n- categoryIds (optional array)\n\n**Notes:**\n1. Replace specialityIds and categoryIds with actual UUIDs from your database\n2. Click 'Select Files' for certificateFile fields to upload actual certificate images/PDFs\n3. You can add more certificates by adding more certificates[2], certificates[3], etc.\n4. Files will be automatically uploaded to Cloudinary\n5. All certificates will be created with status PENDING waiting for admin approval"
+			},
+			"response": []
+		},
+		{
+			"name": "Seer Register - Minimal (No Certificates)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "email",
+							"value": "seer.minimal@example.com",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "P@sswrd123.",
+							"type": "text"
+						},
+						{
+							"key": "fullName",
+							"value": "Jane Fortune Teller",
+							"type": "text"
+						},
+						{
+							"key": "birthDate",
+							"value": "1990-03-20",
+							"type": "text"
+						},
+						{
+							"key": "gender",
+							"value": "Nữ",
+							"type": "text"
+						},
+						{
+							"key": "phoneNumber",
+							"value": "0987654321",
+							"type": "text"
+						},
+						{
+							"key": "profileDescription",
+							"value": "Experienced fortune teller specializing in spiritual guidance.",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/seer/register",
+					"rawPath": "/auth/seer/register"
+				},
+				"description": "Minimal seer registration without certificates or specialities. Certificates can be added later."
+			},
+			"response": []
+		},
+		{
+			"name": "Seer Register - Single Certificate",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "email",
+							"value": "seer.single@example.com",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "P@sswrd123.",
+							"type": "text"
+						},
+						{
+							"key": "fullName",
+							"value": "Michael Mystic",
+							"type": "text"
+						},
+						{
+							"key": "birthDate",
+							"value": "1988-11-10",
+							"type": "text"
+						},
+						{
+							"key": "gender",
+							"value": "Nam",
+							"type": "text"
+						},
+						{
+							"key": "phoneNumber",
+							"value": "0912345678",
+							"type": "text"
+						},
+						{
+							"key": "profileDescription",
+							"value": "Certified spiritual advisor and tarot consultant.",
+							"type": "text"
+						},
+						{
+							"key": "specialityIds",
+							"value": "1a1d3003-cad8-4805-8e04-2170d12e5bcf",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].certificateName",
+							"value": "Spiritual Advisor Certification",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].issuedBy",
+							"value": "Spiritual Guidance Institute",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].issuedAt",
+							"value": "2022-03-15T09:00:00",
+							"type": "text"
+						},
+						{
+							"key": "certificates[0].certificateFile",
+							"description": "Upload certificate file here",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/seer/register",
+					"rawPath": "/auth/seer/register"
+				},
+				"description": "Seer registration with a single certificate"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		}
+	]
+}
