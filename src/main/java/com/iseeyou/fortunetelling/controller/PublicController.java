@@ -5,8 +5,12 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.account.SimpleSeerCardResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
+import com.iseeyou.fortunetelling.dto.response.knowledgecategory.KnowledgeCategoryResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
+import com.iseeyou.fortunetelling.mapper.SimpleMapper;
+import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
 import com.iseeyou.fortunetelling.service.servicepackage.ServicePackageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -36,6 +40,42 @@ public class PublicController extends AbstractBaseController {
 
     private final ServicePackageService servicePackageService;
     private final UserService userService;
+    private final KnowledgeCategoryService knowledgeCategoryService;
+    private final SimpleMapper simpleMapper;
+
+    // ============ KNOWLEDGE CATEGORIES PUBLIC ENDPOINTS ============
+
+    @GetMapping("/knowledge-categories")
+    @Operation(
+            summary = "Get all knowledge categories with pagination (Public)",
+            description = "Get all knowledge categories. No authentication required.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successful operation",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    )
+            }
+    )
+    public ResponseEntity<PageResponse<KnowledgeCategoryResponse>> getAllKnowledgeCategoriesPublic(
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        log.info("Public API: Get all knowledge categories - page: {}, limit: {}", page, limit);
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<KnowledgeCategory> categories = knowledgeCategoryService.findAll(pageable);
+        Page<KnowledgeCategoryResponse> response = simpleMapper.mapToPage(categories, KnowledgeCategoryResponse.class);
+        return responseFactory.successPage(response, "Knowledge categories retrieved successfully");
+    }
 
     // ============ SERVICE PACKAGES PUBLIC ENDPOINTS ============
     
