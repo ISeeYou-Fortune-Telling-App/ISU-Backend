@@ -362,7 +362,7 @@ public class BookingController extends AbstractBaseController {
     @Operation(
             summary = "Cancel booking (Customer only)",
             description = "Allows customer to cancel their booking. Booking must be cancelled at least 2 hours before scheduled time. " +
-                         "If payment was completed, refund will be processed automatically. Only PENDING or CONFIRMED bookings can be cancelled.",
+                    "If payment was completed, refund will be processed automatically. Only PENDING or CONFIRMED bookings can be cancelled.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -652,7 +652,7 @@ public class BookingController extends AbstractBaseController {
 
     @GetMapping("/payment/success")
     @Operation(summary = "Only for redirect URL from payment gateways (Currently only PayPal)")
-    public ResponseEntity<SingleResponse<BookingPaymentResponse>> paymentSuccess(
+    public ResponseEntity<String> paymentSuccess(
             @RequestParam(value = "paymentId", required = true) String paymentId,
             @RequestParam(value = "PayerID", required = true) String payerId
             // VNPay parameters temporarily disabled
@@ -664,13 +664,13 @@ public class BookingController extends AbstractBaseController {
     ) {
         // Only PayPal is supported temporarily
         BookingPayment bookingPayment = bookingService.executePayment(
-                Constants.PaymentMethodEnum.PAYPAL, 
+                Constants.PaymentMethodEnum.PAYPAL,
                 Map.of(
                         "paymentId", paymentId,
                         "PayerID", payerId
                 )
         );
-        
+
         // VNPay disabled
         // if (paymentId != null && payerId != null) {
         //     bookingPayment = bookingService.executePayment(Constants.PaymentMethodEnum.PAYPAL, Map.of(
@@ -686,9 +686,23 @@ public class BookingController extends AbstractBaseController {
         //             "vnp_TxnRef", vnp_TxnRef
         //     ));
         // }
-        
-        BookingPaymentResponse response = bookingMapper.mapTo(bookingPayment, BookingPaymentResponse.class);
-        return responseFactory.successSingle(response, "Payment executed successfully");
+
+        String htmlContent = "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <title>Payment Success</title>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "    <script>\n" +
+                "        window.location.href = \"iseeyou://payment-success?bookingId=" + bookingPayment.getBooking().getId() + "\";\n" +
+                "    </script>\n" +
+                "    <p>Redirecting to app...</p>\n" +
+                "</body>\n" +
+                "</html>";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(htmlContent);
     }
 
     @GetMapping("/payment/cancel")

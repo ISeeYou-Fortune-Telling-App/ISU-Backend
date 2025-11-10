@@ -280,4 +280,29 @@ public class BookingMapper extends BaseMapper {
                     return destination;
                 });
     }
+    
+    /**
+     * Convert BookingPayment entity to BookingPaymentResponse DTO
+     * Supports BONUS payment type where booking can be null
+     */
+    public BookingPaymentResponse toBookingPaymentResponse(BookingPayment bookingPayment) {
+        if (bookingPayment == null) {
+            return null;
+        }
+        
+        BookingPaymentResponse response = modelMapper.map(bookingPayment, BookingPaymentResponse.class);
+        
+        // For BONUS payment type, get seer info directly from payment.seer
+        if (bookingPayment.getPaymentType() == Constants.PaymentTypeEnum.BONUS && bookingPayment.getSeer() != null) {
+            BookingPaymentResponse.BookingUserInfo seerInfo = BookingPaymentResponse.BookingUserInfo.builder()
+                    .fullName(bookingPayment.getSeer().getFullName())
+                    .avatarUrl(bookingPayment.getSeer().getAvatarUrl())
+                    .build();
+            response.setSeer(seerInfo);
+            response.setBookingId(null); // No booking for BONUS type
+            response.setPackageTitle("Bonus Payment"); // Custom title for bonus
+        }
+        
+        return response;
+    }
 }

@@ -1,6 +1,7 @@
 package com.iseeyou.fortunetelling.entity.booking;
 
 import com.iseeyou.fortunetelling.entity.AbstractBaseEntity;
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
 import jakarta.persistence.*;
 import lombok.*;
@@ -40,8 +41,13 @@ public class BookingPayment extends AbstractBaseEntity {
     @Column(name = "extra_info")
     private String extraInfo;
 
-    // Relationship: Many BookingPayments to One Booking
+    // Relationship: Many BookingPayments to One Booking (nullable for BONUS type)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
+    @JoinColumn(name = "booking_id", nullable = true)
     private Booking booking;
+
+    // Relationship: Many BookingPayments to One Seer (for BONUS payment type)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seer_id", nullable = true)
+    private User seer;
 }
