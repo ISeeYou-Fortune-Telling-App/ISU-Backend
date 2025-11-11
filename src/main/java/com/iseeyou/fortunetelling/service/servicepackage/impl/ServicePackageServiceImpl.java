@@ -634,7 +634,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable,
                                                                        String searchText,
                                                                        Double minPrice, Double maxPrice,
