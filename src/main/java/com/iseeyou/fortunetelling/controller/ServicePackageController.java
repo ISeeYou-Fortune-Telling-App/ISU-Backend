@@ -11,7 +11,7 @@ import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackagePageResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.service.servicepackage.impl.ServicePackageServiceImpl;
-import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServiceReviewResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServiceReview;

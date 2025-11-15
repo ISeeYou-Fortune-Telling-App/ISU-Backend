@@ -2,7 +2,7 @@ package com.iseeyou.fortunetelling.service.servicepackage;
 
 import com.iseeyou.fortunetelling.dto.request.servicepackage.AvailableTimeSlotRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
-import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.AvailableTimeSlotResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
