@@ -271,6 +271,64 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         }
     }
 
+    @Override
+    public void sendSeerWelcomeEmail(UUID userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+
+            String subject = appName + " - 🎉 Chào mừng bạn đến với nền tảng " + appName;
+            String content = String.format(
+                    "Xin chào %s!\n\n" +
+                            "🎉 Chào mừng bạn đã trở thành một phần của cộng đồng Thầy/Cô tại %s!\n\n" +
+                            "Cảm ơn bạn đã hoàn tất quá trình đăng ký và xác thực email. Chúng tôi rất vui mừng được chào đón bạn!\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📋 HƯỚNG DẪN SỬ DỤNG NỀN TẢNG:\n\n" +
+                            "1. Hoàn thiện hồ sơ: Cập nhật đầy đủ thông tin cá nhân, chuyên môn và chứng chỉ của bạn\n" +
+                            "2. Thiết lập lịch làm việc: Cấu hình thời gian rảnh để khách hàng có thể đặt lịch\n" +
+                            "3. Thiết lập gói dịch vụ: Tạo các gói tư vấn phù hợp với chuyên môn của bạn\n" +
+                            "4. Quản lý booking: Theo dõi và xử lý các yêu cầu tư vấn từ khách hàng\n" +
+                            "5. Chat với khách hàng: Sử dụng tính năng chat để tư vấn trực tuyến\n" +
+                            "6. Quản lý thu nhập: Theo dõi doanh thu và rút tiền qua PayPal\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "📞 THÔNG TIN LIÊN HỆ HỖ TRỢ:\n\n" +
+                            "- Email hỗ trợ: admin@gmail.com\n" +
+                            "- Hotline: 1900-xxxx (8:00 - 22:00 hàng ngày)\n" +
+                            "- Chat trực tiếp: Sử dụng tính năng chat với Admin trong ứng dụng\n\n" +
+                            "Nếu bạn có bất kỳ thắc mắc nào, đừng ngần ngại liên hệ với chúng tôi. " +
+                            "Đội ngũ hỗ trợ luôn sẵn sàng giúp đỡ bạn!\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "⏳ QUÁ TRÌNH DUYỆT HỒ SƠ:\n\n" +
+                            "Hồ sơ của bạn đang được đội ngũ của chúng tôi xem xét kỹ lưỡng. " +
+                            "Quá trình này thường mất từ 2-3 ngày làm việc.\n\n" +
+                            "Trong thời gian này, vui lòng:\n" +
+                            "✓ Đảm bảo các thông tin và chứng chỉ đã được cung cấp đầy đủ\n" +
+                            "✓ Kiểm tra email thường xuyên để nhận thông báo\n" +
+                            "✓ Chuẩn bị sẵn sàng để bắt đầu tư vấn sau khi được phê duyệt\n\n" +
+                            "Chúng tôi sẽ thông báo qua email ngay khi quá trình duyệt hoàn tất.\n\n" +
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                            "💡 MẸO NHỎ:\n" +
+                            "- Hồ sơ chi tiết và chuyên nghiệp sẽ được ưu tiên duyệt nhanh hơn\n" +
+                            "- Chứng chỉ rõ ràng, hợp lệ sẽ tăng độ tin cậy với khách hàng\n" +
+                            "- Cập nhật thường xuyên lịch làm việc để nhận nhiều booking hơn\n\n" +
+                            "Cảm ơn bạn đã lựa chọn %s. Chúc bạn thành công và phát triển cùng nền tảng!\n\n" +
+                            "Trân trọng,\n" +
+                            "ISU Team\n" +
+                            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                    user.getFullName(),
+                    appName,
+                    fromEmail,
+                    appName,
+                    appName
+            );
+
+            sendEmail(user.getEmail(), subject, content);
+            log.info("Sent welcome email to seer: {}", userId);
+
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to seer {}", userId, e);
+        }
+    }
 
     private String generateOtp() {
         return String.format("%06d", random.nextInt(1000000));

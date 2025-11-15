@@ -480,6 +480,17 @@ public class UserServiceImpl implements UserService {
         user.setIsActive(true);
         userRepository.save(user);
         log.info("User activated by email verification: {}", email);
+
+        // Gửi email chào mừng nếu là SEER
+        if (user.getRole() == Constants.RoleEnum.SEER) {
+            try {
+                emailVerificationService.sendSeerWelcomeEmail(user.getId());
+                log.info("Welcome email sent to seer: {}", email);
+            } catch (Exception e) {
+                log.error("Failed to send welcome email to seer {}: {}", email, e.getMessage());
+                // Không fail quá trình activate nếu gửi email thất bại
+            }
+        }
     }
 
 
