@@ -634,7 +634,6 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ServicePackageResponse> getAllPackagesWithInteractions(Pageable pageable,
                                                                        String searchText,
                                                                        Double minPrice, Double maxPrice,
@@ -718,8 +717,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
      * Helper method to enrich service packages with user interaction data
      */
     private Page<ServicePackageResponse> enrichWithInteractions(Page<ServicePackage> servicePackages) {
-        User currentUser = userService.getUser();
+        User currentUser = null;
+        try {
+            currentUser = userService.getUser();
+        } catch (Exception e) {
 
+        }
+
+        User finalCurrentUser = currentUser;
         return servicePackages.map(pkg -> {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
@@ -728,16 +733,18 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
             Double avgRating = bookingRepository.getAverageRatingByServicePackageId(pkg.getId());
 
-            boolean isLike = false;
-            boolean isDislike = false;
+            if (finalCurrentUser != null) {
+                boolean isLike = false;
+                boolean isDislike = false;
 
-            PackageInteraction interaction = interactionRepository.findByUser_IdAndServicePackage_Id(currentUser.getId(), pkg.getId()).orElse(null);
-            if (interaction != null)
-                if (interaction.getInteractionType() == Constants.InteractionTypeEnum.LIKE)  isLike = true;
-                else isDislike = true;
+                PackageInteraction interaction = interactionRepository.findByUser_IdAndServicePackage_Id(finalCurrentUser.getId(), pkg.getId()).orElse(null);
+                if (interaction != null)
+                    if (interaction.getInteractionType() == Constants.InteractionTypeEnum.LIKE)  isLike = true;
+                    else isDislike = true;
 
-            response.setIsLike(isLike);
-            response.setIsDislike(isDislike);
+                response.setIsLike(isLike);
+                response.setIsDislike(isDislike);
+            }
 
             response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
             response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place
