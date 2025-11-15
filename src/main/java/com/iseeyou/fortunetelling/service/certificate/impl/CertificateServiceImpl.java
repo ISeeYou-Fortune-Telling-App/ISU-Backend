@@ -65,6 +65,15 @@ public class CertificateServiceImpl implements CertificateService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<Certificate> findAll(Pageable pageable, Constants.CertificateStatusEnum status) {
+        if (status == null) {
+            return certificateRepository.findAll(pageable);
+        }
+        return certificateRepository.findAllByStatus(status, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Certificate findById(UUID id) {
         return certificateRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Certificate not found with id: " + id));

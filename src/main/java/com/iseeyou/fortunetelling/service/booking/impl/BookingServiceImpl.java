@@ -30,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.JoinType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -1018,6 +1019,11 @@ public class BookingServiceImpl implements BookingService {
         // 1. Get RECEIVED_PACKAGE payments (from bookings where seer owns the package)
         Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
             (root, query, cb) -> {
+                // Ensure fetch joins so related entities are initialized within the same session
+                root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                query.distinct(true);
+
                 List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
                 // Filter by payment type RECEIVED_PACKAGE
@@ -1045,6 +1051,13 @@ public class BookingServiceImpl implements BookingService {
         if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
             Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
                 (root, query, cb) -> {
+                    // Fetch seer relation on payment and ensure booking is fetched in case mapping needs it
+                    root.fetch("seer", JoinType.LEFT);
+                    // also fetch booking and nested relations to be safe
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
                     List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
                     // Filter by payment type BONUS
@@ -1099,6 +1112,11 @@ public class BookingServiceImpl implements BookingService {
         if (paymentType == null || paymentType == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
             Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
                 (root, query, cb) -> {
+                    // Fetch booking and nested seer/customer
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
                     List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
                     // Filter by payment type RECEIVED_PACKAGE
@@ -1120,6 +1138,12 @@ public class BookingServiceImpl implements BookingService {
         if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
             Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
                 (root, query, cb) -> {
+                    // Fetch seer relation and booking nested relations
+                    root.fetch("seer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
                     List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
                     // Filter by payment type BONUS

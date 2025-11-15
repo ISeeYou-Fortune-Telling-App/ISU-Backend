@@ -7,12 +7,14 @@ import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.iseeyou.fortunetelling.util.Constants.CertificateStatusEnum;
 
 import java.io.IOException;
 import java.util.UUID;
 
 public interface CertificateService {
     Page<Certificate> findAll(Pageable pageable);
+    Page<Certificate> findAll(Pageable pageable, CertificateStatusEnum status);
     Certificate findById(UUID id);
     Certificate create(CertificateCreateRequest request) throws IOException;
     Certificate createForUser(CertificateCreateRequest request, User user) throws IOException;
