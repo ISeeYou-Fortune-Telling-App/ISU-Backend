@@ -54,4 +54,24 @@ public interface BookingService {
 
     // Revenue calculation
     DailyRevenueResponse getDailyRevenue(LocalDate date);
+
+    // Seer salary history: RECEIVED_PACKAGE and BONUS payments for logged-in seer
+    Page<BookingPayment> getMySeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    );
+
+    // Admin: All seer salary history (RECEIVED_PACKAGE and BONUS)
+    Page<BookingPayment> getAllSeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    );
 }

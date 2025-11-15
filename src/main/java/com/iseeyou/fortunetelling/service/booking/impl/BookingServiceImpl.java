@@ -988,4 +988,213 @@ public class BookingServiceImpl implements BookingService {
                 .taxPercentage(taxPercentage)
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> getMySeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    ) {
+        User currentSeer = userService.getUser();
+
+        // Validate paymentType: chỉ cho phép RECEIVED_PACKAGE hoặc BONUS
+        if (paymentType != null &&
+            paymentType != Constants.PaymentTypeEnum.RECEIVED_PACKAGE &&
+            paymentType != Constants.PaymentTypeEnum.BONUS) {
+            throw new IllegalArgumentException("Invalid payment type. Only RECEIVED_PACKAGE and BONUS are allowed for salary queries.");
+        }
+
+        // Fetch large dataset to filter by date
+        final int MAX_FETCH = 10000;
+        Pageable fetchPageable = org.springframework.data.domain.PageRequest.of(0, MAX_FETCH, pageable.getSort());
+
+        // Get all salary payments for current seer (RECEIVED_PACKAGE from bookings + BONUS)
+        List<BookingPayment> allPayments = new java.util.ArrayList<>();
+
+        // 1. Get RECEIVED_PACKAGE payments (from bookings where seer owns the package)
+        Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
+            (root, query, cb) -> {
+                List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                // Filter by payment type RECEIVED_PACKAGE
+                predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.RECEIVED_PACKAGE));
+
+                // Filter by seer through booking.servicePackage.seer
+                predicates.add(cb.equal(root.get("booking").get("servicePackage").get("seer").get("id"), currentSeer.getId()));
+
+                // Filter by payment status if provided
+                if (paymentStatus != null) {
+                    predicates.add(cb.equal(root.get("status"), paymentStatus));
+                }
+
+                return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            },
+            fetchPageable
+        );
+
+        // Add RECEIVED_PACKAGE payments if not filtering by BONUS only
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
+            allPayments.addAll(receivedPackagePayments.getContent());
+        }
+
+        // 2. Get BONUS payments (direct seer relation)
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
+            Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type BONUS
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.BONUS));
+
+                    // Filter by seer directly
+                    predicates.add(cb.equal(root.get("seer").get("id"), currentSeer.getId()));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(bonusPayments.getContent());
+        }
+
+        // Filter by date
+        List<BookingPayment> filtered = filterPaymentsByDate(allPayments, year, month, day);
+
+        // Manual pagination
+        return paginatePayments(filtered, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> getAllSeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    ) {
+        // Validate paymentType: chỉ cho phép RECEIVED_PACKAGE hoặc BONUS
+        if (paymentType != null &&
+            paymentType != Constants.PaymentTypeEnum.RECEIVED_PACKAGE &&
+            paymentType != Constants.PaymentTypeEnum.BONUS) {
+            throw new IllegalArgumentException("Invalid payment type. Only RECEIVED_PACKAGE and BONUS are allowed for salary queries.");
+        }
+
+        // Fetch large dataset to filter by date
+        final int MAX_FETCH = 10000;
+        Pageable fetchPageable = org.springframework.data.domain.PageRequest.of(0, MAX_FETCH, pageable.getSort());
+
+        List<BookingPayment> allPayments = new java.util.ArrayList<>();
+
+        // 1. Get all RECEIVED_PACKAGE payments
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
+            Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type RECEIVED_PACKAGE
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.RECEIVED_PACKAGE));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(receivedPackagePayments.getContent());
+        }
+
+        // 2. Get all BONUS payments
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
+            Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type BONUS
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.BONUS));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(bonusPayments.getContent());
+        }
+
+        // Filter by date
+        List<BookingPayment> filtered = filterPaymentsByDate(allPayments, year, month, day);
+
+        // Manual pagination
+        return paginatePayments(filtered, pageable);
+    }
+
+    // Helper method to filter payments by date
+    private List<BookingPayment> filterPaymentsByDate(List<BookingPayment> payments, Integer year, Integer month, Integer day) {
+        if (year == null && month == null && day == null) {
+            return payments; // No date filter
+        }
+
+        java.time.LocalDate targetDate = null;
+        if (year != null && month != null && day != null) {
+            try {
+                targetDate = java.time.LocalDate.of(year, month, day);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Invalid date parameters: " + ex.getMessage());
+            }
+        }
+
+        List<BookingPayment> filtered = new java.util.ArrayList<>();
+        for (BookingPayment payment : payments) {
+            java.time.LocalDateTime createdAt = payment.getCreatedAt();
+            if (createdAt == null) continue;
+
+            java.time.LocalDate paymentDate = createdAt.toLocalDate();
+            boolean match = false;
+
+            if (targetDate != null) {
+                match = paymentDate.equals(targetDate);
+            } else if (year != null && month != null) {
+                match = (paymentDate.getYear() == year && paymentDate.getMonthValue() == month);
+            } else if (year != null) {
+                match = (paymentDate.getYear() == year);
+            }
+
+            if (match) filtered.add(payment);
+        }
+
+        return filtered;
+    }
+
+    // Helper method to paginate payments manually
+    private Page<BookingPayment> paginatePayments(List<BookingPayment> payments, Pageable pageable) {
+        int page = pageable.getPageNumber();
+        int size = pageable.getPageSize();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, payments.size());
+
+        List<BookingPayment> pageContent;
+        if (fromIndex >= payments.size()) {
+            pageContent = java.util.Collections.emptyList();
+        } else {
+            pageContent = payments.subList(fromIndex, toIndex);
+        }
+
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, payments.size());
+    }
 }
