@@ -49,6 +49,13 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
         return countByStatusWithParam(Constants.StatusProfileEnum.BLOCKED);
     }
 
+    // Find users by role
+    List<User> findByRole(Constants.RoleEnum role);
+
+    // Find suspended users whose suspension has expired
+    @Query("SELECT u FROM User u WHERE u.suspendedUntil IS NOT NULL AND u.suspendedUntil < :currentTime")
+    List<User> findBySuspendedUntilBefore(@Param("currentTime") java.time.LocalDateTime currentTime);
+
     // Search method for admin
     @Query("SELECT u FROM User u WHERE " +
            "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +

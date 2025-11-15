@@ -12,6 +12,7 @@ import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportType;
 import com.iseeyou.fortunetelling.mapper.ReportMapper;
 import com.iseeyou.fortunetelling.service.report.ReportService;
+import com.iseeyou.fortunetelling.service.report.ReportViolationService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,6 +45,7 @@ public class ReportController extends AbstractBaseController {
 
     private final ReportService reportService;
     private final ReportMapper reportMapper;
+    private final ReportViolationService reportViolationService;
 
     @GetMapping
     @Operation(
@@ -514,5 +516,57 @@ public class ReportController extends AbstractBaseController {
         Page<ReportType> reportTypes = reportService.findAllReportTypes(pageable);
         Page<ReportTypeResponse> response = reportMapper.mapToPage(reportTypes, ReportTypeResponse.class);
         return responseFactory.successPage(response, "Report types retrieved successfully");
+    }
+
+    @PostMapping("/{reportId}/violation-action")
+    @Operation(
+            summary = "Handle violation action for a report (WARNING, SUSPEND, BAN)",
+            description = "Admin can take action on a report: WARNING (cảnh báo), SUSPEND (đình chỉ), or BAN (cấm vĩnh viễn)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Violation action handled successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Report not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<ReportResponse>> handleViolationAction(
+            @Parameter(description = "Report ID", required = true)
+            @PathVariable UUID reportId,
+            @Parameter(description = "Violation action request", required = true)
+            @RequestBody @Valid com.iseeyou.fortunetelling.dto.request.report.ReportViolationActionRequest request
+    ) {
+        Report updatedReport = reportViolationService.handleViolationAction(reportId, request);
+        ReportResponse response = reportMapper.mapTo(updatedReport, ReportResponse.class);
+        return responseFactory.successSingle(response, "Violation action handled successfully");
     }
 }

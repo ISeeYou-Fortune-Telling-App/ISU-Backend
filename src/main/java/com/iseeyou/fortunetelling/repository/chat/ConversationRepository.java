@@ -82,6 +82,16 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("targetUserId") UUID targetUserId
     );
 
+    // Find admin conversation with user (either direction)
+    @Query("SELECT c FROM Conversation c WHERE " +
+            "c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT AND " +
+            "((c.admin.id = :adminId AND c.targetUser.id = :userId) OR " +
+            "(c.admin.id = :userId AND c.targetUser.id = :adminId))")
+    Optional<Conversation> findAdminConversationWithUser(
+            @Param("adminId") UUID adminId,
+            @Param("userId") UUID userId
+    );
+
     // Find all admin conversations for admin
     @Query("SELECT c FROM Conversation c WHERE " +
             "c.type = com.iseeyou.fortunetelling.util.Constants.ConversationTypeEnum.ADMIN_CHAT")
