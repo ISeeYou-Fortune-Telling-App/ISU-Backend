@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 public interface ReportService {
-    Page<Report> findAllReports(Pageable pageable, Constants.ReportStatusEnum status, String reportTypeName);
+    Page<Report> findAllReports(Pageable pageable, Constants.ReportStatusEnum status, String reportTypeName, Constants.TargetReportTypeEnum targetType);
     Page<Report> findAllReportsByReporterId(UUID reporterId, Pageable pageable);
     Page<Report> findAllReportsByReportedUserId(UUID reportedUserId, Pageable pageable);
     Page<Report> findAllReportsByReportedTargetId(UUID reportedTargetId, Pageable pageable);

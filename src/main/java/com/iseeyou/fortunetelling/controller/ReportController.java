@@ -51,7 +51,7 @@ public class ReportController extends AbstractBaseController {
     @GetMapping
     @Operation(
             summary = "Get all reports with pagination",
-            description = "Get all reports with optional filters: status and reportType. Both filters are optional.",
+            description = "Get all reports with optional filters: status, reportType, and targetType. All filters are optional.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -85,7 +85,9 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Optional report status filter (PENDING, VIEWED, RESOLVED, REJECTED)")
             @RequestParam(required = false) String status,
             @Parameter(description = "Optional report type name filter (as stored in report_type.name)")
-            @RequestParam(required = false) String reportType
+            @RequestParam(required = false) String reportType,
+            @Parameter(description = "Optional target type filter (SEER, SERVICE_PACKAGE, BOOKING, CHAT)")
+            @RequestParam(required = false) String targetType
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Constants.ReportStatusEnum statusEnum = null;
@@ -93,7 +95,12 @@ public class ReportController extends AbstractBaseController {
             statusEnum = Constants.ReportStatusEnum.get(status);
         }
 
-        Page<Report> reports = reportService.findAllReports(pageable, statusEnum, reportType);
+        Constants.TargetReportTypeEnum targetTypeEnum = null;
+        if (targetType != null && !targetType.isBlank()) {
+            targetTypeEnum = Constants.TargetReportTypeEnum.get(targetType);
+        }
+
+        Page<Report> reports = reportService.findAllReports(pageable, statusEnum, reportType, targetTypeEnum);
         Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
         return responseFactory.successPage(response, "Reports retrieved successfully");
     }
