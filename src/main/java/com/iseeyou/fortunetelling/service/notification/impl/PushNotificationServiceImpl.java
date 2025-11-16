@@ -55,8 +55,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             Map<String, Object> request = new HashMap<>();
 
             // Truyền cả recipientId và fcmToken
-            // Push Notification service sẽ tự quyết định sử dụng cái nào
-            if (recipientId != null && !recipientId.isEmpty()) {
+             if (recipientId != null && !recipientId.isEmpty()) {
                 request.put("recipientId", recipientId);
             } else {
                 request.put("recipientId", "SYSTEM");

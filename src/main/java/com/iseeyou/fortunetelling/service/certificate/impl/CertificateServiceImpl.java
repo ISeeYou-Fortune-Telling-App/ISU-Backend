@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.certificate.impl;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateApprovalRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.certificate.CertificateUpdateRequest;
+import com.iseeyou.fortunetelling.dto.response.certificate.CertificateStatsResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
@@ -340,5 +341,23 @@ public class CertificateServiceImpl implements CertificateService {
         // Reload the saved certificate with categories and seer eagerly fetched to avoid LazyInitializationException
         return certificateRepository.findByIdWithCategories(saved.getId())
                 .orElse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CertificateStatsResponse getStatistics() {
+        log.info("Getting certificate statistics");
+
+        long total = certificateRepository.count();
+        long approved = certificateRepository.countByStatus(Constants.CertificateStatusEnum.APPROVED);
+        long pending = certificateRepository.countByStatus(Constants.CertificateStatusEnum.PENDING);
+        long rejected = certificateRepository.countByStatus(Constants.CertificateStatusEnum.REJECTED);
+
+        return CertificateStatsResponse.builder()
+                .totalCertificates(total)
+                .approvedCertificates(approved)
+                .pendingCertificates(pending)
+                .rejectedCertificates(rejected)
+                .build();
     }
 }

@@ -7,6 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.report.ReportResponse;
+import com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse;
 import com.iseeyou.fortunetelling.dto.response.report.ReportTypeResponse;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportType;
@@ -568,5 +569,35 @@ public class ReportController extends AbstractBaseController {
         Report updatedReport = reportViolationService.handleViolationAction(reportId, request);
         ReportResponse response = reportMapper.mapTo(updatedReport, ReportResponse.class);
         return responseFactory.successSingle(response, "Violation action handled successfully");
+    }
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "Get report statistics (Admin only)",
+            description = "Get statistics including total reports, new reports this month, resolved and unresolved reports",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse>> getReportStatistics() {
+        var stats = reportService.getStatistics();
+        return responseFactory.successSingle(stats, "Report statistics retrieved successfully");
     }
 }

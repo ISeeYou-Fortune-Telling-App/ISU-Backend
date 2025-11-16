@@ -41,4 +41,7 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID>,
     @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
     @Query("SELECT c FROM Certificate c WHERE c.id = :id")
     Optional<Certificate> findByIdWithCategories(@Param("id") UUID id);
+
+    // Statistics methods
+    long countByStatus(Constants.CertificateStatusEnum status);
 }

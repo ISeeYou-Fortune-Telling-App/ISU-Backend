@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.report.impl;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.dto.request.report.ReportCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.report.ReportUpdateRequest;
+import com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportEvidence;
@@ -274,5 +275,37 @@ public class ReportServiceImpl implements ReportService {
         log.info("Updated report with id: {}", id);
 
         return reportRepository.save(existingReport);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReportStatsResponse getStatistics() {
+        log.info("Getting report statistics");
+
+        long total = reportRepository.count();
+
+        // Tính số báo cáo mới trong tháng này
+        java.time.LocalDateTime startOfMonth = java.time.LocalDateTime.now()
+                .withDayOfMonth(1)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+        long newThisMonth = reportRepository.countReportsCreatedSince(startOfMonth);
+
+        // Số báo cáo đã giải quyết
+        long resolved = reportRepository.countByStatus(Constants.ReportStatusEnum.RESOLVED);
+
+        // Số báo cáo chưa giải quyết (PENDING + VIEWED)
+        long pending = reportRepository.countByStatus(Constants.ReportStatusEnum.PENDING);
+        long viewed = reportRepository.countByStatus(Constants.ReportStatusEnum.VIEWED);
+        long unresolved = pending + viewed;
+
+        return ReportStatsResponse.builder()
+                .totalReports(total)
+                .newReportsThisMonth(newThisMonth)
+                .resolvedReports(resolved)
+                .unresolvedReports(unresolved)
+                .build();
     }
 }

@@ -432,4 +432,34 @@ public class CertificateController extends AbstractBaseController {
                 : "Certificate rejected successfully";
         return responseFactory.successSingle(response, message);
     }
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "Get certificate statistics (Admin only)",
+            description = "Get statistics including total, approved, pending, and rejected certificates",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.certificate.CertificateStatsResponse>> getCertificateStatistics() {
+        var stats = certificateService.getStatistics();
+        return responseFactory.successSingle(stats, "Certificate statistics retrieved successfully");
+    }
 }

@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -37,4 +39,10 @@ public interface ReportRepository extends JpaRepository<Report, UUID>, JpaSpecif
 
     @EntityGraph(attributePaths = {"reporter", "reportedUser", "reportType", "reportEvidences"})
     Page<Report> findAllByStatus(Constants.ReportStatusEnum status, Pageable pageable);
+
+    // Statistics methods
+    long countByStatus(Constants.ReportStatusEnum status);
+
+    @Query("SELECT COUNT(r) FROM Report r WHERE r.createdAt >= :startOfMonth")
+    long countReportsCreatedSince(@Param("startOfMonth") java.time.LocalDateTime startOfMonth);
 }
