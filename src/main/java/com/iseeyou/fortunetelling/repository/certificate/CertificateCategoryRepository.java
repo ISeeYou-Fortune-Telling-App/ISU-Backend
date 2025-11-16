@@ -25,5 +25,10 @@ public interface CertificateCategoryRepository extends JpaRepository<Certificate
     @Query("DELETE FROM CertificateCategory cc WHERE cc.certificate.id = :certificateId AND cc.knowledgeCategory IN :categories")
     void deleteAllByCertificate_IdAndKnowledgeCategoryIn(@Param("certificateId") UUID certificateId, @Param("categories") Set<KnowledgeCategory> categories);
 
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM CertificateCategory cc WHERE cc.certificate.id = :certificateId")
+    void deleteByCertificate_Id(@Param("certificateId") UUID certificateId);
+
     Set<CertificateCategory> findAllByKnowledgeCategory_Id(UUID knowledgeCategoryId);
 }

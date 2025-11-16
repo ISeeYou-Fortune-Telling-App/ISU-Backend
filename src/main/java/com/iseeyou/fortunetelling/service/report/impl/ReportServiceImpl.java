@@ -81,7 +81,7 @@ public class ReportServiceImpl implements ReportService {
 
             // Apply report type filter
             if (finalReportTypeEnum != null) {
-                var typeJoin = root.join("reportType");
+                var typeJoin = root.join("reportType", jakarta.persistence.criteria.JoinType.LEFT);
                 predicates = cb.and(predicates, cb.equal(typeJoin.get("name"), finalReportTypeEnum));
             }
 
@@ -91,7 +91,8 @@ public class ReportServiceImpl implements ReportService {
             }
 
             // Fetch related entities eagerly to avoid LazyInitializationException
-            if (query != null) {
+            // This is critical for proper DTO mapping
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("reporter", jakarta.persistence.criteria.JoinType.LEFT);
                 root.fetch("reportedUser", jakarta.persistence.criteria.JoinType.LEFT);
                 root.fetch("reportType", jakarta.persistence.criteria.JoinType.LEFT);

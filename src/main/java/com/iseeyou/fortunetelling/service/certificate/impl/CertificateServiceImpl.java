@@ -23,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -30,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -189,14 +189,14 @@ public class CertificateServiceImpl implements CertificateService {
             existingCertificate.setCertificateUrl(imageUrl);
         }
 
-        // Update fields from request
-        if (request.getCertificateName() != null) {
+        // Update allowed fields from request ONLY when value is present (non-blank for strings)
+        if (StringUtils.hasText(request.getCertificateName())) {
             existingCertificate.setCertificateName(request.getCertificateName());
         }
-        if (request.getCertificateDescription() != null) {
+        if (StringUtils.hasText(request.getCertificateDescription())) {
             existingCertificate.setCertificateDescription(request.getCertificateDescription());
         }
-        if (request.getIssuedBy() != null) {
+        if (StringUtils.hasText(request.getIssuedBy())) {
             existingCertificate.setIssuedBy(request.getIssuedBy());
         }
         if (request.getIssuedAt() != null) {
@@ -205,69 +205,42 @@ public class CertificateServiceImpl implements CertificateService {
         if (request.getExpirationDate() != null) {
             existingCertificate.setExpirationDate(request.getExpirationDate());
         }
-        if (request.getStatus() != null) {
-            existingCertificate.setStatus(request.getStatus());
-        }
-        if (request.getDecisionDate() != null) {
-            existingCertificate.setDecisionDate(request.getDecisionDate());
-        }
-        if (request.getDecisionReason() != null) {
-            existingCertificate.setDecisionReason(request.getDecisionReason());
-        }
 
-        // Update categories if provided
-        if (request.getCategoryIds() != null) {
+        // Update categories only if provided and non-empty (avoid wiping when form sends empty value)
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             updateCertificateCategories(existingCertificate, request.getCategoryIds());
         }
 
-        return certificateRepository.save(existingCertificate);
+        Certificate saved = certificateRepository.save(existingCertificate);
+
+        // Reload the saved certificate with categories and seer eagerly fetched to avoid LazyInitializationException during mapping
+        return certificateRepository.findByIdWithCategories(saved.getId()).orElse(saved);
     }
 
     private void updateCertificateCategories(Certificate certificate, Set<UUID> newCategoryIds) {
-        // Lấy danh sách categories hiện tại
-        Set<UUID> currentCategoryIds = certificate.getCertificateCategories().stream()
-                .map(cc -> cc.getKnowledgeCategory().getId())
-                .collect(Collectors.toSet());
+        // Delete all existing category relationships for this certificate in one query
+        certificateCategoryRepository.deleteByCertificate_Id(certificate.getId());
+        // Ensure deletions are flushed to DB before inserts
+        certificateCategoryRepository.flush();
+        // Clear the in-memory collection to avoid stale state
+        certificate.getCertificateCategories().clear();
 
-        // Tìm categories cần xóa và cần thêm
-        Set<UUID> categoriesToRemove = currentCategoryIds.stream()
-                .filter(id -> !newCategoryIds.contains(id))
-                .collect(Collectors.toSet());
+        // Add new category relationships if any
+        if (newCategoryIds != null && !newCategoryIds.isEmpty()) {
+            List<KnowledgeCategory> categories = knowledgeCategoryService.findAllByIds(newCategoryIds);
 
-        Set<UUID> categoriesToAdd = newCategoryIds.stream()
-                .filter(id -> !currentCategoryIds.contains(id))
-                .collect(Collectors.toSet());
-
-        // Xóa relationships không còn cần thiết
-        if (!categoriesToRemove.isEmpty()) {
-            certificateCategoryRepository.deleteAllByCertificate_IdAndKnowledgeCategory_IdIn(
-                    certificate.getId(), categoriesToRemove);
-            // Cập nhật collection trong entity
-            certificate.getCertificateCategories().removeIf(
-                    cc -> categoriesToRemove.contains(cc.getKnowledgeCategory().getId()));
-        }
-
-        // Thêm relationships mới
-        if (!categoriesToAdd.isEmpty()) {
-            // Lấy tất cả categories trong một query
-            List<KnowledgeCategory> categoriesToAddEntities = knowledgeCategoryService
-                    .findAllByIds(categoriesToAdd);
-
-            // Tạo các relationships mới
             Set<CertificateCategory> newRelationships = new HashSet<>();
-            for (KnowledgeCategory category : categoriesToAddEntities) {
+            for (KnowledgeCategory category : categories) {
                 CertificateCategory relationship = CertificateCategory.builder()
                         .certificate(certificate)
                         .knowledgeCategory(category)
                         .build();
-
                 newRelationships.add(relationship);
             }
 
-            // Lưu tất cả relationships mới
+            // Save all new relationships
             certificateCategoryRepository.saveAll(newRelationships);
-
-            // Cập nhật collection trong entity
+            // Update the collection in entity
             certificate.getCertificateCategories().addAll(newRelationships);
         }
     }
