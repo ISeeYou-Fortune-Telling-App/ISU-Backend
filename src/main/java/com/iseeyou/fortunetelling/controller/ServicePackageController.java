@@ -638,6 +638,8 @@ public class ServicePackageController extends AbstractBaseController {
             @RequestParam(required = false) Integer minTime,
             @Parameter(description = "Maximum duration in minutes")
             @RequestParam(required = false) Integer maxTime,
+            @Parameter(description = "Seer Id to filter packages by a specific seer")
+            @RequestParam(required = false) UUID seerId,
             @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
             @RequestParam(required = false) String status
     ) {
@@ -655,6 +657,7 @@ public class ServicePackageController extends AbstractBaseController {
                 packageCategoryIds,
                 seerSpecialityIds,
                 minTime, maxTime,
+                seerId,
                 statusEnum
         );
         

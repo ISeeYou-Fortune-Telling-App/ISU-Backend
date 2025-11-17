@@ -640,7 +640,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        List<UUID> packageCategoryIds,
                                                                        List<UUID> seerSpecialityIds,
                                                                        Integer minTime, Integer maxTime,
+                                                                       UUID seerId,
                                                                        Constants.PackageStatusEnum status) {
+        // If seerId is provided, return packages for that seer (respecting pagination), ignoring other filters
+        if (seerId != null) {
+            Page<ServicePackage> servicePackages = servicePackageRepository.findAllBySeer_Id(seerId, pageable);
+            return enrichWithInteractions(servicePackages);
+        }
+
         // Convert empty lists to null to avoid JPQL issues
         List<UUID> categoryIdsFilter = (packageCategoryIds != null && packageCategoryIds.isEmpty())
                 ? null
