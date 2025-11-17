@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.repository.user;
 
 import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.util.Constants;
+import com.iseeyou.fortunetelling.dto.response.statistics.MonthlyUserStatistics;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -98,4 +99,13 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
                                      Pageable pageable);
 
     long countAllByStatus(Constants.StatusProfileEnum status);
+
+    // Statistics - Get new users by month for a specific year
+    @Query("SELECT new com.iseeyou.fortunetelling.dto.response.statistics.MonthlyUserStatistics(" +
+           "MONTH(u.createdAt), COUNT(u)) " +
+           "FROM User u " +
+           "WHERE YEAR(u.createdAt) = :year " +
+           "GROUP BY MONTH(u.createdAt) " +
+           "ORDER BY MONTH(u.createdAt)")
+    List<MonthlyUserStatistics> getNewUsersByMonth(@Param("year") Integer year);
 }
