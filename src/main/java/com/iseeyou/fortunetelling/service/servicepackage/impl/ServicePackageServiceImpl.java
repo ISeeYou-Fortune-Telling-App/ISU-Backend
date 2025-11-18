@@ -615,6 +615,16 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
 
+        // Ensure like/dislike counts reflect actual interactions table (avoid stale DB column)
+        long likeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                servicePackage.getId(), Constants.InteractionTypeEnum.LIKE);
+        long dislikeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                servicePackage.getId(), Constants.InteractionTypeEnum.DISLIKE);
+
+        // Update in-memory entity fields so mapper returns correct values (no DB save here)
+        servicePackage.setLikeCount(likeCount);
+        servicePackage.setDislikeCount(dislikeCount);
+
         // Map service package to response
         return servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
     }
@@ -738,9 +748,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
 
-            // Set like and dislike counts from entity
-            response.setLikeCount(pkg.getLikeCount() != null ? pkg.getLikeCount() : 0L);
-            response.setDislikeCount(pkg.getDislikeCount() != null ? pkg.getDislikeCount() : 0L);
+            // Use actual interactions table counts to avoid stale pre-seeded like_count values
+            long likeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                    pkg.getId(), Constants.InteractionTypeEnum.LIKE);
+            long dislikeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                    pkg.getId(), Constants.InteractionTypeEnum.DISLIKE);
+
+            response.setLikeCount(likeCount);
+            response.setDislikeCount(dislikeCount);
 
             // Get review statistics from bookings
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
