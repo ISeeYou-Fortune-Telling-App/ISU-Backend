@@ -5,6 +5,7 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -74,4 +75,7 @@ public interface BookingService {
             Integer day,
             Pageable pageable
     );
+
+    // Admin: Get payment statistics
+    BookingPaymentStatsResponse getPaymentStats();
 }

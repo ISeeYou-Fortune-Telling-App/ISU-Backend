@@ -1268,4 +1268,43 @@ public class BookingController extends AbstractBaseController {
         Page<BookingPaymentResponse> response = bookingMapper.mapToPage(salaryPayments, BookingPaymentResponse.class);
         return responseFactory.successPage(response, "All seer salary history retrieved successfully");
     }
+
+    @GetMapping("/payment/stats")
+    @Operation(
+            summary = "Admin: Get booking payment statistics",
+            description = "Lấy thống kê tổng quan về các giao dịch thanh toán cho admin. Bao gồm: " +
+                    "tổng doanh thu (phí dịch vụ), số giao dịch thành công, số giao dịch bị hoàn tiền, và tổng số tiền đã hoàn lại.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Payment statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Only admin can access",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse>> getPaymentStats() {
+        com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse stats = bookingService.getPaymentStats();
+        return responseFactory.successSingle(stats, "Payment statistics retrieved successfully");
+    }
 }

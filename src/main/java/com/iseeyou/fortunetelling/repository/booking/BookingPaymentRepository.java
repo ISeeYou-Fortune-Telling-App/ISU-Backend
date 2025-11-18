@@ -60,4 +60,21 @@ public interface BookingPaymentRepository extends JpaRepository<BookingPayment, 
             @Param("paymentTypes") List<Constants.PaymentTypeEnum> paymentTypes,
             @Param("date") LocalDateTime date
     );
+
+    // Query methods for admin stats
+    @Query("SELECT bp FROM BookingPayment bp WHERE bp.paymentType = :paymentType AND bp.status = :status")
+    List<BookingPayment> findAllByPaymentTypeAndStatus(
+            @Param("paymentType") Constants.PaymentTypeEnum paymentType,
+            @Param("status") Constants.PaymentStatusEnum status
+    );
+
+    @Query("SELECT COUNT(DISTINCT bp.booking.id) FROM BookingPayment bp " +
+           "WHERE bp.paymentType = :paymentType AND bp.status = :status AND bp.booking IS NOT NULL")
+    Long countDistinctBookingsByPaymentTypeAndStatus(
+            @Param("paymentType") Constants.PaymentTypeEnum paymentType,
+            @Param("status") Constants.PaymentStatusEnum status
+    );
+
+    @Query("SELECT bp FROM BookingPayment bp WHERE bp.status = :status")
+    List<BookingPayment> findAllByStatusList(@Param("status") Constants.PaymentStatusEnum status);
 }

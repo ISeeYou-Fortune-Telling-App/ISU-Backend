@@ -1221,4 +1221,66 @@ public class BookingServiceImpl implements BookingService {
 
         return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, payments.size());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse getPaymentStats() {
+        // 1. Lấy tất cả các payment PAID_PACKAGE với status COMPLETED
+        List<BookingPayment> paidPackagePayments = bookingPaymentRepository.findAllByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.PAID_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 2. Lấy tất cả các payment RECEIVED_PACKAGE với status COMPLETED
+        List<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAllByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 3. Lấy tất cả các payment REFUNDED
+        List<BookingPayment> refundedPayments = bookingPaymentRepository.findAllByStatusList(
+                Constants.PaymentStatusEnum.REFUNDED
+        );
+
+        // 4. Tính tổng tiền khách hàng đã thanh toán
+        double totalPaidAmount = paidPackagePayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 5. Tính tổng tiền đã trả cho seer
+        double totalReceivedAmount = receivedPackagePayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 6. Tính doanh thu (phí dịch vụ = tiền khách trả - tiền trả cho seer)
+        double totalRevenue = totalPaidAmount - totalReceivedAmount;
+
+        // 7. Đếm số booking thành công (mỗi booking chỉ tính 1 lần)
+        // Lấy số booking unique từ PAID_PACKAGE COMPLETED
+        Long successfulTransactions = bookingPaymentRepository.countDistinctBookingsByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.PAID_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 8. Tính số giao dịch bị refund và tổng tiền refund
+        // Đếm số booking unique bị refund
+        long refundedTransactions = refundedPayments.stream()
+                .filter(p -> p.getBooking() != null)
+                .map(p -> p.getBooking().getId())
+                .distinct()
+                .count();
+
+        // Tổng tiền đã hoàn lại
+        double totalRefundedAmount = refundedPayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 9. Tạo response với 4 trường theo yêu cầu
+        return com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse.builder()
+                .totalRevenue(totalRevenue)
+                .successfulTransactions(successfulTransactions)
+                .refundedTransactions(refundedTransactions)
+                .totalRefundedAmount(totalRefundedAmount)
+                .build();
+    }
 }
