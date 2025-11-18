@@ -30,7 +30,7 @@ public class StatisticReportImpl implements StatisticReportService {
             log.info("Report Service URI: {}", reportServiceUri);
 
             // Build URL with query parameters
-            String url = String.format("%s/internal/statistic-report/seer-simple-rating?seerId=%s&month=%d&year=%d",
+            String url = String.format("%s/internal/seer-simple-rating?seerId=%s&month=%d&year=%d",
                     reportServiceUri, seerId, month, year);
 
             HttpHeaders headers = new HttpHeaders();

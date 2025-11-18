@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Comparator;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -556,7 +557,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         // IMPORTANT: Bookings and BookingPayments are NOT deleted (no cascade)
         // They are preserved for reporting and transaction history
         // Only the ServicePackage is soft-deleted (deleted_at is set)
-        servicePackageRepository.delete(servicePackage);
+        servicePackage.setDeletedAt(LocalDateTime.now());
+        servicePackageRepository.save(servicePackage);
 
         log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
                         "Refunded {} bookings, {} failed. " +
@@ -735,6 +737,10 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return servicePackages.map(pkg -> {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
+
+            // Set like and dislike counts from entity
+            response.setLikeCount(pkg.getLikeCount() != null ? pkg.getLikeCount() : 0L);
+            response.setDislikeCount(pkg.getDislikeCount() != null ? pkg.getDislikeCount() : 0L);
 
             // Get review statistics from bookings
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());
