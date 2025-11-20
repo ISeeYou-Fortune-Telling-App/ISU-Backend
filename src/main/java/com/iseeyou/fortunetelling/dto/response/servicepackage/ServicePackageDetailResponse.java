@@ -1,6 +1,5 @@
-package com.iseeyou.fortunetelling.dto.response;
+package com.iseeyou.fortunetelling.dto.response.servicepackage;
 
-import com.iseeyou.fortunetelling.util.Constants;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse.CategoryInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

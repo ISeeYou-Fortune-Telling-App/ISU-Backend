@@ -74,10 +74,12 @@ public class CertificateController extends AbstractBaseController {
             @Parameter(description = "Sort direction")
             @RequestParam(defaultValue = "desc") String sortType,
             @Parameter(description = "Sort field")
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @Parameter(description = "Filter by certificate status (optional)")
+            @RequestParam(required = false) Constants.CertificateStatusEnum status
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Certificate> certificates = certificateService.findAll(pageable);
+        Page<Certificate> certificates = certificateService.findAll(pageable, status);
         Page<CertificateResponse> response = certificateMapper.mapToPage(certificates, CertificateResponse.class);
         return responseFactory.successPage(response, "Certificates retrieved successfully");
     }
@@ -429,5 +431,35 @@ public class CertificateController extends AbstractBaseController {
                 ? "Certificate approved successfully"
                 : "Certificate rejected successfully";
         return responseFactory.successSingle(response, message);
+    }
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "Get certificate statistics (Admin only)",
+            description = "Get statistics including total, approved, pending, and rejected certificates",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.certificate.CertificateStatsResponse>> getCertificateStatistics() {
+        var stats = certificateService.getStatistics();
+        return responseFactory.successSingle(stats, "Certificate statistics retrieved successfully");
     }
 }

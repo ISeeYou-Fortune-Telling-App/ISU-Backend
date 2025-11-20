@@ -3,6 +3,7 @@ package com.iseeyou.fortunetelling.service.report.impl;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
 import com.iseeyou.fortunetelling.dto.request.report.ReportCreateRequest;
 import com.iseeyou.fortunetelling.dto.request.report.ReportUpdateRequest;
+import com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportEvidence;
@@ -54,31 +55,48 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Report> findAllReports(Pageable pageable, Constants.ReportStatusEnum status, String reportTypeName) {
+    public Page<Report> findAllReports(Pageable pageable, Constants.ReportStatusEnum status, String reportTypeName, Constants.TargetReportTypeEnum targetType) {
         // If no filters provided, use repository's optimized findAll (with @EntityGraph)
-        if (status == null && (reportTypeName == null || reportTypeName.isBlank())) {
+        if (status == null && (reportTypeName == null || reportTypeName.isBlank()) && targetType == null) {
             return reportRepository.findAll(pageable);
         }
 
         // Convert reportTypeName to enum if present
-        Constants.ReportTypeEnum reportTypeEnum;
+        Constants.ReportTypeEnum reportTypeEnum = null;
         if (reportTypeName != null && !reportTypeName.isBlank()) {
             reportTypeEnum = Constants.ReportTypeEnum.get(reportTypeName);
-        } else {
-            reportTypeEnum = null;
         }
+
+        // Create final variables for lambda
+        final Constants.ReportTypeEnum finalReportTypeEnum = reportTypeEnum;
+        final Constants.TargetReportTypeEnum finalTargetType = targetType;
 
         Specification<Report> spec = (root, query, cb) -> {
             var predicates = cb.conjunction();
 
+            // Apply status filter
             if (status != null) {
                 predicates = cb.and(predicates, cb.equal(root.get("status"), status));
             }
 
-            if (reportTypeEnum != null) {
-                var typeJoin = root.join("reportType");
-                predicates = cb.and(predicates, cb.equal(typeJoin.get("name"), reportTypeEnum));
-                // Ensure distinct results when joining
+            // Apply report type filter
+            if (finalReportTypeEnum != null) {
+                var typeJoin = root.join("reportType", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates = cb.and(predicates, cb.equal(typeJoin.get("name"), finalReportTypeEnum));
+            }
+
+            // Apply target type filter
+            if (finalTargetType != null) {
+                predicates = cb.and(predicates, cb.equal(root.get("targetType"), finalTargetType));
+            }
+
+            // Fetch related entities eagerly to avoid LazyInitializationException
+            // This is critical for proper DTO mapping
+            if (query != null && query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("reporter", jakarta.persistence.criteria.JoinType.LEFT);
+                root.fetch("reportedUser", jakarta.persistence.criteria.JoinType.LEFT);
+                root.fetch("reportType", jakarta.persistence.criteria.JoinType.LEFT);
+                root.fetch("reportEvidences", jakarta.persistence.criteria.JoinType.LEFT);
                 query.distinct(true);
             }
 
@@ -156,6 +174,9 @@ public class ReportServiceImpl implements ReportService {
         // Automatically determine reported user based on target type and target ID
         User reportedUser = findReportedUserByTargetTypeAndId(report.getTargetType(), report.getTargetId());
         report.setReportedUser(reportedUser);
+
+        // Kiểm tra: chỉ user đã từng book service package của seer mới được báo cáo
+        validateUserHasBookedSeer(report.getReporter(), reportedUser, report.getTargetType(), report.getTargetId());
 
         // Find report type by enum
         ReportType reportType = reportTypeRepository.findByName(request.getReportType())
@@ -239,6 +260,39 @@ public class ReportServiceImpl implements ReportService {
         };
     }
 
+    /**
+     * Validate that user has booked the seer's service package before allowing report
+     * Only applies when reporting SEER, SERVICE_PACKAGE, BOOKING, or CHAT related to a seer
+     */
+    private void validateUserHasBookedSeer(User reporter, User reportedUser, Constants.TargetReportTypeEnum targetType, UUID targetId) {
+        // Chỉ áp dụng kiểm tra khi báo cáo liên quan đến SEER
+        // Admin không cần kiểm tra
+        if (reporter.getRole() == Constants.RoleEnum.ADMIN) {
+            log.info("Reporter is admin, skipping booking validation");
+            return;
+        }
+
+        // Chỉ áp dụng khi báo cáo SEER hoặc các đối tượng liên quan đến SEER
+        if (reportedUser.getRole() != Constants.RoleEnum.SEER && reportedUser.getRole() != Constants.RoleEnum.UNVERIFIED_SEER) {
+            log.info("Reported user is not a seer, skipping booking validation");
+            return;
+        }
+
+        // Kiểm tra xem reporter đã từng book service package của seer này chưa
+        boolean hasBooked = bookingRepository.existsByCustomerAndServicePackageSeer(reporter, reportedUser);
+
+        if (!hasBooked) {
+            log.warn("User {} attempted to report seer {} without having booked their service",
+                    reporter.getId(), reportedUser.getId());
+            throw new IllegalArgumentException(
+                "Bạn chỉ có thể báo cáo seer mà bạn đã từng sử dụng dịch vụ. " +
+                "Vui lòng đặt lịch và sử dụng dịch vụ của seer này trước khi báo cáo."
+            );
+        }
+
+        log.info("User {} has booked seer {} before, allowing report", reporter.getId(), reportedUser.getId());
+    }
+
     @Override
     @Transactional
     public Report deleteReport(UUID id) {
@@ -274,5 +328,37 @@ public class ReportServiceImpl implements ReportService {
         log.info("Updated report with id: {}", id);
 
         return reportRepository.save(existingReport);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReportStatsResponse getStatistics() {
+        log.info("Getting report statistics");
+
+        long total = reportRepository.count();
+
+        // Tính số báo cáo mới trong tháng này
+        java.time.LocalDateTime startOfMonth = java.time.LocalDateTime.now()
+                .withDayOfMonth(1)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+        long newThisMonth = reportRepository.countReportsCreatedSince(startOfMonth);
+
+        // Số báo cáo đã giải quyết
+        long resolved = reportRepository.countByStatus(Constants.ReportStatusEnum.RESOLVED);
+
+        // Số báo cáo chưa giải quyết (PENDING + VIEWED)
+        long pending = reportRepository.countByStatus(Constants.ReportStatusEnum.PENDING);
+        long viewed = reportRepository.countByStatus(Constants.ReportStatusEnum.VIEWED);
+        long unresolved = pending + viewed;
+
+        return ReportStatsResponse.builder()
+                .totalReports(total)
+                .newReportsThisMonth(newThisMonth)
+                .resolvedReports(resolved)
+                .unresolvedReports(unresolved)
+                .build();
     }
 }

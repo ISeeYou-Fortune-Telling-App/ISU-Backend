@@ -2,7 +2,7 @@ package com.iseeyou.fortunetelling.service.servicepackage.impl;
 
 import com.iseeyou.fortunetelling.dto.request.servicepackage.AvailableTimeSlotRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
-import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.AvailableTimeSlotResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Comparator;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -556,7 +557,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         // IMPORTANT: Bookings and BookingPayments are NOT deleted (no cascade)
         // They are preserved for reporting and transaction history
         // Only the ServicePackage is soft-deleted (deleted_at is set)
-        servicePackageRepository.delete(servicePackage);
+        servicePackage.setDeletedAt(LocalDateTime.now());
+        servicePackageRepository.save(servicePackage);
 
         log.info("Service package {} soft deleted successfully by user {} (role: {}). " +
                         "Refunded {} bookings, {} failed. " +
@@ -613,6 +615,16 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new EntityNotFoundException("Service package not found with id: " + packageId));
 
+        // Ensure like/dislike counts reflect actual interactions table (avoid stale DB column)
+        long likeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                servicePackage.getId(), Constants.InteractionTypeEnum.LIKE);
+        long dislikeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                servicePackage.getId(), Constants.InteractionTypeEnum.DISLIKE);
+
+        // Update in-memory entity fields so mapper returns correct values (no DB save here)
+        servicePackage.setLikeCount(likeCount);
+        servicePackage.setDislikeCount(dislikeCount);
+
         // Map service package to response
         return servicePackageMapper.mapTo(servicePackage, ServicePackageResponse.class);
     }
@@ -640,7 +652,14 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        List<UUID> packageCategoryIds,
                                                                        List<UUID> seerSpecialityIds,
                                                                        Integer minTime, Integer maxTime,
+                                                                       UUID seerId,
                                                                        Constants.PackageStatusEnum status) {
+        // If seerId is provided, return packages for that seer (respecting pagination), ignoring other filters
+        if (seerId != null) {
+            Page<ServicePackage> servicePackages = servicePackageRepository.findAllBySeer_Id(seerId, pageable);
+            return enrichWithInteractions(servicePackages);
+        }
+
         // Convert empty lists to null to avoid JPQL issues
         List<UUID> categoryIdsFilter = (packageCategoryIds != null && packageCategoryIds.isEmpty())
                 ? null
@@ -728,6 +747,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         return servicePackages.map(pkg -> {
             // Map basic package info
             ServicePackageResponse response = servicePackageMapper.mapTo(pkg, ServicePackageResponse.class);
+
+            // Use actual interactions table counts to avoid stale pre-seeded like_count values
+            long likeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                    pkg.getId(), Constants.InteractionTypeEnum.LIKE);
+            long dislikeCount = interactionRepository.countByServicePackage_IdAndInteractionType(
+                    pkg.getId(), Constants.InteractionTypeEnum.DISLIKE);
+
+            response.setLikeCount(likeCount);
+            response.setDislikeCount(dislikeCount);
 
             // Get review statistics from bookings
             Long totalReviews = bookingRepository.countReviewsByServicePackageId(pkg.getId());

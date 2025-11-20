@@ -69,6 +69,27 @@ public class User extends AbstractBaseEntity {
     @Column(name = "reject_reason", length = 1000)
     private String rejectReason;
 
+    // Account suspension and ban fields
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
+
+    @Column(name = "suspension_reason", length = 1000)
+    private String suspensionReason;
+
+    @Column(name = "is_banned")
+    @Builder.Default
+    private Boolean isBanned = false;
+
+    @Column(name = "ban_reason", length = 1000)
+    private String banReason;
+
+    @Column(name = "banned_at")
+    private LocalDateTime bannedAt;
+
+    @Column(name = "warning_count")
+    @Builder.Default
+    private Integer warningCount = 0;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private CustomerProfile customerProfile;
 

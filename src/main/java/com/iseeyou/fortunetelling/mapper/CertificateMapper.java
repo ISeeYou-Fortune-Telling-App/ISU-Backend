@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.mapper;
 
 import com.iseeyou.fortunetelling.dto.response.certificate.CertificateResponse;
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
+import org.hibernate.Hibernate;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -34,7 +35,32 @@ public class CertificateMapper extends BaseMapper {
                     }
 
                     if (source.getSeer() != null) {
-                        destination.setSeerName(source.getSeer().getFullName());
+                        // seer id is usually safe to access from a proxy
+                        try {
+                            if (source.getSeer().getId() != null) {
+                                destination.setSeerId(source.getSeer().getId().toString());
+                            }
+                        } catch (Exception ignored) {
+                        }
+
+                        // Try to read name/avatar — if proxy not initialized this may throw, so catch and ignore
+                        try {
+                            if (Hibernate.isInitialized(source.getSeer())) {
+                                destination.setSeerName(source.getSeer().getFullName());
+                                destination.setSeerAvatar(source.getSeer().getAvatarUrl());
+                            } else {
+                                // attempt best-effort access; wrap in try-catch
+                                try {
+                                    destination.setSeerName(source.getSeer().getFullName());
+                                } catch (Exception ignored) {
+                                }
+                                try {
+                                    destination.setSeerAvatar(source.getSeer().getAvatarUrl());
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        } catch (Exception ignored) {
+                        }
                     }
 
                     return destination;

@@ -2,6 +2,7 @@ package com.iseeyou.fortunetelling.repository.certificate;
 
 import com.iseeyou.fortunetelling.entity.certificate.Certificate;
 import com.iseeyou.fortunetelling.entity.certificate.CertificateCategory;
+import com.iseeyou.fortunetelling.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -27,6 +28,9 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID>,
     Page<Certificate> findAll(Pageable pageable);
 
     @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
+    Page<Certificate> findAllByStatus(Constants.CertificateStatusEnum status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
     @Query("SELECT c FROM Certificate c JOIN c.certificateCategories cc WHERE c.seer.id = :seerId AND cc.knowledgeCategory.id = :categoryId")
     Page<Certificate> findBySeerIdAndCategoryId(@Param("seerId") UUID seerId, @Param("categoryId") UUID categoryId, Pageable pageable);
 
@@ -37,4 +41,7 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID>,
     @EntityGraph(attributePaths = {"certificateCategories.knowledgeCategory", "seer"})
     @Query("SELECT c FROM Certificate c WHERE c.id = :id")
     Optional<Certificate> findByIdWithCategories(@Param("id") UUID id);
+
+    // Statistics methods
+    long countByStatus(Constants.CertificateStatusEnum status);
 }

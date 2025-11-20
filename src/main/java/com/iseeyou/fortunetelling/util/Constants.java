@@ -405,6 +405,24 @@ public final class Constants {
 
     @Getter
     @AllArgsConstructor
+    public enum TargetType {
+        REPORT("REPORT"),
+        BOOKING("BOOKING"),
+        USER("USER"),
+        ACCOUNT("ACCOUNT");
+
+        private final String value;
+
+        public static TargetType get(final String name) {
+            return Stream.of(TargetType.values())
+                    .filter(p -> p.name().equals(name.toUpperCase()) || p.getValue().equals(name.toUpperCase()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(String.format("Invalid target type name: %s", name)));
+        }
+    }
+
+    @Getter
+    @AllArgsConstructor
     public enum SeerTier {
         BRONZE("BRONZE"),
         SILVER("SILVER"),

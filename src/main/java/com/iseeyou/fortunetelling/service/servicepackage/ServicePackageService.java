@@ -2,7 +2,7 @@ package com.iseeyou.fortunetelling.service.servicepackage;
 
 import com.iseeyou.fortunetelling.dto.request.servicepackage.AvailableTimeSlotRequest;
 import com.iseeyou.fortunetelling.dto.request.servicepackage.ServicePackageUpsertRequest;
-import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.AvailableTimeSlotResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
 import com.iseeyou.fortunetelling.entity.servicepackage.ServicePackage;
@@ -37,6 +37,7 @@ public interface ServicePackageService {
                                                                 List<UUID> packageCategoryIds,
                                                                 List<UUID> seerSpecialityIds,
                                                                 Integer minTime, Integer maxTime,
+                                                                UUID seerId,
                                                                 Constants.PackageStatusEnum status
     );
     Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice, Constants.PackageStatusEnum status);

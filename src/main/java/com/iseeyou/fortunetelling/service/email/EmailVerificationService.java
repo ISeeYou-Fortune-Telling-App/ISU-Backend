@@ -17,4 +17,6 @@ public interface EmailVerificationService {
     void sendNewDeviceAlertEmail(UUID userId, String ipAddress, String deviceInfo, String location, LocalDateTime loginTime);
     void sendLogoutAlertEmail(UUID userId, String deviceInfo, LocalDateTime logoutTime);
     void sendSecurityAlertEmail(UUID userId, String alertMessage, String severity);
+
+    void sendSeerWelcomeEmail(UUID userId);
 }

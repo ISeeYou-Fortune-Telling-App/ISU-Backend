@@ -30,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.JoinType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -987,5 +988,355 @@ public class BookingServiceImpl implements BookingService {
                 .totalRevenue(totalRevenue)
                 .taxPercentage(taxPercentage)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> getMySeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    ) {
+        User currentSeer = userService.getUser();
+
+        // Validate paymentType: chỉ cho phép RECEIVED_PACKAGE hoặc BONUS
+        if (paymentType != null &&
+            paymentType != Constants.PaymentTypeEnum.RECEIVED_PACKAGE &&
+            paymentType != Constants.PaymentTypeEnum.BONUS) {
+            throw new IllegalArgumentException("Invalid payment type. Only RECEIVED_PACKAGE and BONUS are allowed for salary queries.");
+        }
+
+        // Fetch large dataset to filter by date
+        final int MAX_FETCH = 10000;
+        Pageable fetchPageable = org.springframework.data.domain.PageRequest.of(0, MAX_FETCH, pageable.getSort());
+
+        // Get all salary payments for current seer (RECEIVED_PACKAGE from bookings + BONUS)
+        List<BookingPayment> allPayments = new java.util.ArrayList<>();
+
+        // 1. Get RECEIVED_PACKAGE payments (from bookings where seer owns the package)
+        Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
+            (root, query, cb) -> {
+                // Ensure fetch joins so related entities are initialized within the same session
+                root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                query.distinct(true);
+
+                List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                // Filter by payment type RECEIVED_PACKAGE
+                predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.RECEIVED_PACKAGE));
+
+                // Filter by seer through booking.servicePackage.seer
+                predicates.add(cb.equal(root.get("booking").get("servicePackage").get("seer").get("id"), currentSeer.getId()));
+
+                // Filter by payment status if provided
+                if (paymentStatus != null) {
+                    predicates.add(cb.equal(root.get("status"), paymentStatus));
+                }
+
+                return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            },
+            fetchPageable
+        );
+
+        // Add RECEIVED_PACKAGE payments if not filtering by BONUS only
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
+            allPayments.addAll(receivedPackagePayments.getContent());
+        }
+
+        // 2. Get BONUS payments (direct seer relation)
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
+            Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    // Fetch seer relation on payment and ensure booking is fetched in case mapping needs it
+                    root.fetch("seer", JoinType.LEFT);
+                    // also fetch booking and nested relations to be safe
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type BONUS
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.BONUS));
+
+                    // Filter by seer directly
+                    predicates.add(cb.equal(root.get("seer").get("id"), currentSeer.getId()));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(bonusPayments.getContent());
+        }
+
+        // Filter by date
+        List<BookingPayment> filtered = filterPaymentsByDate(allPayments, year, month, day);
+
+        // Manual pagination
+        return paginatePayments(filtered, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> getAllSeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    ) {
+        // Validate paymentType: chỉ cho phép RECEIVED_PACKAGE hoặc BONUS
+        if (paymentType != null &&
+            paymentType != Constants.PaymentTypeEnum.RECEIVED_PACKAGE &&
+            paymentType != Constants.PaymentTypeEnum.BONUS) {
+            throw new IllegalArgumentException("Invalid payment type. Only RECEIVED_PACKAGE and BONUS are allowed for salary queries.");
+        }
+
+        // Fetch large dataset to filter by date
+        final int MAX_FETCH = 10000;
+        Pageable fetchPageable = org.springframework.data.domain.PageRequest.of(0, MAX_FETCH, pageable.getSort());
+
+        List<BookingPayment> allPayments = new java.util.ArrayList<>();
+
+        // 1. Get all RECEIVED_PACKAGE payments
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.RECEIVED_PACKAGE) {
+            Page<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    // Fetch booking and nested seer/customer
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type RECEIVED_PACKAGE
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.RECEIVED_PACKAGE));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(receivedPackagePayments.getContent());
+        }
+
+        // 2. Get all BONUS payments
+        if (paymentType == null || paymentType == Constants.PaymentTypeEnum.BONUS) {
+            Page<BookingPayment> bonusPayments = bookingPaymentRepository.findAll(
+                (root, query, cb) -> {
+                    // Fetch seer relation and booking nested relations
+                    root.fetch("seer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("customer", JoinType.LEFT);
+                    root.fetch("booking", JoinType.LEFT).fetch("servicePackage", JoinType.LEFT).fetch("seer", JoinType.LEFT);
+                    query.distinct(true);
+
+                    List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    // Filter by payment type BONUS
+                    predicates.add(cb.equal(root.get("paymentType"), Constants.PaymentTypeEnum.BONUS));
+
+                    // Filter by payment status if provided
+                    if (paymentStatus != null) {
+                        predicates.add(cb.equal(root.get("status"), paymentStatus));
+                    }
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                },
+                fetchPageable
+            );
+            allPayments.addAll(bonusPayments.getContent());
+        }
+
+        // Filter by date
+        List<BookingPayment> filtered = filterPaymentsByDate(allPayments, year, month, day);
+
+        // Manual pagination
+        return paginatePayments(filtered, pageable);
+    }
+
+    // Helper method to filter payments by date
+    private List<BookingPayment> filterPaymentsByDate(List<BookingPayment> payments, Integer year, Integer month, Integer day) {
+        if (year == null && month == null && day == null) {
+            return payments; // No date filter
+        }
+
+        java.time.LocalDate targetDate = null;
+        if (year != null && month != null && day != null) {
+            try {
+                targetDate = java.time.LocalDate.of(year, month, day);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Invalid date parameters: " + ex.getMessage());
+            }
+        }
+
+        List<BookingPayment> filtered = new java.util.ArrayList<>();
+        for (BookingPayment payment : payments) {
+            java.time.LocalDateTime createdAt = payment.getCreatedAt();
+            if (createdAt == null) continue;
+
+            java.time.LocalDate paymentDate = createdAt.toLocalDate();
+            boolean match = false;
+
+            if (targetDate != null) {
+                match = paymentDate.equals(targetDate);
+            } else if (year != null && month != null) {
+                match = (paymentDate.getYear() == year && paymentDate.getMonthValue() == month);
+            } else if (year != null) {
+                match = (paymentDate.getYear() == year);
+            }
+
+            if (match) filtered.add(payment);
+        }
+
+        return filtered;
+    }
+
+    // Helper method to paginate payments manually
+    private Page<BookingPayment> paginatePayments(List<BookingPayment> payments, Pageable pageable) {
+        int page = pageable.getPageNumber();
+        int size = pageable.getPageSize();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, payments.size());
+
+        List<BookingPayment> pageContent;
+        if (fromIndex >= payments.size()) {
+            pageContent = java.util.Collections.emptyList();
+        } else {
+            pageContent = payments.subList(fromIndex, toIndex);
+        }
+
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, payments.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse getPaymentStats() {
+        // 1. Lấy tất cả các payment PAID_PACKAGE với status COMPLETED
+        List<BookingPayment> paidPackagePayments = bookingPaymentRepository.findAllByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.PAID_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 2. Lấy tất cả các payment RECEIVED_PACKAGE với status COMPLETED
+        List<BookingPayment> receivedPackagePayments = bookingPaymentRepository.findAllByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 3. Lấy tất cả các payment REFUNDED
+        List<BookingPayment> refundedPayments = bookingPaymentRepository.findAllByStatusList(
+                Constants.PaymentStatusEnum.REFUNDED
+        );
+
+        // 4. Tính tổng tiền khách hàng đã thanh toán
+        double totalPaidAmount = paidPackagePayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 5. Tính tổng tiền đã trả cho seer
+        double totalReceivedAmount = receivedPackagePayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 6. Tính doanh thu (phí dịch vụ = tiền khách trả - tiền trả cho seer)
+        double totalRevenue = totalPaidAmount - totalReceivedAmount;
+
+        // 7. Đếm số booking thành công (mỗi booking chỉ tính 1 lần)
+        // Lấy số booking unique từ PAID_PACKAGE COMPLETED
+        Long successfulTransactions = bookingPaymentRepository.countDistinctBookingsByPaymentTypeAndStatus(
+                Constants.PaymentTypeEnum.PAID_PACKAGE,
+                Constants.PaymentStatusEnum.COMPLETED
+        );
+
+        // 8. Tính số giao dịch bị refund và tổng tiền refund
+        // Đếm số booking unique bị refund
+        long refundedTransactions = refundedPayments.stream()
+                .filter(p -> p.getBooking() != null)
+                .map(p -> p.getBooking().getId())
+                .distinct()
+                .count();
+
+        // Tổng tiền đã hoàn lại
+        double totalRefundedAmount = refundedPayments.stream()
+                .mapToDouble(BookingPayment::getAmount)
+                .sum();
+
+        // 9. Tạo response với 4 trường theo yêu cầu
+        return com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse.builder()
+                .totalRevenue(totalRevenue)
+                .successfulTransactions(successfulTransactions)
+                .refundedTransactions(refundedTransactions)
+                .totalRefundedAmount(totalRefundedAmount)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByUserId(UUID userId, Pageable pageable) {
+        log.info("Finding payments by userId: {}", userId);
+        // Trả về các payment mà user đã thanh toán (type PAID_PACKAGE)
+        return bookingPaymentRepository.findAllByUserId(userId, Constants.PaymentTypeEnum.PAID_PACKAGE, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsBySeerId(UUID seerId, Pageable pageable) {
+        log.info("Finding payments by seerId: {}", seerId);
+        // Trả về các payment mà seer đã nhận (type RECEIVED_PACKAGE và BONUS)
+        return bookingPaymentRepository.findAllBySeerId(
+                seerId,
+                Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                Constants.PaymentTypeEnum.BONUS,
+                pageable
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByRole(Constants.RoleEnum role, Pageable pageable) {
+        log.info("Finding payments by role: {}", role);
+        
+        if (role == Constants.RoleEnum.CUSTOMER || role == Constants.RoleEnum.GUEST) {
+            // Trả về tất cả payment USER đã thực hiện (type PAID_PACKAGE)
+            return bookingPaymentRepository.findAllByRoleUser(Constants.PaymentTypeEnum.PAID_PACKAGE, pageable);
+        } else if (role == Constants.RoleEnum.SEER || role == Constants.RoleEnum.UNVERIFIED_SEER) {
+            // Trả về tất cả payment đã thực hiện tới SEER (type RECEIVED_PACKAGE và BONUS)
+            return bookingPaymentRepository.findAllByRoleSeer(
+                    Arrays.asList(
+                            Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                            Constants.PaymentTypeEnum.BONUS
+                    ),
+                    pageable
+            );
+        } else {
+            throw new IllegalArgumentException("Invalid role for payment filtering. Only USER, CUSTOMER, GUEST, SEER, or UNVERIFIED_SEER are supported.");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByUserOrSeerName(String searchName, Pageable pageable) {
+        log.info("Finding payments by user/seer name: {}", searchName);
+
+        if (searchName == null || searchName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search name cannot be empty");
+        }
+
+        // Tìm kiếm theo tên user (customer) hoặc seer
+        return bookingPaymentRepository.findAllByUserOrSeerName(searchName.trim(), pageable);
     }
 }

@@ -16,6 +16,8 @@ import java.util.Set;
 @SuperBuilder
 public class CertificateResponse extends AbstractBaseDataResponse {
     private String seerName;
+    private String seerId;
+    private String seerAvatar;
     private String certificateName;
     private String certificateDescription;
     private String issuedBy;

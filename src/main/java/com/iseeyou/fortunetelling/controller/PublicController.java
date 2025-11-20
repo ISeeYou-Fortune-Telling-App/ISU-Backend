@@ -7,7 +7,7 @@ import com.iseeyou.fortunetelling.dto.response.account.SimpleSeerCardResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.knowledgecategory.KnowledgeCategoryResponse;
 import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageResponse;
-import com.iseeyou.fortunetelling.dto.response.ServicePackageDetailResponse;
+import com.iseeyou.fortunetelling.dto.response.servicepackage.ServicePackageDetailResponse;
 import com.iseeyou.fortunetelling.entity.knowledge.KnowledgeCategory;
 import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.service.knowledgecategory.KnowledgeCategoryService;
@@ -117,10 +117,12 @@ public class PublicController extends AbstractBaseController {
             @RequestParam(required = false) List<UUID> packageCategoryIds,
             @Parameter(description = "Seer speciality Ids")
             @RequestParam(required = false) List<UUID> seerSpecialityIds,
+            @Parameter(description = "Seer Id to filter packages by a specific seer")
+            @RequestParam(required = false) UUID seerId,
             @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
             @RequestParam(required = false) String status
             ) {
-        log.info("Public API: Get all service packages - page: {}, limit: {}", page, limit);
+        log.info("Public API: Get all service packages - page: {}, limit: {}{}, seerId: {}", page, limit, "", seerId);
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Constants.PackageStatusEnum statusEnum = null;
         if (status != null && !status.isBlank()) {
@@ -132,8 +134,9 @@ public class PublicController extends AbstractBaseController {
                 minPrice, maxPrice,
                 packageCategoryIds,
                 seerSpecialityIds,
-                minTime, maxTime
-                , statusEnum
+                minTime, maxTime,
+                seerId,
+                statusEnum
         ), "Service packages retrieved successfully");
     }
 

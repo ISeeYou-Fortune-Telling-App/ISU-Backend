@@ -5,6 +5,7 @@ import com.iseeyou.fortunetelling.dto.request.booking.BookingReviewRequest;
 import com.iseeyou.fortunetelling.dto.request.booking.BookingUpdateRequest;
 import com.iseeyou.fortunetelling.dto.response.booking.BookingReviewResponse;
 import com.iseeyou.fortunetelling.dto.response.booking.DailyRevenueResponse;
+import com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse;
 import com.iseeyou.fortunetelling.entity.booking.Booking;
 import com.iseeyou.fortunetelling.entity.booking.BookingPayment;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -54,4 +55,35 @@ public interface BookingService {
 
     // Revenue calculation
     DailyRevenueResponse getDailyRevenue(LocalDate date);
+
+    // Seer salary history: RECEIVED_PACKAGE and BONUS payments for logged-in seer
+    Page<BookingPayment> getMySeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    );
+
+    // Admin: All seer salary history (RECEIVED_PACKAGE and BONUS)
+    Page<BookingPayment> getAllSeerSalary(
+            Constants.PaymentTypeEnum paymentType,
+            Constants.PaymentStatusEnum paymentStatus,
+            Integer year,
+            Integer month,
+            Integer day,
+            Pageable pageable
+    );
+
+    // Admin: Get payment statistics
+    BookingPaymentStatsResponse getPaymentStats();
+
+    // New methods for filtering payments by userId, seerId, and role
+    Page<BookingPayment> findPaymentsByUserId(UUID userId, Pageable pageable);
+    Page<BookingPayment> findPaymentsBySeerId(UUID seerId, Pageable pageable);
+    Page<BookingPayment> findPaymentsByRole(Constants.RoleEnum role, Pageable pageable);
+
+    // Search payments by user/seer name
+    Page<BookingPayment> findPaymentsByUserOrSeerName(String searchName, Pageable pageable);
 }

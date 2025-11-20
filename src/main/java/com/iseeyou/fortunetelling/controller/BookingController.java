@@ -85,19 +85,90 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Sort field")
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @Parameter(description = "Filter by booking status (optional)")
-            @RequestParam(required = false) Constants.BookingStatusEnum status
+            @RequestParam(required = false) Constants.BookingStatusEnum status,
+            @Parameter(description = "Filter by year (optional)")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Filter by month (1-12, optional)")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Filter by day (1-31, optional)")
+            @RequestParam(required = false) Integer day
     ) {
-        Pageable pageable = createPageable(page, limit, sortType, sortBy);
-        Page<Booking> bookings;
+        // If no date filters provided, keep original behavior (delegated to service for DB pagination)
+        if (year == null && month == null && day == null) {
+            Pageable pageable = createPageable(page, limit, sortType, sortBy);
+            Page<Booking> bookings;
 
-        if (status != null) {
-            bookings = bookingService.getBookingsByMeAndStatus(status, pageable);
-        } else {
-            bookings = bookingService.getBookingsByMe(pageable);
+            if (status != null) {
+                bookings = bookingService.getBookingsByMeAndStatus(status, pageable);
+            } else {
+                bookings = bookingService.getBookingsByMe(pageable);
+            }
+
+            Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
+            return responseFactory.successPage(response, "Bookings retrieved successfully");
         }
 
-        Page<BookingResponse> response = bookingMapper.mapToPage(bookings, BookingResponse.class);
-        return responseFactory.successPage(response, "Bookings retrieved successfully");
+        // When any date filter is provided, fetch a bounded result set then filter in-memory.
+        // Assumption: per-user bookings are reasonably sized. MAX_FETCH prevents unbounded queries.
+        final int MAX_FETCH = 10000;
+        Pageable fetchPageable = createPageable(1, MAX_FETCH, sortType, sortBy);
+        Page<Booking> fetchedPage;
+
+        if (status != null) {
+            fetchedPage = bookingService.getBookingsByMeAndStatus(status, fetchPageable);
+        } else {
+            fetchedPage = bookingService.getBookingsByMe(fetchPageable);
+        }
+
+        java.util.List<Booking> fetched = fetchedPage.getContent();
+
+        // Determine filter mode: full date > month+year > year only
+        java.time.LocalDate targetDate = null;
+        if (year != null && month != null && day != null) {
+            try {
+                targetDate = java.time.LocalDate.of(year, month, day);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Invalid date parameters: " + ex.getMessage());
+            }
+        }
+
+        java.util.List<Booking> filtered = new java.util.ArrayList<>();
+        for (Booking b : fetched) {
+            java.time.LocalDateTime sched = b.getScheduledTime();
+            if (sched == null) continue; // skip bookings without scheduled time when filtering
+
+            java.time.LocalDate schedDate = sched.toLocalDate();
+            boolean match = false;
+
+            if (targetDate != null) {
+                match = schedDate.equals(targetDate);
+            } else if (year != null && month != null) {
+                match = (schedDate.getYear() == year && schedDate.getMonthValue() == month);
+            } else if (year != null) {
+                match = (schedDate.getYear() == year);
+            }
+
+            if (match) filtered.add(b);
+        }
+
+        // Paginate filtered list
+        int requestedPage = Math.max(1, page);
+        int requestedLimit = Math.max(1, limit);
+        int fromIndex = (requestedPage - 1) * requestedLimit;
+        int toIndex = Math.min(fromIndex + requestedLimit, filtered.size());
+
+        java.util.List<Booking> pageContent;
+        if (fromIndex >= filtered.size()) {
+            pageContent = java.util.Collections.emptyList();
+        } else {
+            pageContent = filtered.subList(fromIndex, toIndex);
+        }
+
+        org.springframework.data.domain.Page<Booking> resultPage =
+                new org.springframework.data.domain.PageImpl<>(pageContent, createPageable(page, limit, sortType, sortBy), filtered.size());
+
+        Page<BookingResponse> response = bookingMapper.mapToPage(resultPage, BookingResponse.class);
+        return responseFactory.successPage(response, "Bookings retrieved successfully (filtered by date)");
     }
 
     @GetMapping
@@ -592,12 +663,30 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Filter by payment method")
             @RequestParam(required = false) Constants.PaymentMethodEnum paymentMethod,
             @Parameter(description = "Filter by payment status")
-            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus
+            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus,
+            @Parameter(description = "Filter by userId ")
+            @RequestParam(required = false) UUID userId,
+            @Parameter(description = "Filter by seerId ")
+            @RequestParam(required = false) UUID seerId,
+            @Parameter(description = "Filter by role ")
+            @RequestParam(required = false) String role,
+            @Parameter(description = "Search by user/seer name ")
+            @RequestParam(required = false) String searchName
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<BookingPayment> payments;
 
-        if (paymentMethod != null) {
+        // Priority: searchName > userId > seerId > role > paymentMethod > paymentStatus > all
+        if (searchName != null && !searchName.isBlank()) {
+            payments = bookingService.findPaymentsByUserOrSeerName(searchName, pageable);
+        } else if (userId != null) {
+            payments = bookingService.findPaymentsByUserId(userId, pageable);
+        } else if (seerId != null) {
+            payments = bookingService.findPaymentsBySeerId(seerId, pageable);
+        } else if (role != null && !role.isBlank()) {
+            Constants.RoleEnum roleEnum = Constants.RoleEnum.get(role);
+            payments = bookingService.findPaymentsByRole(roleEnum, pageable);
+        } else if (paymentMethod != null) {
             payments = bookingService.findAllByPaymentMethod(paymentMethod, pageable);
         } else if (paymentStatus != null) {
             payments = bookingService.findAllByStatus(paymentStatus, pageable);
@@ -653,8 +742,8 @@ public class BookingController extends AbstractBaseController {
     @GetMapping("/payment/success")
     @Operation(summary = "Only for redirect URL from payment gateways (Currently only PayPal)")
     public ResponseEntity<String> paymentSuccess(
-            @RequestParam(value = "paymentId", required = true) String paymentId,
-            @RequestParam(value = "PayerID", required = true) String payerId
+            @RequestParam("paymentId") String paymentId,
+            @RequestParam("PayerID") String payerId
             // VNPay parameters temporarily disabled
             // @RequestParam(required = false) String vnp_BankCode,
             // @RequestParam(required = false) String vnp_CardType,
@@ -1064,5 +1153,176 @@ public class BookingController extends AbstractBaseController {
 
         DailyRevenueResponse revenue = bookingService.getDailyRevenue(targetDate);
         return responseFactory.successSingle(revenue, "Daily revenue retrieved successfully");
+    }
+
+    @GetMapping("/payment/my-seer-salary")
+    @Operation(
+            summary = "Seer: Get my salary history (RECEIVED_PACKAGE and BONUS payments)",
+            description = "Seer xem lịch sử nhận lương của mình. Bao gồm payments có type RECEIVED_PACKAGE (từ bookings) và BONUS. " +
+                    "Hỗ trợ lọc theo payment type, status, và ngày/tháng/năm.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Salary history retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid parameters",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('SEER')")
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> getMySeerSalary(
+            @Parameter(description = "Filter by payment type (RECEIVED_PACKAGE or BONUS)")
+            @RequestParam(required = false) Constants.PaymentTypeEnum paymentType,
+            @Parameter(description = "Filter by payment status")
+            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus,
+            @Parameter(description = "Filter by year (optional)")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Filter by month (1-12, optional)")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Filter by day (1-31, optional)")
+            @RequestParam(required = false) Integer day,
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingPayment> salaryPayments = bookingService.getMySeerSalary(
+                paymentType, paymentStatus, year, month, day, pageable
+        );
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(salaryPayments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "Seer salary history retrieved successfully");
+    }
+
+    @GetMapping("/payments/seer-salary")
+    @Operation(
+            summary = "Admin: Get all seer salary history (RECEIVED_PACKAGE and BONUS payments)",
+            description = "Admin xem tất cả lịch sử lương đã phát cho các seer. Bao gồm payments có type RECEIVED_PACKAGE và BONUS. " +
+                    "Hỗ trợ lọc theo payment type, status, và ngày/tháng/năm.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "All seer salary history retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = PageResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request - Invalid parameters",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Admin only",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<PageResponse<BookingPaymentResponse>> getAllSeerSalary(
+            @Parameter(description = "Filter by payment type (RECEIVED_PACKAGE or BONUS)")
+            @RequestParam(required = false) Constants.PaymentTypeEnum paymentType,
+            @Parameter(description = "Filter by payment status")
+            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus,
+            @Parameter(description = "Filter by year (optional)")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Filter by month (1-12, optional)")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Filter by day (1-31, optional)")
+            @RequestParam(required = false) Integer day,
+            @Parameter(description = "Page number (1-based)")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "15") int limit,
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "desc") String sortType,
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        Pageable pageable = createPageable(page, limit, sortType, sortBy);
+        Page<BookingPayment> salaryPayments = bookingService.getAllSeerSalary(
+                paymentType, paymentStatus, year, month, day, pageable
+        );
+        Page<BookingPaymentResponse> response = bookingMapper.mapToPage(salaryPayments, BookingPaymentResponse.class);
+        return responseFactory.successPage(response, "All seer salary history retrieved successfully");
+    }
+
+    @GetMapping("/payment/stats")
+    @Operation(
+            summary = "Admin: Get booking payment statistics",
+            description = "Lấy thống kê tổng quan về các giao dịch thanh toán cho admin. Bao gồm: " +
+                    "tổng doanh thu (phí dịch vụ), số giao dịch thành công, số giao dịch bị hoàn tiền, và tổng số tiền đã hoàn lại.",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Payment statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Forbidden - Only admin can access",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse>> getPaymentStats() {
+        com.iseeyou.fortunetelling.dto.response.booking.BookingPaymentStatsResponse stats = bookingService.getPaymentStats();
+        return responseFactory.successSingle(stats, "Payment statistics retrieved successfully");
     }
 }

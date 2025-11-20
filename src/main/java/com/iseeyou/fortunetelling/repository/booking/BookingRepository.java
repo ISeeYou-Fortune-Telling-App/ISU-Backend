@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -52,6 +53,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     @Override
     @EntityGraph(attributePaths = {"servicePackage", "customer", "servicePackage.seer", "servicePackage.seer.seerProfile", "bookingPayments", "servicePackage.packageCategories.knowledgeCategory"})
     Page<Booking> findAll(Pageable pageable);
+
+    // Check if a customer has ever booked a service package from a specific seer
+    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Booking b WHERE b.customer = :customer AND b.servicePackage.seer = :seer")
+    boolean existsByCustomerAndServicePackageSeer(@Param("customer") User customer, @Param("seer") User seer);
 
     // Thống kê booking cho seer
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.servicePackage.seer = :seer")

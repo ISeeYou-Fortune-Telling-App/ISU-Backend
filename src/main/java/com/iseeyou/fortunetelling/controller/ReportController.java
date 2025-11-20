@@ -7,11 +7,13 @@ import com.iseeyou.fortunetelling.dto.response.PageResponse;
 import com.iseeyou.fortunetelling.dto.response.SingleResponse;
 import com.iseeyou.fortunetelling.dto.response.error.ErrorResponse;
 import com.iseeyou.fortunetelling.dto.response.report.ReportResponse;
+import com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse;
 import com.iseeyou.fortunetelling.dto.response.report.ReportTypeResponse;
 import com.iseeyou.fortunetelling.entity.report.Report;
 import com.iseeyou.fortunetelling.entity.report.ReportType;
 import com.iseeyou.fortunetelling.mapper.ReportMapper;
 import com.iseeyou.fortunetelling.service.report.ReportService;
+import com.iseeyou.fortunetelling.service.report.ReportViolationService;
 import com.iseeyou.fortunetelling.util.Constants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,11 +46,12 @@ public class ReportController extends AbstractBaseController {
 
     private final ReportService reportService;
     private final ReportMapper reportMapper;
+    private final ReportViolationService reportViolationService;
 
     @GetMapping
     @Operation(
             summary = "Get all reports with pagination",
-            description = "Get all reports with optional filters: status and reportType. Both filters are optional.",
+            description = "Get all reports with optional filters: status, reportType, and targetType. All filters are optional.",
             security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
             responses = {
                     @ApiResponse(
@@ -82,7 +85,9 @@ public class ReportController extends AbstractBaseController {
             @Parameter(description = "Optional report status filter (PENDING, VIEWED, RESOLVED, REJECTED)")
             @RequestParam(required = false) String status,
             @Parameter(description = "Optional report type name filter (as stored in report_type.name)")
-            @RequestParam(required = false) String reportType
+            @RequestParam(required = false) String reportType,
+            @Parameter(description = "Optional target type filter (SEER, SERVICE_PACKAGE, BOOKING, CHAT)")
+            @RequestParam(required = false) String targetType
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Constants.ReportStatusEnum statusEnum = null;
@@ -90,7 +95,12 @@ public class ReportController extends AbstractBaseController {
             statusEnum = Constants.ReportStatusEnum.get(status);
         }
 
-        Page<Report> reports = reportService.findAllReports(pageable, statusEnum, reportType);
+        Constants.TargetReportTypeEnum targetTypeEnum = null;
+        if (targetType != null && !targetType.isBlank()) {
+            targetTypeEnum = Constants.TargetReportTypeEnum.get(targetType);
+        }
+
+        Page<Report> reports = reportService.findAllReports(pageable, statusEnum, reportType, targetTypeEnum);
         Page<ReportResponse> response = reportMapper.mapToPage(reports, ReportResponse.class);
         return responseFactory.successPage(response, "Reports retrieved successfully");
     }
@@ -514,5 +524,87 @@ public class ReportController extends AbstractBaseController {
         Page<ReportType> reportTypes = reportService.findAllReportTypes(pageable);
         Page<ReportTypeResponse> response = reportMapper.mapToPage(reportTypes, ReportTypeResponse.class);
         return responseFactory.successPage(response, "Report types retrieved successfully");
+    }
+
+    @PostMapping("/{reportId}/violation-action")
+    @Operation(
+            summary = "Handle violation action for a report (WARNING, SUSPEND, BAN)",
+            description = "Admin can take action on a report: WARNING (cảnh báo), SUSPEND (đình chỉ), or BAN (cấm vĩnh viễn)",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Violation action handled successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Bad request",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Report not found",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<ReportResponse>> handleViolationAction(
+            @Parameter(description = "Report ID", required = true)
+            @PathVariable UUID reportId,
+            @Parameter(description = "Violation action request", required = true)
+            @RequestBody @Valid com.iseeyou.fortunetelling.dto.request.report.ReportViolationActionRequest request
+    ) {
+        Report updatedReport = reportViolationService.handleViolationAction(reportId, request);
+        ReportResponse response = reportMapper.mapTo(updatedReport, ReportResponse.class);
+        return responseFactory.successSingle(response, "Violation action handled successfully");
+    }
+
+    @GetMapping("/stats")
+    @Operation(
+            summary = "Get report statistics (Admin only)",
+            description = "Get statistics including total reports, new reports this month, resolved and unresolved reports",
+            security = @SecurityRequirement(name = SECURITY_SCHEME_NAME),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Statistics retrieved successfully",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = SingleResponse.class)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized",
+                            content = @Content(
+                                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ErrorResponse.class)
+                            )
+                    )
+            }
+    )
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SingleResponse<com.iseeyou.fortunetelling.dto.response.report.ReportStatsResponse>> getReportStatistics() {
+        var stats = reportService.getStatistics();
+        return responseFactory.successSingle(stats, "Report statistics retrieved successfully");
     }
 }
