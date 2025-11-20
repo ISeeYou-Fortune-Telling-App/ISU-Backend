@@ -12,8 +12,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatResponse {
-
-    private String answer;
+    private Boolean sentByUser;
+    private String textContent;
+    private String analysisType;
+    private String imageUrl;
     private Double processingTime;
-    private LocalDateTime timestamp;
+    private LocalDateTime createdAt;
 }

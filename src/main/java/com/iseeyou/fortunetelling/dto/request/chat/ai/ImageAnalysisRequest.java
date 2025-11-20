@@ -15,4 +15,6 @@ public class ImageAnalysisRequest {
     private MultipartFile file;
 
     private String analysisType; // "palm" or "face"
+
+    private Integer selectedOption; // RAG option (1, 2, or 3)
 }

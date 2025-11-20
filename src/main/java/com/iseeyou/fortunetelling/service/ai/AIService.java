@@ -3,8 +3,8 @@ package com.iseeyou.fortunetelling.service.ai;
 import com.iseeyou.fortunetelling.dto.request.chat.ai.ChatRequest;
 import com.iseeyou.fortunetelling.dto.request.chat.ai.ImageAnalysisRequest;
 import com.iseeyou.fortunetelling.dto.response.chat.ai.ChatResponse;
-import com.iseeyou.fortunetelling.dto.response.chat.ai.ImageAnalysisResponse;
-import reactor.core.publisher.Flux;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface AIService {
 
@@ -14,17 +14,15 @@ public interface AIService {
     ChatResponse chat(ChatRequest request);
 
     /**
-     * Chat with AI - Streaming response
-     */
-    Flux<String> chatStream(ChatRequest request);
-
-    /**
      * Analyze palm image
      */
-    ImageAnalysisResponse analyzePalm(ImageAnalysisRequest request);
+    ChatResponse analyzePalm(ImageAnalysisRequest request);
 
     /**
      * Analyze face image
      */
-    ImageAnalysisResponse analyzeFace(ImageAnalysisRequest request);
+    ChatResponse analyzeFace(ImageAnalysisRequest request);
+
+    /// USER
+    Page<ChatResponse> myChatResponse(Pageable pageable);
 }
