@@ -1,6 +1,6 @@
 -- =============================================
 -- Fortune Telling Application - Database Schema
--- Version: 1.19
+-- Version: 1.23
 -- Description: Create ai_messages table for AI chat functionality
 -- =============================================
 

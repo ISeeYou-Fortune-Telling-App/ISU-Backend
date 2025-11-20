@@ -8,6 +8,7 @@ import com.iseeyou.fortunetelling.mapper.SimpleMapper;
 import com.iseeyou.fortunetelling.repository.ai.AiMessageRepository;
 import com.iseeyou.fortunetelling.service.ai.AIService;
 import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
+import com.iseeyou.fortunetelling.service.notification.PushNotificationService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class AIServiceImpl implements AIService {
     private final AiMessageRepository aiMessageRepository;
     private final SimpleMapper simpleMapper;
     private final CloudinaryService cloudinaryService;
+    private final PushNotificationService pushNotificationService;
 
     @Value("${ai.fastapi.base-url:http://localhost:8000}")
     private String fastApiBaseUrl;
@@ -136,6 +138,13 @@ public class AIServiceImpl implements AIService {
             log.info("Successfully processed AI response with {} characters", answer.length());
 
             // TODO: Send push noti here
+
+            pushNotificationService.sendNotificationToMe(
+                    "Đã có câu trả lời",
+                    answer,
+                    null, null,
+                    "CONVERSATION", null
+            );
 
             ChatResponse chatResponse = ChatResponse.builder()
                     .sentByUser(false)
@@ -316,6 +325,13 @@ public class AIServiceImpl implements AIService {
                     .processingTime((double) (endTime - startTime) / 1000.0)
                     .build();
             create(chatResponse);
+
+            pushNotificationService.sendNotificationToMe(
+                    "Đã có câu trả lời",
+                    analysisResult,
+                    null, null,
+                    "CONVERSATION", null
+            );
 
             return chatResponse;
 
