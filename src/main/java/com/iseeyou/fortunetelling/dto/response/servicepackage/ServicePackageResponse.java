@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ public class ServicePackageResponse {
     private Long totalReviews; // Total number of reviews
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<AvailableTimeSlotInfo> availableTimeSlots; // Thêm thông tin thời gian rảnh
 
     @Data
     @NoArgsConstructor
@@ -53,5 +55,16 @@ public class ServicePackageResponse {
         private UUID id;
         private String name;
         private String description;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AvailableTimeSlotInfo {
+        private Integer weekDate; // 2-8 (Thứ 2 - Chủ nhật)
+        private String weekDayName; // Tên thứ (ví dụ: "Thứ 2", "Chủ nhật")
+        private LocalTime availableFrom;
+        private LocalTime availableTo;
     }
 }

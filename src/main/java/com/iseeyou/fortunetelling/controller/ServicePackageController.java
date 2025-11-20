@@ -641,7 +641,9 @@ public class ServicePackageController extends AbstractBaseController {
             @Parameter(description = "Seer Id to filter packages by a specific seer")
             @RequestParam(required = false) UUID seerId,
             @Parameter(description = "Package status filter (AVAILABLE, REJECTED, HAVE_REPORT, HIDDEN)")
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Filter only packages available RIGHT NOW (true: only show packages that are open at current time and day of week)")
+            @RequestParam(required = false, defaultValue = "false") Boolean onlyAvailable
     ) {
         log.info("Admin fetching all service packages");
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
@@ -658,7 +660,8 @@ public class ServicePackageController extends AbstractBaseController {
                 seerSpecialityIds,
                 minTime, maxTime,
                 seerId,
-                statusEnum
+                statusEnum,
+                onlyAvailable
         );
         
         return responseFactory.successPage(packages, "Service packages retrieved successfully");

@@ -653,7 +653,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        List<UUID> seerSpecialityIds,
                                                                        Integer minTime, Integer maxTime,
                                                                        UUID seerId,
-                                                                       Constants.PackageStatusEnum status) {
+                                                                       Constants.PackageStatusEnum status,
+                                                                       Boolean onlyAvailable) {
         // If seerId is provided, return packages for that seer (respecting pagination), ignoring other filters
         if (seerId != null) {
             Page<ServicePackage> servicePackages = servicePackageRepository.findAllBySeer_Id(seerId, pageable);
@@ -668,6 +669,16 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 ? null
                 : seerSpecialityIds;
 
+        // Default onlyAvailable to false if not provided
+        Boolean availableFilter = onlyAvailable != null ? onlyAvailable : false;
+
+        // Lấy thời gian hiện tại để filter các package đang available
+        LocalDateTime now = LocalDateTime.now();
+        int dayOfWeek = now.getDayOfWeek().getValue(); // 1-7 (Monday-Sunday)
+        // Convert sang format của hệ thống (2-8: Thứ 2 - Chủ nhật)
+        int currentWeekDate = dayOfWeek == 7 ? 8 : dayOfWeek + 1;
+        java.time.LocalTime currentTime = now.toLocalTime();
+
         Page<ServicePackage> servicePackages = servicePackageRepository.findAllWithFilters(
                 status,
                 minPrice, maxPrice,
@@ -675,6 +686,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 specialityIdsFilter,
                 minTime, maxTime,
                 searchText,
+                availableFilter,
+                currentWeekDate,
+                currentTime,
                 pageable);
 
         return enrichWithInteractions(servicePackages);
@@ -776,6 +790,20 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
             response.setTotalReviews(totalReviews != null ? totalReviews : 0L);
             response.setAvgRating(avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null); // Round to 1 decimal place
+
+            List<ServicePackageResponse.AvailableTimeSlotInfo> availableTimeSlots =
+                availableTimeRepository.findByServicePackageId(pkg.getId()).stream()
+                    .map(slot -> ServicePackageResponse.AvailableTimeSlotInfo.builder()
+                        .weekDate(slot.getWeekDate())
+                        .weekDayName(WEEKDAY_NAMES.get(slot.getWeekDate()))
+                        .availableFrom(slot.getAvailableFrom())
+                        .availableTo(slot.getAvailableTo())
+                        .build())
+                    .sorted(Comparator.comparing(ServicePackageResponse.AvailableTimeSlotInfo::getWeekDate)
+                        .thenComparing(ServicePackageResponse.AvailableTimeSlotInfo::getAvailableFrom))
+                    .collect(Collectors.toList());
+
+            response.setAvailableTimeSlots(availableTimeSlots);
 
             return response;
         });
@@ -910,10 +938,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             .collect(Collectors.toList());
     }
 
-    /**
-     * Xóa tất cả thời gian rảnh của service package
-     * @param packageId ID của service package
-     */
+
     @Override
     @Transactional
     public void deleteAvailableTimes(UUID packageId) {
@@ -921,13 +946,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         log.info("Deleted all available time slots for package {}", packageId);
     }
 
-    /**
-     * Kiểm tra xem một thời gian cụ thể có nằm trong thời gian rảnh không
-     * @param packageId ID của service package
-     * @param weekDate Thứ trong tuần
-     * @param time Thời gian cần kiểm tra
-     * @return true nếu thời gian nằm trong khoảng rảnh
-     */
+
     @Override
     @Transactional(readOnly = true)
     public boolean isTimeAvailable(UUID packageId, Integer weekDate, java.time.LocalTime time) {
@@ -939,9 +958,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         );
     }
 
-    /**
-     * Kiểm tra thời gian rảnh hợp lệ
-     */
+
     private void validateTimeSlots(List<AvailableTimeSlotRequest> timeSlots) {
         for (AvailableTimeSlotRequest slot : timeSlots) {
             if (slot.getAvailableFrom().isAfter(slot.getAvailableTo()) ||
@@ -971,9 +988,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         }
     }
 
-    /**
-     * Kiểm tra xem 2 khoảng thời gian có bị chồng lấn không
-     */
+
     private boolean isTimeOverlap(AvailableTimeSlotRequest slot1, AvailableTimeSlotRequest slot2) {
         return !(slot1.getAvailableTo().isBefore(slot2.getAvailableFrom()) ||
                  slot1.getAvailableTo().equals(slot2.getAvailableFrom()) ||

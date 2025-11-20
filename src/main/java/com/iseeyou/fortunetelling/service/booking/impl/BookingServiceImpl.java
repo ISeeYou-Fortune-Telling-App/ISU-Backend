@@ -154,6 +154,11 @@ public class BookingServiceImpl implements BookingService {
         User customer = userService.getUser();
         booking.setCustomer(customer);
 
+        // Kiểm tra schedule time hợp lệ với available time của service package
+        if (request.getScheduledTime() != null) {
+            validateScheduledTimeWithAvailableTime(packageId, request.getScheduledTime());
+        }
+
         Booking newBooking = bookingRepository.save(booking);
 
         try {
@@ -172,6 +177,33 @@ public class BookingServiceImpl implements BookingService {
         // Fetch booking with all relationships to avoid LazyInitializationException
         return bookingRepository.findWithDetailById(newBooking.getId())
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + newBooking.getId()));
+    }
+
+    /**
+     * Kiểm tra xem thời gian đặt lịch có hợp lệ với available time của service package không
+     */
+    private void validateScheduledTimeWithAvailableTime(UUID packageId, LocalDateTime scheduledTime) {
+        // Lấy thứ trong tuần từ scheduled time (Monday = 1, Sunday = 7)
+        int dayOfWeek = scheduledTime.getDayOfWeek().getValue(); // 1-7
+
+        // Convert sang format của hệ thống (2-8: Thứ 2 - Chủ nhật)
+        int weekDate = dayOfWeek == 7 ? 8 : dayOfWeek + 1;
+
+        // Lấy giờ từ scheduled time
+        java.time.LocalTime scheduledTimeOnly = scheduledTime.toLocalTime();
+
+        // Kiểm tra xem thời gian có nằm trong available time không
+        boolean isAvailable = servicePackageService.isTimeAvailable(packageId, weekDate, scheduledTimeOnly);
+
+        if (!isAvailable) {
+            throw new IllegalArgumentException(
+                String.format("Thời gian đặt lịch %s không nằm trong khung giờ rảnh của dịch vụ. " +
+                    "Vui lòng chọn thời gian khác hoặc xem thông tin available time của gói dịch vụ.",
+                    scheduledTime)
+            );
+        }
+
+        log.info("Validated scheduled time {} for package {}: OK", scheduledTime, packageId);
     }
 
     @Override
