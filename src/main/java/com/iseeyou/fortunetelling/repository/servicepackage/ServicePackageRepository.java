@@ -53,6 +53,7 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         LEFT JOIN sp.packageCategories pc
         LEFT JOIN sp.seer s
         LEFT JOIN s.seerSpecialities ss
+        LEFT JOIN sp.availableTimes at
         WHERE (:status IS NULL OR sp.status = :status)
         AND (:minPrice IS NULL OR sp.price >= :minPrice)
         AND (:searchText IS NULL OR :searchText = '' OR LOWER(sp.packageTitle) LIKE LOWER(CONCAT('%', :searchText, '%')))
@@ -61,6 +62,12 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         AND (:maxTime IS NULL OR sp.durationMinutes <= :maxTime)
         AND (:packageCategoryIds IS NULL OR pc.knowledgeCategory.id IN :packageCategoryIds)
         AND (:seerSpecialityIds IS NULL OR ss.knowledgeCategory.id IN :seerSpecialityIds)
+        AND (:onlyAvailable = false OR (
+            at.id IS NOT NULL 
+            AND at.weekDate = :currentWeekDate 
+            AND at.availableFrom <= :currentTime 
+            AND at.availableTo >= :currentTime
+        ))
         """)
     @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
     Page<ServicePackage> findAllWithFilters(@Param("status") com.iseeyou.fortunetelling.util.Constants.PackageStatusEnum status,
@@ -71,6 +78,9 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
                                             @Param("minTime") Integer minTime,
                                             @Param("maxTime") Integer maxTime,
                                             @Param("searchText") String searchText,
+                                            @Param("onlyAvailable") Boolean onlyAvailable,
+                                            @Param("currentWeekDate") Integer currentWeekDate,
+                                            @Param("currentTime") java.time.LocalTime currentTime,
                                             Pageable pageable);
 
     @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})

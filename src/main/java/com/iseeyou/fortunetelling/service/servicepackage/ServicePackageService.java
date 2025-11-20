@@ -38,7 +38,8 @@ public interface ServicePackageService {
                                                                 List<UUID> seerSpecialityIds,
                                                                 Integer minTime, Integer maxTime,
                                                                 UUID seerId,
-                                                                Constants.PackageStatusEnum status
+                                                                Constants.PackageStatusEnum status,
+                                                                Boolean onlyAvailable
     );
     Page<ServicePackageResponse> getPackagesByCategoryWithInteractions(Constants.ServiceCategoryEnum category, Pageable pageable, Double minPrice, Double maxPrice, Constants.PackageStatusEnum status);
 
