@@ -3,23 +3,28 @@ package com.iseeyou.fortunetelling.service.ai.impl;
 import com.iseeyou.fortunetelling.dto.request.chat.ai.ChatRequest;
 import com.iseeyou.fortunetelling.dto.request.chat.ai.ImageAnalysisRequest;
 import com.iseeyou.fortunetelling.dto.response.chat.ai.ChatResponse;
-import com.iseeyou.fortunetelling.dto.response.chat.ai.ImageAnalysisResponse;
+import com.iseeyou.fortunetelling.entity.ai.AiMessage;
+import com.iseeyou.fortunetelling.mapper.SimpleMapper;
+import com.iseeyou.fortunetelling.repository.ai.AiMessageRepository;
 import com.iseeyou.fortunetelling.service.ai.AIService;
+import com.iseeyou.fortunetelling.service.fileupload.CloudinaryService;
+import com.iseeyou.fortunetelling.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -27,13 +32,29 @@ import java.util.Map;
 public class AIServiceImpl implements AIService {
 
     private final RestTemplate restTemplate;
-    private final WebClient webClient;
+    private final UserService userService;
+    private final AiMessageRepository aiMessageRepository;
+    private final SimpleMapper simpleMapper;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${ai.fastapi.base-url:http://localhost:8000}")
     private String fastApiBaseUrl;
 
     @Override
     public ChatResponse chat(ChatRequest request) {
+
+        try {
+            create(
+                    ChatResponse.builder()
+                            .sentByUser(true)
+                            .textContent(request.getQuestion())
+                            .analysisType("question")
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("Asynchronous create failed");
+        }
+
         try {
             log.info("Sending chat request to FastAPI: {}", request.getQuestion());
             log.info("FastAPI Base URL: {}", fastApiBaseUrl);
@@ -46,8 +67,7 @@ public class AIServiceImpl implements AIService {
             // Request body matching FastAPI QueryRequest DTO
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("question", request.getQuestion());
-            requestBody.put("mode", request.getMode() != null ? request.getMode() : "mix");
-            requestBody.put("top_k", request.getTopK() != null ? request.getTopK() : 5);
+            requestBody.put("selected_option", request.getSelectedOption() != null ? request.getSelectedOption() : 2);
             requestBody.put("force_reindex", request.getForceReindex() != null ? request.getForceReindex() : false);
 
             HttpHeaders headers = new HttpHeaders();
@@ -78,11 +98,15 @@ public class AIServiceImpl implements AIService {
 
                 // Fallback response when FastAPI fails
                 long endTime = System.currentTimeMillis();
-                return ChatResponse.builder()
-                        .answer("Xin chào! Tôi là trợ lý AI fortune telling. Hiện tại hệ thống không thể kết nối với AI service. Vui lòng thử lại sau.")
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .sentByUser(false)
+                        .textContent("Xin chào! Tôi là trợ lý AI fortune telling. Hiện tại hệ thống không thể kết nối với AI service. Vui lòng thử lại sau.")
                         .processingTime((double) (endTime - startTime) / 1000.0)
-                        .timestamp(LocalDateTime.now())
                         .build();
+                create(chatResponse);
+
+                return chatResponse;
             }
 
             long endTime = System.currentTimeMillis();
@@ -110,11 +134,17 @@ public class AIServiceImpl implements AIService {
             }
 
             log.info("Successfully processed AI response with {} characters", answer.length());
-            return ChatResponse.builder()
-                    .answer(answer)
+
+            // TODO: Send push noti here
+
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .sentByUser(false)
+                    .textContent(answer)
                     .processingTime((double) (endTime - startTime) / 1000.0)
-                    .timestamp(LocalDateTime.now())
                     .build();
+            create(chatResponse);
+
+            return chatResponse;
 
         } catch (Exception e) {
             log.error("Error calling FastAPI chat endpoint: {}", e.getMessage(), e);
@@ -133,60 +163,55 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public Flux<String> chatStream(ChatRequest request) {
+    public ChatResponse analyzePalm(ImageAnalysisRequest request) {
         try {
-            log.info("Sending streaming chat request to FastAPI: {}", request.getQuestion());
+            String mediaUrl = cloudinaryService.uploadFile(
+                    request.getFile(),
+                    request.getAnalysisType()
+            );
 
-            // Validate request
-            if (request.getQuestion() == null || request.getQuestion().trim().isEmpty()) {
-                return Flux.error(new IllegalArgumentException("Question cannot be null or empty"));
-            }
-
-            // Request body matching FastAPI QueryRequest DTO
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("question", request.getQuestion());
-            requestBody.put("mode", request.getMode() != null ? request.getMode() : "mix");
-            requestBody.put("top_k", request.getTopK() != null ? request.getTopK() : 5);
-            requestBody.put("force_reindex", request.getForceReindex() != null ? request.getForceReindex() : false);
-
-            log.info("Calling FastAPI streaming at: {}/query-stream with payload: {}", fastApiBaseUrl, requestBody);
-
-            return webClient.post()
-                    .uri(fastApiBaseUrl + "/query-stream")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToFlux(String.class)
-                    .filter(chunk -> chunk != null && !chunk.trim().isEmpty())
-                    .map(chunk -> {
-                        // Parse SSE format: "data: content" -> "content"
-                        if (chunk.startsWith("data: ")) {
-                            String content = chunk.substring(6).trim();
-                            log.debug("Parsed SSE chunk: {}", content);
-                            return "data: " + content + "\n\n"; // Format as proper SSE
-                        }
-                        return chunk;
-                    })
-                    .onErrorReturn("data: Đã xảy ra lỗi khi streaming AI response. Vui lòng thử lại.\n\n")
-                    .doOnError(error -> log.error("Error in streaming chat: {}", error.getMessage(), error));
-
+            create(
+                    ChatResponse.builder()
+                            .sentByUser(true)
+                            .imageUrl(mediaUrl)
+                            .analysisType(request.getAnalysisType())
+                            .build()
+            );
         } catch (Exception e) {
-            log.error("Error calling FastAPI streaming chat endpoint: {}", e.getMessage(), e);
-            return Flux.error(new RuntimeException("Failed to stream chat with AI: " + e.getMessage()));
+            log.error("Asynchronous create failed");
         }
-    }
 
-    @Override
-    public ImageAnalysisResponse analyzePalm(ImageAnalysisRequest request) {
         return analyzeImage(request, "/analyze-palm", "palm");
     }
 
     @Override
-    public ImageAnalysisResponse analyzeFace(ImageAnalysisRequest request) {
+    public ChatResponse analyzeFace(ImageAnalysisRequest request) {
+        try {
+            String mediaUrl = cloudinaryService.uploadFile(
+                    request.getFile(),
+                    request.getAnalysisType()
+            );
+
+            create(
+                    ChatResponse.builder()
+                            .sentByUser(true)
+                            .imageUrl(mediaUrl)
+                            .analysisType(request.getAnalysisType())
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("Asynchronous create failed");
+        }
         return analyzeImage(request, "/analyze-face", "face");
     }
 
-    private ImageAnalysisResponse analyzeImage(ImageAnalysisRequest request, String endpoint, String analysisType) {
+    @Override
+    public Page<ChatResponse> myChatResponse(Pageable pageable) {
+        return aiMessageRepository.findAllByUser_Id(userService.getUser().getId(), pageable)
+                .map(aiMessage -> simpleMapper.mapTo(aiMessage, ChatResponse.class));
+    }
+
+    private ChatResponse analyzeImage(ImageAnalysisRequest request, String endpoint, String analysisType) {
         try {
             log.info("Sending image analysis request to FastAPI endpoint: {}", endpoint);
             log.info("FastAPI Base URL for image analysis: {}", fastApiBaseUrl);
@@ -206,14 +231,18 @@ public class AIServiceImpl implements AIService {
             };
             parts.add("file", fileResource);
 
+            // Add selected_option parameter (default to 1 if not provided)
+            Integer selectedOption = request.getSelectedOption() != null ? request.getSelectedOption() : 1;
+            parts.add("selected_option", selectedOption);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("Accept", "application/json");
             HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(parts, headers);
 
             String fullUrl = fastApiBaseUrl + endpoint;
-            log.info("Calling FastAPI at: {} with file: {} (size: {} bytes)",
-                fullUrl, request.getFile().getOriginalFilename(), request.getFile().getSize());
+            log.info("Calling FastAPI at: {} with file: {} (size: {} bytes), selected_option: {}",
+                fullUrl, request.getFile().getOriginalFilename(), request.getFile().getSize(), selectedOption);
 
             long startTime = System.currentTimeMillis();
             ResponseEntity<Map> response;
@@ -227,12 +256,15 @@ public class AIServiceImpl implements AIService {
 
                 // Fallback response for connection errors
                 long endTime = System.currentTimeMillis();
-                return ImageAnalysisResponse.builder()
-                        .analysisResult("Xin lỗi, không thể kết nối đến hệ thống phân tích " + analysisType + ". Lỗi: " + e.getMessage())
-                        .analysisType(analysisType)
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .sentByUser(false)
+                        .textContent("Xin lỗi, không thể kết nối đến hệ thống phân tích " + analysisType + ". Lỗi: " + e.getMessage())
                         .processingTime((double) (endTime - startTime) / 1000.0)
-                        .timestamp(LocalDateTime.now())
                         .build();
+                create(chatResponse);
+
+                return chatResponse;
             }
 
             long endTime = System.currentTimeMillis();
@@ -266,26 +298,38 @@ public class AIServiceImpl implements AIService {
 
                 log.warn("FastAPI returned error message for {} analysis: {}", analysisType, analysisResult);
 
-                // Return a user-friendly error message
-                return ImageAnalysisResponse.builder()
-                        .analysisResult("Xin lỗi, hệ thống phân tích " + analysisType + " hiện đang được cấu hình. Vui lòng thử lại sau hoặc liên hệ admin để kiểm tra cấu hình AI service.")
-                        .analysisType(analysisType)
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .sentByUser(false)
+                        .textContent("Xin lỗi, hệ thống phân tích " + analysisType + " hiện đang được cấu hình. Vui lòng thử lại sau hoặc liên hệ admin để kiểm tra cấu hình AI service.")
                         .processingTime((double) (endTime - startTime) / 1000.0)
-                        .timestamp(LocalDateTime.now())
                         .build();
+                create(chatResponse);
+
+                return chatResponse;
             }
 
             log.info("Successfully processed image analysis response with {} characters", analysisResult.length());
-            return ImageAnalysisResponse.builder()
-                    .analysisResult(analysisResult)
-                    .analysisType(analysisType)
+
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .sentByUser(false)
+                    .textContent(analysisResult)
                     .processingTime((double) (endTime - startTime) / 1000.0)
-                    .timestamp(LocalDateTime.now())
                     .build();
+            create(chatResponse);
+
+            return chatResponse;
 
         } catch (Exception e) {
             log.error("Error calling FastAPI image analysis endpoint: {}", endpoint, e);
             throw new RuntimeException("Failed to analyze " + analysisType + " image: " + e.getMessage());
         }
+    }
+
+    @Async
+    protected CompletableFuture<Void> create(ChatResponse chatResponse) {
+        AiMessage aiMessage = simpleMapper.mapTo(chatResponse, AiMessage.class);
+        aiMessage.setUser(userService.getUser());
+        aiMessageRepository.save(aiMessage);
+        return CompletableFuture.completedFuture(null);
     }
 }
