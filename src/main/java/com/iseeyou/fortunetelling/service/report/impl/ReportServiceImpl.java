@@ -175,6 +175,9 @@ public class ReportServiceImpl implements ReportService {
         User reportedUser = findReportedUserByTargetTypeAndId(report.getTargetType(), report.getTargetId());
         report.setReportedUser(reportedUser);
 
+        // Kiểm tra: chỉ user đã từng book service package của seer mới được báo cáo
+        validateUserHasBookedSeer(report.getReporter(), reportedUser, report.getTargetType(), report.getTargetId());
+
         // Find report type by enum
         ReportType reportType = reportTypeRepository.findByName(request.getReportType())
                 .orElseThrow(() -> new NotFoundException("ReportType not found with name: " + request.getReportType()));
@@ -255,6 +258,39 @@ public class ReportServiceImpl implements ReportService {
                 }
             }
         };
+    }
+
+    /**
+     * Validate that user has booked the seer's service package before allowing report
+     * Only applies when reporting SEER, SERVICE_PACKAGE, BOOKING, or CHAT related to a seer
+     */
+    private void validateUserHasBookedSeer(User reporter, User reportedUser, Constants.TargetReportTypeEnum targetType, UUID targetId) {
+        // Chỉ áp dụng kiểm tra khi báo cáo liên quan đến SEER
+        // Admin không cần kiểm tra
+        if (reporter.getRole() == Constants.RoleEnum.ADMIN) {
+            log.info("Reporter is admin, skipping booking validation");
+            return;
+        }
+
+        // Chỉ áp dụng khi báo cáo SEER hoặc các đối tượng liên quan đến SEER
+        if (reportedUser.getRole() != Constants.RoleEnum.SEER && reportedUser.getRole() != Constants.RoleEnum.UNVERIFIED_SEER) {
+            log.info("Reported user is not a seer, skipping booking validation");
+            return;
+        }
+
+        // Kiểm tra xem reporter đã từng book service package của seer này chưa
+        boolean hasBooked = bookingRepository.existsByCustomerAndServicePackageSeer(reporter, reportedUser);
+
+        if (!hasBooked) {
+            log.warn("User {} attempted to report seer {} without having booked their service",
+                    reporter.getId(), reportedUser.getId());
+            throw new IllegalArgumentException(
+                "Bạn chỉ có thể báo cáo seer mà bạn đã từng sử dụng dịch vụ. " +
+                "Vui lòng đặt lịch và sử dụng dịch vụ của seer này trước khi báo cáo."
+            );
+        }
+
+        log.info("User {} has booked seer {} before, allowing report", reporter.getId(), reportedUser.getId());
     }
 
     @Override
