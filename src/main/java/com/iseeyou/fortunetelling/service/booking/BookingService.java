@@ -78,4 +78,12 @@ public interface BookingService {
 
     // Admin: Get payment statistics
     BookingPaymentStatsResponse getPaymentStats();
+
+    // New methods for filtering payments by userId, seerId, and role
+    Page<BookingPayment> findPaymentsByUserId(UUID userId, Pageable pageable);
+    Page<BookingPayment> findPaymentsBySeerId(UUID seerId, Pageable pageable);
+    Page<BookingPayment> findPaymentsByRole(Constants.RoleEnum role, Pageable pageable);
+
+    // Search payments by user/seer name
+    Page<BookingPayment> findPaymentsByUserOrSeerName(String searchName, Pageable pageable);
 }

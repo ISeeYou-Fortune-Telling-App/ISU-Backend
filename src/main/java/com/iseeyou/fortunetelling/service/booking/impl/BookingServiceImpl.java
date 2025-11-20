@@ -1283,4 +1283,60 @@ public class BookingServiceImpl implements BookingService {
                 .totalRefundedAmount(totalRefundedAmount)
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByUserId(UUID userId, Pageable pageable) {
+        log.info("Finding payments by userId: {}", userId);
+        // Trả về các payment mà user đã thanh toán (type PAID_PACKAGE)
+        return bookingPaymentRepository.findAllByUserId(userId, Constants.PaymentTypeEnum.PAID_PACKAGE, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsBySeerId(UUID seerId, Pageable pageable) {
+        log.info("Finding payments by seerId: {}", seerId);
+        // Trả về các payment mà seer đã nhận (type RECEIVED_PACKAGE và BONUS)
+        return bookingPaymentRepository.findAllBySeerId(
+                seerId,
+                Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                Constants.PaymentTypeEnum.BONUS,
+                pageable
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByRole(Constants.RoleEnum role, Pageable pageable) {
+        log.info("Finding payments by role: {}", role);
+        
+        if (role == Constants.RoleEnum.CUSTOMER || role == Constants.RoleEnum.GUEST) {
+            // Trả về tất cả payment USER đã thực hiện (type PAID_PACKAGE)
+            return bookingPaymentRepository.findAllByRoleUser(Constants.PaymentTypeEnum.PAID_PACKAGE, pageable);
+        } else if (role == Constants.RoleEnum.SEER || role == Constants.RoleEnum.UNVERIFIED_SEER) {
+            // Trả về tất cả payment đã thực hiện tới SEER (type RECEIVED_PACKAGE và BONUS)
+            return bookingPaymentRepository.findAllByRoleSeer(
+                    Arrays.asList(
+                            Constants.PaymentTypeEnum.RECEIVED_PACKAGE,
+                            Constants.PaymentTypeEnum.BONUS
+                    ),
+                    pageable
+            );
+        } else {
+            throw new IllegalArgumentException("Invalid role for payment filtering. Only USER, CUSTOMER, GUEST, SEER, or UNVERIFIED_SEER are supported.");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BookingPayment> findPaymentsByUserOrSeerName(String searchName, Pageable pageable) {
+        log.info("Finding payments by user/seer name: {}", searchName);
+
+        if (searchName == null || searchName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Search name cannot be empty");
+        }
+
+        // Tìm kiếm theo tên user (customer) hoặc seer
+        return bookingPaymentRepository.findAllByUserOrSeerName(searchName.trim(), pageable);
+    }
 }

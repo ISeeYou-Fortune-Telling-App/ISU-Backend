@@ -663,12 +663,30 @@ public class BookingController extends AbstractBaseController {
             @Parameter(description = "Filter by payment method")
             @RequestParam(required = false) Constants.PaymentMethodEnum paymentMethod,
             @Parameter(description = "Filter by payment status")
-            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus
+            @RequestParam(required = false) Constants.PaymentStatusEnum paymentStatus,
+            @Parameter(description = "Filter by userId ")
+            @RequestParam(required = false) UUID userId,
+            @Parameter(description = "Filter by seerId ")
+            @RequestParam(required = false) UUID seerId,
+            @Parameter(description = "Filter by role ")
+            @RequestParam(required = false) String role,
+            @Parameter(description = "Search by user/seer name ")
+            @RequestParam(required = false) String searchName
     ) {
         Pageable pageable = createPageable(page, limit, sortType, sortBy);
         Page<BookingPayment> payments;
 
-        if (paymentMethod != null) {
+        // Priority: searchName > userId > seerId > role > paymentMethod > paymentStatus > all
+        if (searchName != null && !searchName.isBlank()) {
+            payments = bookingService.findPaymentsByUserOrSeerName(searchName, pageable);
+        } else if (userId != null) {
+            payments = bookingService.findPaymentsByUserId(userId, pageable);
+        } else if (seerId != null) {
+            payments = bookingService.findPaymentsBySeerId(seerId, pageable);
+        } else if (role != null && !role.isBlank()) {
+            Constants.RoleEnum roleEnum = Constants.RoleEnum.get(role);
+            payments = bookingService.findPaymentsByRole(roleEnum, pageable);
+        } else if (paymentMethod != null) {
             payments = bookingService.findAllByPaymentMethod(paymentMethod, pageable);
         } else if (paymentStatus != null) {
             payments = bookingService.findAllByStatus(paymentStatus, pageable);
