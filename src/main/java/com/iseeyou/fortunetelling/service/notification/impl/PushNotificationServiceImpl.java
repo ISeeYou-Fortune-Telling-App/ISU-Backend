@@ -1,6 +1,8 @@
 package com.iseeyou.fortunetelling.service.notification.impl;
 
+import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.service.notification.PushNotificationService;
+import com.iseeyou.fortunetelling.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,7 @@ import java.util.Map;
 @Slf4j
 public class PushNotificationServiceImpl implements PushNotificationService {
 
+    private final UserService userService;
     private final RestTemplate restTemplate;
 
     @Value("${notification.service.uri:http://host.docker.internal:8085}")
@@ -36,6 +39,17 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         sendNotificationWithRecipient(recipientId, null, title, body, null, null, targetType, targetId);
     }
 
+    @Override
+    public void sendNotificationToMe(String title, String body, String imageUrl, Map<String, String> data, String targetType, String targetId) {
+        User me = userService.getUser();
+
+        sendNotificationWithRecipient(
+                me.getId().toString(),
+                me.getFcmToken(),
+                title, body, imageUrl, data, targetType, targetId
+        );
+    }
+
     /**
      * Gửi notification với cả recipientId và fcmToken
      * Push Notification service sẽ ưu tiên recipientId nếu có, không thì dùng fcmToken
@@ -50,7 +64,7 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 return;
             }
 
-            String url = notificationServiceUri + "/notification";
+            String url = notificationServiceUri + "/";
 
             Map<String, Object> request = new HashMap<>();
 
