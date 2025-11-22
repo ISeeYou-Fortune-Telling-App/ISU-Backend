@@ -95,4 +95,7 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
     
     @Query("SELECT COUNT(DISTINCT r.targetId) FROM Report r WHERE r.targetType = :targetType")
     long countPackagesWithReports(@Param("targetType") Constants.TargetReportTypeEnum targetType);
+
+    @EntityGraph(attributePaths = {"packageCategories.knowledgeCategory", "seer", "seer.seerProfile"})
+    Page<ServicePackage> findAllBySeer_IdAndStatus(UUID seerId, Constants.PackageStatusEnum status, Pageable pageable);
 }

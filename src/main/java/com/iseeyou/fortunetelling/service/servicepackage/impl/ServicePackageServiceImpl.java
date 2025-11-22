@@ -657,7 +657,11 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                                                                        Boolean onlyAvailable) {
         // If seerId is provided, return packages for that seer (respecting pagination), ignoring other filters
         if (seerId != null) {
-            Page<ServicePackage> servicePackages = servicePackageRepository.findAllBySeer_Id(seerId, pageable);
+            Page<ServicePackage> servicePackages;
+            if (status != null)
+                servicePackages = servicePackageRepository.findAllBySeer_IdAndStatus(seerId, status, pageable);
+            else
+                servicePackages = servicePackageRepository.findAllBySeer_Id(seerId, pageable);
             return enrichWithInteractions(servicePackages);
         }
 
