@@ -29,6 +29,9 @@ public interface ConversationService {
     // Auto-cancel late sessions
     void cancelLateSession(UUID conversationId);
 
+    // Manual cancel sessions
+    void cancelSession(UUID conversationId, Constants.RoleEnum cancellerRole);
+
     // Activate WAITING conversation when session_start_time arrives
     void activateWaitingConversation(UUID conversationId);
 

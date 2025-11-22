@@ -19,8 +19,7 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     // Get messages excluding those deleted by specific role
     @Query("SELECT m FROM Message m WHERE m.conversation.id = :conversationId " +
-           "AND ( :excludeRole IS NULL OR m.deletedBy IS NULL OR m.deletedBy != :excludeRole ) " +
-           "ORDER BY m.createdAt DESC")
+           "AND ( :excludeRole IS NULL OR m.deletedBy IS NULL OR m.deletedBy != :excludeRole ) ")
     Page<Message> findVisibleMessages(@Param("conversationId") UUID conversationId,
                                        @Param("excludeRole") Constants.RoleEnum excludeRole,
                                        Pageable pageable);

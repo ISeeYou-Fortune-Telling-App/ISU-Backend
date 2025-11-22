@@ -430,6 +430,27 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
+    public void cancelSession(UUID conversationId, Constants.RoleEnum cancellerRole) {
+
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NotFoundException("Conversation not found"));
+
+        String canceledBy = cancellerRole.getValue();
+        // Cancel conversation
+        conversation.setStatus(Constants.ConversationStatusEnum.CANCELLED);
+        conversation.setCanceledBy(canceledBy);
+        conversationRepository.save(conversation);
+
+        // Cancel booking if exists
+        Booking booking = conversation.getBooking();
+        if (booking != null) {
+            booking.setStatus(Constants.BookingStatusEnum.CANCELED);
+            bookingRepository.save(booking);
+            log.info("Session canceled by={}", canceledBy);
+        }
+    }
+
+    @Override
     @Transactional
     public void activateWaitingConversation(UUID conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)

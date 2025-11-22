@@ -445,6 +445,175 @@
             background: #ccc;
             cursor: not-allowed;
         }
+
+        /* Cancel Session Button */
+        .cancel-session-btn {
+            background: rgba(255, 82, 82, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .cancel-session-btn:hover {
+            background: rgba(255, 82, 82, 1);
+        }
+
+        .cancel-session-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 450px;
+            box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 40px;
+            margin-right: 15px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .modal-body {
+            margin-bottom: 25px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-cancel {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .modal-btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .modal-btn-danger {
+            background: #ff5252;
+            color: white;
+        }
+
+        .modal-btn-danger:hover {
+            background: #ff3333;
+        }
+
+        /* Notification Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 3000;
+            display: none;
+            animation: slideInRight 0.3s;
+            max-width: 400px;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-success {
+            border-left: 4px solid #4caf50;
+        }
+
+        .toast-error {
+            border-left: 4px solid #ff5252;
+        }
+
+        .toast-warning {
+            border-left: 4px solid #ff9800;
+        }
+
+        .toast-info {
+            border-left: 4px solid #2196f3;
+        }
     </style>
 </head>
 <body>
@@ -497,6 +666,9 @@
             <div class="session-info">
                 <div class="status-badge" id="sessionStatus">LOADING</div>
                 <div id="sessionTime">-</div>
+                <button class="cancel-session-btn" id="cancelSessionBtn" onclick="requestCancelSession()" style="margin-top: 8px;">
+                    🚫 Hủy phiên
+                </button>
             </div>
         </div>
 
@@ -532,6 +704,26 @@
             </button>
         </div>
     </div>
+
+    <!-- Cancel Confirmation Modal (for responding to cancel request) -->
+    <div id="cancelConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon">⚠️</div>
+                <div class="modal-title">Yêu cầu hủy phiên</div>
+            </div>
+            <div class="modal-body">
+                <p id="cancelRequestMessage">Loading...</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-cancel" onclick="respondToCancelRequest(false)">Từ chối</button>
+                <button class="modal-btn modal-btn-danger" onclick="respondToCancelRequest(true)">Đồng ý hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
 
     <script>
         // Configuration
@@ -585,6 +777,11 @@
                     }
                 });
 
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
                 if (!response.ok) {
                     throw new Error('Không thể tải conversation');
                 }
@@ -621,6 +818,14 @@
             const startTime = new Date(conv.sessionStartTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
             const endTime = new Date(conv.sessionEndTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
             document.getElementById('sessionTime').textContent = `${startTime} - ${endTime}`;
+
+            // Show/hide cancel button based on session status
+            const cancelBtn = document.getElementById('cancelSessionBtn');
+            if (conv.status === 'ACTIVE' || conv.status === 'WAITING') {
+                cancelBtn.style.display = 'block';
+            } else {
+                cancelBtn.style.display = 'none';
+            }
         }
 
         async function loadMessages(page = 1) {
@@ -636,6 +841,11 @@
                         }
                     }
                 );
+
+                if (response.status === 401) {
+                    handleUnauthorized();
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error('Không thể tải messages');
@@ -847,6 +1057,25 @@
                 alert('Phiên chat đã kết thúc');
                 loadConversation(); // Refresh conversation status
             });
+
+            // Handle cancel request from other user
+            socket.on('request_cancel_confirmation', (data) => {
+                console.log('📩 Cancel request received:', data);
+                showCancelConfirmationModal(data);
+            });
+
+            // Handle cancel result (response to my request)
+            socket.on('cancel_result', (data) => {
+                console.log('📊 Cancel result received:', data);
+                handleCancelResult(data);
+            });
+
+            // Handle session cancelled broadcast
+            socket.on('session_cancelled', (data) => {
+                console.log('🚫 Session cancelled:', data);
+                showToast(data.message || 'Phiên đã bị hủy', 'warning');
+                loadConversation(); // Refresh conversation status
+            });
         }
 
         function joinConversation() {
@@ -900,6 +1129,11 @@
                             textContent: text
                         })
                     });
+
+                    if (response.status === 401) {
+                        handleUnauthorized();
+                        return;
+                    }
 
                     if (!response.ok) {
                         throw new Error('Không thể gửi tin nhắn');
@@ -997,6 +1231,117 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // Cancel Session Functions
+        function requestCancelSession() {
+            if (!socket || !socket.connected) {
+                showToast('Không thể kết nối đến server', 'error');
+                return;
+            }
+
+            // Confirm with user first
+            if (!confirm('Bạn có chắc muốn yêu cầu hủy phiên này? Người kia sẽ cần xác nhận.')) {
+                return;
+            }
+
+            const cancelBtn = document.getElementById('cancelSessionBtn');
+            cancelBtn.disabled = true;
+
+            // Send cancel request via socket
+            socket.emit('cancel_session_manually', conversationId, (response) => {
+                console.log('Cancel request response:', response);
+
+                if (response === 'success' || (response[0] === 'success')) {
+                    showToast('Đã gửi yêu cầu hủy phiên. Chờ xác nhận từ người kia...', 'info');
+                } else {
+                    showToast('Không thể gửi yêu cầu hủy: ' + (response[1] || response), 'error');
+                    cancelBtn.disabled = false;
+                }
+            });
+        }
+
+        function showCancelConfirmationModal(data) {
+            const modal = document.getElementById('cancelConfirmModal');
+            const message = document.getElementById('cancelRequestMessage');
+
+            message.innerHTML = `
+                <strong>${data.requesterName}</strong> muốn hủy phiên chat này.<br>
+                Bạn có đồng ý không?
+            `;
+
+            modal.style.display = 'block';
+        }
+
+        function respondToCancelRequest(confirmed) {
+            const modal = document.getElementById('cancelConfirmModal');
+            modal.style.display = 'none';
+
+            if (!socket || !socket.connected) {
+                showToast('Không thể kết nối đến server', 'error');
+                return;
+            }
+
+            // Send response via socket
+            socket.emit('respond_cancel_request', {
+                conversationId: conversationId,
+                confirmed: confirmed
+            }, (response) => {
+                console.log('Response sent:', response);
+
+                if (response === 'success') {
+                    if (confirmed) {
+                        showToast('Bạn đã đồng ý hủy phiên', 'success');
+                    } else {
+                        showToast('Bạn đã từ chối hủy phiên', 'info');
+                    }
+                } else {
+                    showToast('Lỗi khi gửi phản hồi', 'error');
+                }
+            });
+        }
+
+        function handleCancelResult(data) {
+            const cancelBtn = document.getElementById('cancelSessionBtn');
+            cancelBtn.disabled = false;
+
+            if (data.status === 'success') {
+                showToast(data.message || 'Phiên đã được hủy thành công', 'success');
+
+                // Reload conversation to show updated status
+                setTimeout(() => {
+                    loadConversation();
+                }, 1500);
+            } else if (data.status === 'declined') {
+                showToast(data.message || 'Yêu cầu hủy phiên đã bị từ chối', 'warning');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type}`;
+            toast.style.display = 'block';
+
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 5000);
+        }
+
+        function handleUnauthorized() {
+            alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('currentConversationId');
+            window.location.href = 'conversations.html';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('cancelConfirmModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
 
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {

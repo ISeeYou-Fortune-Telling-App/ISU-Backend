@@ -21,7 +21,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Page<Conversation> findByBooking_Customer_Id(UUID customerId, Pageable pageable);
 
     @Override
-    @EntityGraph(attributePaths = {"booking.customer.user", "booking.servicePackage.seer"})
+    @EntityGraph(attributePaths = {"booking.customer", "booking.servicePackage.seer"})
     Optional<Conversation> findById(UUID id);
 
     // Find conversation with all related entities loaded (avoid lazy loading issues)

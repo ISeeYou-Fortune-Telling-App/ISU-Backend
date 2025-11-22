@@ -355,7 +355,7 @@ public final class Constants {
     @Getter
     @AllArgsConstructor
     public enum MessageStatusEnum {
-        UNREAD("SENT"),
+        UNREAD("UNREAD"),
         READ("READ"),
         DELETED("DELETED"),
         REMOVED("REMOVED");

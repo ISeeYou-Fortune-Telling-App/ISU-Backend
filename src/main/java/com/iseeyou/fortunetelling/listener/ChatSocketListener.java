@@ -1,8 +1,11 @@
 package com.iseeyou.fortunetelling.listener;
 
+import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIONamespace;
 import com.corundumstudio.socketio.SocketIOServer;
+import com.iseeyou.fortunetelling.dto.request.chat.session.CancelResponseRequest;
 import com.iseeyou.fortunetelling.dto.request.chat.session.ChatMessageRequest;
+import com.iseeyou.fortunetelling.dto.request.chat.session.PendingCancelRequest;
 import com.iseeyou.fortunetelling.dto.request.chat.session.SendMultipleMessagesRequest;
 import com.iseeyou.fortunetelling.dto.response.chat.session.ChatMessageResponse;
 import com.iseeyou.fortunetelling.entity.chat.Conversation;
@@ -10,6 +13,7 @@ import com.iseeyou.fortunetelling.entity.user.User;
 import com.iseeyou.fortunetelling.exception.NotFoundException;
 import com.iseeyou.fortunetelling.repository.chat.ConversationRepository;
 import com.iseeyou.fortunetelling.service.MessageSourceService;
+import com.iseeyou.fortunetelling.service.chat.ConversationService;
 import com.iseeyou.fortunetelling.service.chat.MessageService;
 import com.iseeyou.fortunetelling.service.user.UserService;
 import com.iseeyou.fortunetelling.util.Constants;
@@ -23,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
@@ -34,6 +39,9 @@ public class ChatSocketListener {
     private final SocketIOServer socketIOServer;
     private final MessageSourceService messageSourceService;
 
+    private final Map<UUID, PendingCancelRequest> pendingCancelRequests = new ConcurrentHashMap<>();
+    private final ConversationService conversationService;
+
     @PostConstruct
     public void init() {
         SocketIONamespace namespace = socketIOServer.addNamespace("/chat");
@@ -44,6 +52,8 @@ public class ChatSocketListener {
             log.info("User connected: {} with socket id: {}", userId, client.getSessionId());
 
             client.set("userId", userId);
+            User user = userService.findById(UUID.fromString(userId));
+            client.set("user", user);
             client.sendEvent("connect_success", Map.of("message", messageSourceService.get("chat.connect.success")));
         });
 
@@ -178,7 +188,7 @@ public class ChatSocketListener {
                 log.info("User {} sending message to conversation {}", userId, request.getConversationId());
 
                 // Get user by ID (Socket.IO doesn't have SecurityContext)
-                User currentUser = userService.findById(UUID.fromString(userId));
+                User currentUser = client.get("user");
 
                 if (currentUser == null) {
                     log.error("User not found: {}", userId);
@@ -214,7 +224,7 @@ public class ChatSocketListener {
                 log.info("User {} sending message to {} conversations", userId, request.getConversationIds().size());
 
                 // Get user by ID
-                User currentUser = userService.findById(UUID.fromString(userId));
+                User currentUser = client.get("user");
 
                 if (currentUser == null) {
                     log.error("User not found: {}", userId);
@@ -271,6 +281,143 @@ public class ChatSocketListener {
             }
         });
 
+        namespace.addEventListener("cancel_session_manually", String.class, (client, conversationId, ackRequest) -> {
+            try {
+                Conversation conversation = conversationRepository.findById(UUID.fromString(conversationId)).orElse(null);
+
+                if (conversation == null) {
+                    ackRequest.sendAckData("error", "Conversation not found");
+                    return;
+                }
+
+                User currentUser = client.get("user");
+                String userId = client.get("userId");
+                User otherUser;
+
+                if (currentUser.getRole() == Constants.RoleEnum.SEER) {
+                    // Other user is customer
+                    otherUser = conversation.getBooking().getCustomer();
+                } else {
+                    // Other user is seer
+                    otherUser = conversation.getBooking().getServicePackage().getSeer();
+                }
+
+                PendingCancelRequest pendingCancelRequest = PendingCancelRequest.builder()
+                        .conversationId(UUID.fromString(conversationId))
+                        .requesterId(currentUser.getId())
+                        .respondentId(otherUser.getId())
+                        .requesterRole(currentUser.getRole())
+                        .requestedAt(LocalDateTime.now())
+                        .build();
+
+                pendingCancelRequests.put(pendingCancelRequest.getConversationId(), pendingCancelRequest);
+
+                // Send cancel confirmation request to the other user
+                sendToUser(namespace, otherUser.getId().toString(), Map.of(
+                    "conversationId", conversationId,
+                    "requesterId", userId,
+                    "requesterName", currentUser.getFullName(),
+                    "timestamp", LocalDateTime.now().toString()
+                ));
+
+                log.info("Cancel request sent to user {} for confirmation", otherUser.getId());
+                ackRequest.sendAckData("success", "Cancel request sent for confirmation");
+            } catch (Exception e) {
+                log.error("Error in cancel_session_manually", e);
+                ackRequest.sendAckData("error", e.getMessage());
+            }
+        });
+
+        // B responds to cancel request
+        namespace.addEventListener("respond_cancel_request", CancelResponseRequest.class, (client, response, ackRequest) -> {
+            try {
+                UUID conversationId = response.getConversationId();
+                boolean confirmed = response.isConfirmed();
+                String respondentId = client.get("userId");
+
+                log.info("User {} responded to cancel request for conversation {}: {}",
+                    respondentId, conversationId, confirmed);
+
+                // Check if pending cancel request exists
+                PendingCancelRequest pendingRequest = pendingCancelRequests.get(conversationId);
+                if (pendingRequest == null) {
+                    ackRequest.sendAckData("error", "No pending cancel request found");
+                    return;
+                }
+
+                // Check if user B is authorized to respond to this request
+                if (!pendingRequest.getRespondentId().equals(UUID.fromString(respondentId))) {
+                    ackRequest.sendAckData("error", "You are not authorized to respond to this request");
+                    return;
+                }
+
+                if (confirmed) {
+                    // B confirmed cancellation - proceed with cancellation
+                    conversationService.cancelSession(conversationId, pendingRequest.getRequesterRole());
+
+                    // Notify both A and B
+                    String cancelMessage = messageSourceService.get("chat.session.cancelled");
+
+                    // Send to A (requester)
+                    sendToUser(namespace, pendingRequest.getRequesterId().toString(), "cancel_result", Map.of(
+                        "status", "success",
+                        "message", cancelMessage,
+                        "conversationId", conversationId.toString(),
+                        "cancelledBy", pendingRequest.getRequesterId().toString(),
+                        "confirmedBy", respondentId,
+                        "timestamp", LocalDateTime.now().toString()
+                    ));
+
+                    // Send to B (respondent)
+                    sendToUser(namespace, respondentId, "cancel_result", Map.of(
+                        "status", "success",
+                        "message", cancelMessage,
+                        "conversationId", conversationId.toString(),
+                        "cancelledBy", pendingRequest.getRequesterId().toString(),
+                        "confirmedBy", respondentId,
+                        "timestamp", LocalDateTime.now().toString()
+                    ));
+
+                    // Broadcast to conversation room
+                    com.corundumstudio.socketio.BroadcastOperations roomOps =
+                        namespace.getRoomOperations(conversationId.toString());
+                    if (roomOps != null) {
+                        roomOps.sendEvent("session_cancelled", Map.of(
+                            "conversationId", conversationId.toString(),
+                            "cancelledBy", pendingRequest.getRequesterId().toString(),
+                            "message", cancelMessage,
+                            "timestamp", LocalDateTime.now().toString()
+                        ));
+                    }
+
+                    log.info("Session {} cancelled successfully by user {}", conversationId, pendingRequest.getRequesterId());
+
+                } else {
+                    // B declined cancellation
+                    String declineMessage = messageSourceService.get("chat.session.cancel_declined");
+
+                    // Notify A (requester)
+                    sendToUser(namespace, pendingRequest.getRequesterId().toString(), "cancel_result", Map.of(
+                        "status", "declined",
+                        "message", declineMessage,
+                        "conversationId", conversationId.toString(),
+                        "declinedBy", respondentId,
+                        "timestamp", LocalDateTime.now().toString()
+                    ));
+
+                    log.info("Session cancellation declined by user {} for conversation {}", respondentId, conversationId);
+                }
+
+                // Remove pending request from map
+                pendingCancelRequests.remove(conversationId);
+                ackRequest.sendAckData("success");
+
+            } catch (Exception e) {
+                log.error("Error processing cancel response", e);
+                ackRequest.sendAckData("error", e.getMessage());
+            }
+        });
+
         // User disconnects
         namespace.addDisconnectListener(client -> {
             String userId = client.get("userId");
@@ -285,10 +432,33 @@ public class ChatSocketListener {
                 socketIOServer.getConfiguration().getPort());
     }
 
+    /**
+     * Send an event to a specific user by their userId with custom event name
+     */
+    private void sendToUser(SocketIONamespace namespace, String userId, String eventName, Object data) {
+        for (SocketIOClient client : namespace.getAllClients()) {
+            String clientUserId = client.get("userId");
+            if (userId.equals(clientUserId)) {
+                client.sendEvent(eventName, data);
+                log.info("Event '{}' sent to user {}", eventName, userId);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Send request_cancel_confirmation event to a specific user
+     */
+    private void sendToUser(SocketIONamespace namespace, String userId, Object data) {
+        sendToUser(namespace, userId, "request_cancel_confirmation", data);
+    }
+
     @PreDestroy
     public void destroy() {
         log.info("Stopping Socket.IO server...");
         socketIOServer.stop();
         log.info("✅ Socket.IO server stopped");
     }
+
+
 }

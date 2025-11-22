@@ -397,7 +397,7 @@
 
     <script>
         // Configuration
-        const API_BASE_URL = 'http://localhost:8080';
+        const API_BASE_URL = 'http://localhost:8081';
 
         // State
         let currentUser = null;
@@ -560,7 +560,7 @@
 
             // Auto-detect server URL for Docker/localhost compatibility
             const urlParams = new URLSearchParams(window.location.search);
-            const socketServer = urlParams.get('socketServer') || 'http://localhost:8081';
+            const socketServer = urlParams.get('socketServer') || 'http://localhost:8082';
             console.log('Attempting to connect to:', socketServer + '/chat');
 
             // Set timeout to detect if connection hangs
